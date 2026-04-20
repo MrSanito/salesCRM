@@ -201,54 +201,28 @@ export default function SalesPortal() {
               Welcome back, <span className="font-semibold text-slate-800">Arjun Mehta</span> 👋
             </p>
 
-            {/* ── KPI Row 1 ── */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              {KPI_CARDS.slice(0, 4).map((card) => {
+            {/* ── KPI Cards ── */}
+            <div className="grid grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
+              {KPI_CARDS.map((card) => {
                 const Icon = card.icon;
                 return (
-                  <div key={card.label} className="bg-white rounded-xl border border-slate-200 p-4 flex items-start justify-between hover:shadow-sm transition-shadow">
-                    <div>
-                      <p className="text-[11px] font-medium text-slate-500 mb-1">{card.label}</p>
-                      <p className="text-2xl font-bold text-slate-800 leading-tight">{card.value}</p>
-                      <div className="flex items-center gap-1 mt-1.5">
-                        {card.up ? (
-                          <ArrowUpRight size={13} className="text-green-500" />
-                        ) : (
-                          <ArrowDownRight size={13} className="text-red-500" />
-                        )}
-                        <span className={`text-[12px] font-semibold ${card.up ? "text-green-600" : "text-red-500"}`}>{card.change}</span>
-                        <span className="text-[11px] text-slate-400">{card.sub}</span>
+                  <div key={card.label} className="bg-white rounded-xl border border-slate-200 p-2 sm:p-4 flex flex-col justify-between hover:shadow-sm transition-shadow">
+                    <div className="flex items-center justify-between mb-1 sm:mb-2">
+                       <div className={`w-6 h-6 sm:w-10 sm:h-10 rounded-lg ${card.iconBg} flex items-center justify-center flex-shrink-0`}>
+                        <Icon size={14} className={`sm:w-[18px] sm:h-[18px] ${card.iconColor}`} />
                       </div>
                     </div>
-                    <div className={`w-10 h-10 rounded-lg ${card.iconBg} flex items-center justify-center flex-shrink-0`}>
-                      <Icon size={18} className={card.iconColor} />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* ── KPI Row 2 ── */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {KPI_CARDS.slice(4).map((card) => {
-                const Icon = card.icon;
-                return (
-                  <div key={card.label} className="bg-white rounded-xl border border-slate-200 p-4 flex items-start justify-between hover:shadow-sm transition-shadow">
                     <div>
-                      <p className="text-[11px] font-medium text-slate-500 mb-1">{card.label}</p>
-                      <p className="text-2xl font-bold text-slate-800 leading-tight">{card.value}</p>
-                      <div className="flex items-center gap-1 mt-1.5">
+                      <p className="text-[9px] sm:text-[11px] font-medium text-slate-500 mb-0.5 sm:mb-1 truncate">{card.label}</p>
+                      <p className="text-lg sm:text-2xl font-bold text-slate-800 leading-tight">{card.value}</p>
+                      <div className="flex items-center gap-0.5 sm:gap-1 mt-1 sm:mt-1.5 flex-wrap hidden sm:flex">
                         {card.up ? (
-                          <ArrowUpRight size={13} className="text-green-500" />
+                          <ArrowUpRight size={12} className="text-green-500 hidden sm:block" />
                         ) : (
-                          <ArrowDownRight size={13} className="text-red-500" />
+                           <ArrowDownRight size={12} className="text-red-500 hidden sm:block" />
                         )}
-                        <span className={`text-[12px] font-semibold ${card.up ? "text-green-600" : "text-red-500"}`}>{card.change}</span>
-                        <span className="text-[11px] text-slate-400">{card.sub}</span>
+                        <span className={`text-[10px] sm:text-[12px] font-semibold ${card.up ? "text-green-600" : "text-red-500"}`}>{card.change}</span>
                       </div>
-                    </div>
-                    <div className={`w-10 h-10 rounded-lg ${card.iconBg} flex items-center justify-center flex-shrink-0`}>
-                      <Icon size={18} className={card.iconColor} />
                     </div>
                   </div>
                 );
@@ -370,11 +344,14 @@ export default function SalesPortal() {
                 <table className="w-full text-[13px]">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-100">
-                      {["Lead", "Company", "Stage", "Value", "Owner", "Follow Up", "Priority", ""].map((h) => (
-                        <th key={h} className="text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-4 py-2.5">
-                          {h}
-                        </th>
-                      ))}
+                      <th className="text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-3 sm:px-4 py-2.5">Lead</th>
+                      <th className="hidden md:table-cell text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-4 py-2.5">Company</th>
+                      <th className="text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-3 sm:px-4 py-2.5">Stage</th>
+                      <th className="text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-3 sm:px-4 py-2.5">Value</th>
+                      <th className="hidden lg:table-cell text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-4 py-2.5">Owner</th>
+                      <th className="hidden sm:table-cell text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-4 py-2.5">Follow Up</th>
+                      <th className="hidden xl:table-cell text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-4 py-2.5">Priority</th>
+                      <th className="text-right text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-3 sm:px-4 py-2.5"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -384,27 +361,27 @@ export default function SalesPortal() {
                         onClick={() => openLeadModal(i)}
                         className="border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer group"
                       >
-                        <td className="px-4 py-3">
-                          <span className="font-semibold text-slate-700">{lead.name}</span>
+                        <td className="px-3 sm:px-4 py-3">
+                          <span className="font-semibold text-slate-700 block truncate max-w-[100px] sm:max-w-none">{lead.name}</span>
                         </td>
-                        <td className="px-4 py-3 text-slate-500">{lead.company}</td>
-                        <td className="px-4 py-3">
-                          <span className={`px-2 py-0.5 rounded-md text-[11px] font-medium ${stageStyle[lead.stage] ?? "bg-slate-100 text-slate-600"}`}>
+                        <td className="hidden md:table-cell px-4 py-3 text-slate-500">{lead.company}</td>
+                        <td className="px-3 sm:px-4 py-3">
+                          <span className={`px-2 py-0.5 rounded-md text-[10px] sm:text-[11px] font-medium whitespace-nowrap ${stageStyle[lead.stage] ?? "bg-slate-100 text-slate-600"}`}>
                             {lead.stage}
                           </span>
                         </td>
-                        <td className="px-4 py-3 font-semibold text-slate-700">{lead.value}</td>
-                        <td className="px-4 py-3 text-slate-500">{lead.owner}</td>
-                        <td className={`px-4 py-3 ${lead.date.startsWith("Today") ? "text-orange-500 font-medium" : "text-slate-400"}`}>
+                        <td className="px-3 sm:px-4 py-3 font-semibold text-slate-700 text-[12px] sm:text-[13px]">{lead.value}</td>
+                        <td className="hidden lg:table-cell px-4 py-3 text-slate-500">{lead.owner}</td>
+                        <td className={`hidden sm:table-cell px-4 py-3 ${lead.date.startsWith("Today") ? "text-orange-500 font-medium" : "text-slate-400"}`}>
                           {lead.date}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="hidden xl:table-cell px-4 py-3">
                           <span className={`px-2 py-0.5 rounded-md text-[11px] font-medium ${priorityStyle[lead.priority]}`}>
                             {lead.priority}
                           </span>
                         </td>
-                        <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center gap-1">
+                        <td className="px-3 sm:px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-end gap-1">
                             <button className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
                               <Eye size={13} />
                             </button>
