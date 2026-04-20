@@ -4,7 +4,7 @@ import { CalendarCheck, X, Phone, Mail } from "lucide-react";
 interface ScheduleFollowupModalProps {
   isOpen: boolean;
   onClose: () => void;
-  data: { date: string; time: string; note: string };
+  data: { date: string; time: string; note: string; method?: string };
   setData: (data: any) => void;
   onSubmit: () => void;
 }

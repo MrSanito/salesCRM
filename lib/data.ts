@@ -21,6 +21,45 @@ export const STAGE_STYLES: Record<string, string> = {
   Lost: "bg-red-50 text-red-600",
 };
 
+export interface LeadContext {
+  requirement?: string;
+  useCase?: string;
+  scope?: string;
+  constraints?: string;
+  drivers?: string;
+  objections?: string;
+  commitments?: string;
+}
+
+export interface Lead {
+  id: number;
+  initials: string;
+  name: string;
+  company: string;
+  status: string;
+  subStatus: string;
+  value: string;
+  owner: string;
+  priority: string;
+  date: string;
+  primaryMobile?: string;
+  secondaryMobile?: string;
+  email?: string;
+  secondaryEmail?: string;
+  interestedIn?: string;
+  source?: string;
+  lastActivity?: string;
+  createdOn?: string;
+  checklist?: {
+    contactVerified: boolean;
+    requirementDefined: boolean;
+    dataReceived: boolean;
+    orderConfirmed: boolean;
+    proposalSigned: boolean;
+  };
+  contextSummary?: LeadContext;
+}
+
 export const SUB_STATUSES = [
   "Meeting confirmed", "No Response", "Budget Issue"
 ];

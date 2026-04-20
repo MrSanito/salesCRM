@@ -2,7 +2,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { X, ChevronLeft, ChevronRight, Building2, Phone, Mail, CalendarCheck, ChevronDown } from "lucide-react";
-import { PIPELINE_STAGES, SUB_STATUSES, PRIORITY_STYLES } from "@/lib/data";
+import { PIPELINE_STAGES, SUB_STATUSES, PRIORITY_STYLES, Lead, LeadContext } from "@/lib/data";
 import toast from "react-hot-toast";
 
 // Sub-components
@@ -12,7 +12,7 @@ import GatekeeperProtocol from "./lead-detail/GatekeeperProtocol";
 import ScheduleFollowupModal from "./lead-detail/ScheduleFollowupModal";
 
 interface LeadDetailModalProps {
-  lead: any;
+  lead: Lead;
   onClose: () => void;
   isLoading: boolean;
   onSwitch: (dir: 'next' | 'prev') => void;

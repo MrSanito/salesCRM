@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from 'react';
-import { ALL_LEADS, PIPELINE_STAGES, SUB_STATUSES } from "@/lib/data";
+import { ALL_LEADS, PIPELINE_STAGES, SUB_STATUSES, Lead } from "@/lib/data";
 import Link from "next/link";
 import { 
   Building2, Phone, Mail, Briefcase, Globe, Tag, History, LineChart, 
@@ -15,7 +15,7 @@ export default function LeadDetailPage() {
   const params = useParams();
   const router = useRouter();
   const leadId = parseInt(params.id as string);
-  const lead = ALL_LEADS.find(l => l.id === leadId);
+  const lead = ALL_LEADS.find(l => l.id === leadId) as Lead | undefined;
 
   // States for interactive controls
   const [status, setStatus] = useState(lead?.status || "");

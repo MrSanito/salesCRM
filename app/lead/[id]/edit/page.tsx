@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, use } from 'react';
-import { ALL_LEADS, PIPELINE_STAGES } from "@/lib/data";
+import { ALL_LEADS, PIPELINE_STAGES, Lead } from "@/lib/data";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
@@ -13,7 +13,7 @@ export default function EditLeadPage({ params }: { params: Promise<{ id: string 
   const router = useRouter();
   const resolvedParams = use(params);
   const leadId = parseInt(resolvedParams.id);
-  const initialLead = ALL_LEADS.find(l => l.id === leadId);
+  const initialLead = ALL_LEADS.find(l => l.id === leadId) as Lead | undefined;
 
   // In a real app we'd fetch this from API and not use a hardcoded fallback if not found, 
   // but for the frontend demo we can just redirect.
@@ -23,8 +23,23 @@ export default function EditLeadPage({ params }: { params: Promise<{ id: string 
     }
   }, [initialLead, router]);
 
-  const [formData, setFormData] = useState(initialLead || {
-    id: 0, initials: '', name: '', company: '', status: '', subStatus: '', owner: '', value: '', priority: '', date: ''
+  const [formData, setFormData] = useState<Lead>(initialLead || {
+    id: 0, 
+    initials: '', 
+    name: '', 
+    company: '', 
+    status: '', 
+    subStatus: '', 
+    owner: '', 
+    value: '', 
+    priority: '', 
+    date: '',
+    primaryMobile: '',
+    secondaryMobile: '',
+    email: '',
+    secondaryEmail: '',
+    interestedIn: '',
+    source: ''
   });
 
   if (!initialLead) return null;

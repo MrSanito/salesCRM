@@ -1,5 +1,4 @@
-import React from 'react';
-import { PIPELINE_STAGES } from '@/lib/data';
+import { PIPELINE_FLOW_STATS } from '@/lib/data';
 
 export const Pipeline = () => {
   return (
@@ -15,11 +14,11 @@ export const Pipeline = () => {
 
       {/* Stage funnel */}
       <div className="flex items-stretch gap-1 mb-5 overflow-x-auto pb-2 custom-scrollbar">
-        {PIPELINE_STAGES.map((stage, i) => (
+        {PIPELINE_FLOW_STATS.map((stage, i) => (
           <div
             key={stage.label}
-            className={`flex-1 min-w-[100px] rounded-lg border px-3 py-4 text-center cursor-pointer hover:opacity-90 transition-all hover:scale-[1.02] active:scale-[0.98] ${stage.color} shadow-sm`}
-            style={{ clipPath: i < PIPELINE_STAGES.length - 1 ? "polygon(0 0, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, 0 100%)" : "none" }}
+            className={`flex-1 min-w-[100px] rounded-xl border px-3 py-4 text-center cursor-pointer hover:opacity-90 transition-all hover:scale-[1.02] active:scale-[0.98] ${stage.color} shadow-sm`}
+            style={{ clipPath: i < PIPELINE_FLOW_STATS.length - 1 ? "polygon(0 0, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, 0 100%)" : "none" }}
           >
             <p className="text-[10.5px] font-bold uppercase tracking-[0.1em] opacity-80 mb-2">{stage.label}</p>
             <p className="text-[22px] font-bold leading-none tracking-[-0.01em] font-mono">{stage.count}</p>
