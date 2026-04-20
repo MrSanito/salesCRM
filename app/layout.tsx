@@ -19,6 +19,8 @@ export const metadata: Metadata = {
   description: "A premium, high-precision Sales CRM dashboard.",
 };
 
+import { Toaster } from "react-hot-toast";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -29,7 +31,10 @@ export default function RootLayout({
       lang="en"
       className={`${dmSans.variable} ${dmMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col font-sans">{children}</body>
+      <body className="min-h-full flex flex-col font-sans">
+        <Toaster position="top-right" />
+        {children}
+      </body>
     </html>
   );
 }

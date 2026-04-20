@@ -66,7 +66,7 @@ export default function LeadsTable({ onLeadClick, activeNav }: LeadsTableProps) 
               <th className="hidden md:table-cell text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-4 py-2.5">Company</th>
               <th className="text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-3 sm:px-4 py-2.5">Status</th>
               <th className="hidden md:table-cell text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-3 sm:px-4 py-2.5">Sub Status</th>
-              <th className="text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-3 sm:px-4 py-2.5">Value</th>
+              <th className="hidden sm:table-cell text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-3 sm:px-4 py-2.5">Phone Number</th>
               <th className="hidden lg:table-cell text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-4 py-2.5">Owner</th>
               <th className="hidden sm:table-cell text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-4 py-2.5">Follow Up</th>
               <th className="hidden xl:table-cell text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-4 py-2.5">Priority</th>
@@ -92,7 +92,7 @@ export default function LeadsTable({ onLeadClick, activeNav }: LeadsTableProps) 
                 <td className="hidden md:table-cell px-3 sm:px-4 py-3 text-[11px] font-medium text-slate-500">
                   {lead.subStatus}
                 </td>
-                <td className="px-3 sm:px-4 py-3 font-semibold text-slate-700 text-[12px] sm:text-[13px]">{lead.value}</td>
+                <td className="hidden sm:table-cell px-3 sm:px-4 py-3 font-medium text-slate-600 text-[11px] sm:text-[12px] font-mono">{lead.primaryMobile}</td>
                 <td className="hidden lg:table-cell px-4 py-3 text-slate-500">{lead.owner}</td>
                 <td className={`hidden sm:table-cell px-4 py-3 ${lead.date.startsWith("Today") ? "text-orange-500 font-medium" : "text-slate-400"}`}>
                   {lead.date}

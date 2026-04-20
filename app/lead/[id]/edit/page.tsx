@@ -4,7 +4,7 @@ import { ALL_LEADS, PIPELINE_STAGES } from "@/lib/data";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
-  Building2, Phone, User, Save, X, ArrowLeft
+  Building2, Phone, User, Save, X, ArrowLeft, ChevronDown
 } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Sidebar from "@/components/layout/Sidebar";
@@ -112,11 +112,14 @@ export default function EditLeadPage({ params }: { params: Promise<{ id: string 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                      <div>
                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Status</label>
-                       <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all appearance-none cursor-pointer">
-                         {PIPELINE_STAGES.map(stage => (
-                           <option key={stage} value={stage}>{stage}</option>
-                         ))}
-                       </select>
+                       <div className="relative">
+                         <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all appearance-none cursor-pointer pr-10">
+                           {PIPELINE_STAGES.map(stage => (
+                             <option key={stage} value={stage}>{stage}</option>
+                           ))}
+                         </select>
+                         <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                       </div>
                      </div>
                      <div>
                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Sub Status</label>
@@ -128,11 +131,14 @@ export default function EditLeadPage({ params }: { params: Promise<{ id: string 
                      </div>
                      <div>
                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Priority</label>
-                       <select value={formData.priority} onChange={e => setFormData({...formData, priority: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all appearance-none cursor-pointer">
-                           <option value="High">High</option>
-                           <option value="Medium">Medium</option>
-                           <option value="Low">Low</option>
-                       </select>
+                       <div className="relative">
+                         <select value={formData.priority} onChange={e => setFormData({...formData, priority: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all appearance-none cursor-pointer pr-10">
+                             <option value="High">High</option>
+                             <option value="Medium">Medium</option>
+                             <option value="Low">Low</option>
+                         </select>
+                         <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                       </div>
                      </div>
                   </div>
                </div>
