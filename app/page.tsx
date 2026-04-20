@@ -12,6 +12,7 @@ import {
   ArrowLeft, ArrowRight
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import Sidebar from "@/components/layout/Sidebar";
 import Navbar from "@/components/layout/Navbar";
 
@@ -158,6 +159,7 @@ export default function SalesPortal() {
   const [activeLeadMenu, setActiveLeadMenu] = useState<number | null>(null);
   const [selectedLeadIndex, setSelectedLeadIndex] = useState<number | null>(null);
   const [isModalLoading, setIsModalLoading] = useState(false);
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
 
   const openLeadModal = (index: number) => {
     setSelectedLeadIndex(index);
@@ -474,11 +476,14 @@ export default function SalesPortal() {
               </div>
 
               {!isModalLoading && (
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 sm:gap-4 flex-wrap justify-end">
+                  <Link href={`/lead/${ALL_LEADS[selectedLeadIndex].name.toLowerCase().replace(' ', '-')}`} className="text-xs font-bold text-slate-500 hover:text-blue-600 flex items-center gap-1.5 transition-colors">
+                    <LayoutDashboard size={14} /> <span className="hidden sm:inline">Open Full Page</span><span className="sm:hidden">Full Page</span>
+                  </Link>
                   <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest bg-blue-50 text-blue-600 border border-blue-100">
                     {ALL_LEADS[selectedLeadIndex].stage}
                   </span>
-                  <button className="bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-sm hover:bg-blue-700 transition-all">
+                  <button onClick={() => setIsUpdateModalOpen(true)} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-sm hover:bg-blue-700 transition-all">
                     Update Lead
                   </button>
                 </div>
@@ -608,16 +613,30 @@ export default function SalesPortal() {
                              Latest Activity Log
                            </h3>
                         </div>
-                        <div className="bg-slate-50/50 rounded-xl p-6 border border-slate-100 flex gap-4">
-                           <div className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center flex-shrink-0">
-                             <Clock size={16} className="text-slate-400" />
+                        <div className="bg-slate-50/50 rounded-xl p-6 border border-slate-100 flex gap-4 relative">
+                           <div className="w-10 h-10 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center flex-shrink-0 text-blue-600 font-bold text-xs shadow-sm">
+                             AM
                            </div>
                            <div className="flex-1">
-                             <div className="flex items-center justify-between mb-2">
-                               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Today, 11:30 AM</span>
-                               <span className="text-[9px] font-bold px-2 py-0.5 rounded bg-blue-600 text-white uppercase">Latest Note</span>
+                             <div className="flex flex-wrap items-center justify-between mb-3 gap-2">
+                               <div>
+                                 <span className="text-xs font-bold text-slate-900 mr-2">Arjun Mehta</span>
+                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Today, 11:30 AM</span>
+                               </div>
+                               <span className="text-[9px] font-bold px-2 py-0.5 rounded bg-blue-600 text-white uppercase shadow-sm">Meeting Note</span>
                              </div>
-                             <p className="text-sm text-slate-700 leading-relaxed font-medium">The client requested a specialized demo focusing on multi-team synchronization and legacy data migration timelines.</p>
+                             <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm relative">
+                               <div className="absolute -left-1.5 top-4 w-3 h-3 bg-white border-b border-l border-slate-200 transform rotate-45"></div>
+                               <p className="text-sm text-slate-700 leading-relaxed font-medium relative z-10">The client requested a specialized demo focusing on multi-team synchronization and legacy data migration timelines. Budget is approved for Q3.</p>
+                               <div className="mt-4 pt-3 border-t border-slate-50 flex flex-wrap items-center gap-3">
+                                 <span className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-100 px-2.5 py-1 rounded-md">
+                                   <Clock size={10} /> Follow-up Next Week
+                                 </span>
+                                 <span className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-100 px-2.5 py-1 rounded-md">
+                                   <UserCheck size={10} /> Mentioned CTO
+                                 </span>
+                               </div>
+                             </div>
                            </div>
                         </div>
                       </div>
@@ -663,6 +682,42 @@ export default function SalesPortal() {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Update Lead Modal */}
+      {isUpdateModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] flex items-center justify-center animate-in fade-in duration-200 outline-none p-4" onClick={() => setIsUpdateModalOpen(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl flex flex-col max-h-[90vh] overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-5 border-b border-slate-100">
+              <h2 className="text-lg font-bold text-slate-800">Update Lead</h2>
+              <button className="p-2 -mr-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors" onClick={() => setIsUpdateModalOpen(false)}>
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-6 space-y-5 overflow-y-auto">
+              <div>
+                 <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Stage</label>
+                 <select className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-slate-50 appearance-none">
+                   {PIPELINE_STAGES.map(stage => (
+                     <option key={stage.label}>{stage.label}</option>
+                   ))}
+                 </select>
+              </div>
+              <div>
+                 <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Next Follow-Up</label>
+                 <input type="datetime-local" className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-slate-50" />
+              </div>
+              <div>
+                 <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Add Note</label>
+                 <textarea className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-slate-50 h-28 resize-none" placeholder="Enter latest updates, insights, or tasks..."></textarea>
+              </div>
+            </div>
+            <div className="p-5 border-t border-slate-100 flex gap-3">
+              <button className="flex-1 py-3 bg-slate-50 text-slate-600 font-bold text-sm rounded-xl hover:bg-slate-100 transition-colors" onClick={() => setIsUpdateModalOpen(false)}>Cancel</button>
+              <button className="flex-1 py-3 bg-blue-600 text-white font-bold text-sm rounded-xl hover:bg-blue-700 transition-colors shadow-sm" onClick={() => setIsUpdateModalOpen(false)}>Save Updates</button>
             </div>
           </div>
         </div>
