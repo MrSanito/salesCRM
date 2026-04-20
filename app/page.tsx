@@ -157,13 +157,13 @@ const ALL_LEADS = [
   { initials: "NK", name: "Nisha Kapoor", company: "Kapoor & Sons", stage: "Closed Lost", value: "₹2,30,000", owner: "Arjun Mehta", priority: "Low", date: "12 May, 09:00 AM" },
 ];
 
-const priorityStyle = {
+const priorityStyle: Record<string, string> = {
   High: "bg-red-50 text-red-600 border border-red-200",
   Medium: "bg-amber-50 text-amber-600 border border-amber-200",
   Low: "bg-green-50 text-green-600 border border-green-200",
 };
 
-const stageStyle = {
+const stageStyle: Record<string, string> = {
   New: "bg-blue-50 text-blue-600",
   Contacted: "bg-cyan-50 text-cyan-600",
   Qualified: "bg-teal-50 text-teal-700",
