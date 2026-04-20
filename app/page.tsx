@@ -215,13 +215,14 @@ export default function SalesPortal() {
                     <div>
                       <p className="text-[9px] sm:text-[11px] font-medium text-slate-500 mb-0.5 sm:mb-1 truncate">{card.label}</p>
                       <p className="text-lg sm:text-2xl font-bold text-slate-800 leading-tight">{card.value}</p>
-                      <div className="flex items-center gap-0.5 sm:gap-1 mt-1 sm:mt-1.5 flex-wrap hidden sm:flex">
+                      <div className="flex items-center gap-1 mt-1 sm:mt-1.5 flex-wrap">
                         {card.up ? (
-                          <ArrowUpRight size={12} className="text-green-500 hidden sm:block" />
+                          <ArrowUpRight size={12} className="text-green-500" />
                         ) : (
-                           <ArrowDownRight size={12} className="text-red-500 hidden sm:block" />
+                           <ArrowDownRight size={12} className="text-red-500" />
                         )}
                         <span className={`text-[10px] sm:text-[12px] font-semibold ${card.up ? "text-green-600" : "text-red-500"}`}>{card.change}</span>
+                        <span className="text-[9px] sm:text-[11px] text-slate-400 truncate max-w-full">{card.sub}</span>
                       </div>
                     </div>
                   </div>
