@@ -498,10 +498,8 @@ export default function SalesPortal() {
                   <p className="text-sm font-bold text-slate-400 uppercase tracking-widest animate-pulse">Syncing Lead Intelligence...</p>
                 </div>
               ) : (
-                <div className="p-8">
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Left Section */}
-                    <div className="lg:col-span-2 space-y-6">
+                <div className="p-4 sm:p-8">
+                  <div className="max-w-4xl mx-auto space-y-6">
                       <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
                         <div className="flex items-start justify-between mb-8">
                           <div>
@@ -639,44 +637,6 @@ export default function SalesPortal() {
                              </div>
                            </div>
                         </div>
-                      </div>
-                    </div>
-
-                    {/* Right Column Metadata */}
-                    <div className="space-y-6">
-                      <div className="bg-slate-900 rounded-2xl p-6 text-white shadow-xl">
-                        <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-6">Execution Summary</h3>
-                        <div className="space-y-5">
-                          <div>
-                            <p className="text-[9px] font-bold text-slate-500 uppercase mb-1">Engagement Health</p>
-                            <div className="flex items-center gap-3">
-                              <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
-                                <div className="w-4/5 h-full bg-green-500" />
-                              </div>
-                              <span className="text-xs font-bold">85%</span>
-                            </div>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-slate-500 uppercase">Last Contact</span>
-                            <span className="text-xs font-bold">2h ago</span>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-slate-500 uppercase">Priority Level</span>
-                            <span className="text-xs font-bold py-1 px-2 bg-red-500/20 text-red-500 rounded border border-red-500/30">CRITICAL</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-                         <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Decision Protocol</h3>
-                         <div className="space-y-3">
-                           {["Verify license count", "Draft SLA agreement", "Check server capacity"].map(task => (
-                             <div key={task} className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-100">
-                               <div className="w-4 h-4 rounded border border-slate-300 bg-white" />
-                               <span className="text-xs font-bold text-slate-600">{task}</span>
-                             </div>
-                           ))}
-                         </div>
                       </div>
                     </div>
                   </div>
