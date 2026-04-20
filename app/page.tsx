@@ -7,8 +7,11 @@ import {
   CalendarCheck, XCircle, BarChart2, Activity, PieChart,
   Settings, Users2, Puzzle, ChevronRight, MoreVertical,
   Mail, MessageCircle, StickyNote, RefreshCcw, Circle,
-  ArrowUpRight, ArrowDownRight, Filter, Download, Eye
+  ArrowUpRight, ArrowDownRight, Filter, Download, Eye,
+  X, Building2, Tag, History, Briefcase, Globe, Clock, ChevronLeft,
+  ArrowLeft, ArrowRight
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 const SIDEBAR_ITEMS = [
   {
@@ -181,7 +184,33 @@ const avatarColors = [
 ];
 
 export default function SalesPortal() {
+  const router = useRouter();
   const [activeNav, setActiveNav] = useState("Dashboard");
+  const [showFilterMenu, setShowFilterMenu] = useState(false);
+  const [activeLeadMenu, setActiveLeadMenu] = useState<number | null>(null);
+  const [selectedLeadIndex, setSelectedLeadIndex] = useState<number | null>(null);
+  const [isModalLoading, setIsModalLoading] = useState(false);
+
+  const openLeadModal = (index: number) => {
+    setSelectedLeadIndex(index);
+    setIsModalLoading(true);
+    setTimeout(() => {
+      setIsModalLoading(false);
+    }, 2000);
+  };
+
+  const switchLead = (dir: 'next' | 'prev') => {
+    if (selectedLeadIndex === null) return;
+    let newIndex = dir === 'next' ? selectedLeadIndex + 1 : selectedLeadIndex - 1;
+    if (newIndex < 0) newIndex = ALL_LEADS.length - 1;
+    if (newIndex >= ALL_LEADS.length) newIndex = 0;
+    
+    setSelectedLeadIndex(newIndex);
+    setIsModalLoading(true);
+    setTimeout(() => {
+      setIsModalLoading(false);
+    }, 2000);
+  };
 
   return (
     <div className="flex h-screen bg-slate-50 font-sans overflow-hidden">
@@ -427,10 +456,34 @@ export default function SalesPortal() {
                   <p className="text-[11px] text-slate-400 mt-0.5">Your assigned leads pipeline</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button className="flex items-center gap-1.5 text-[12px] text-slate-600 border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">
-                    <Filter size={12} />
-                    Filter
-                  </button>
+                  <div className="relative">
+                    <button 
+                      onClick={() => setShowFilterMenu(!showFilterMenu)}
+                      className={`flex items-center gap-1.5 text-[12px] border px-3 py-1.5 rounded-lg transition-all ${
+                        showFilterMenu ? "bg-slate-100 border-slate-300 text-slate-900" : "text-slate-600 border-slate-200 hover:bg-slate-50"
+                      }`}
+                    >
+                      <Filter size={12} />
+                      Filter
+                      <ChevronDown size={11} className={`text-slate-400 transition-transform ${showFilterMenu ? "rotate-180" : ""}`} />
+                    </button>
+                    {showFilterMenu && (
+                      <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-slate-200 rounded-lg shadow-xl z-30 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
+                        <div className="px-3 py-2 border-b border-slate-50 bg-slate-50/50">
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sort By</p>
+                        </div>
+                        <button className="w-full text-left px-3 py-2 text-[11px] hover:bg-slate-50 transition-colors font-semibold text-slate-700">Newest to Oldest</button>
+                        <button className="w-full text-left px-3 py-2 text-[11px] hover:bg-slate-50 transition-colors font-semibold text-slate-700 border-t border-slate-50">Oldest to Newest</button>
+                        <button className="w-full text-left px-3 py-2 text-[11px] hover:bg-slate-50 transition-colors font-semibold text-slate-700 border-t border-slate-50">Highest Value (₹)</button>
+                        <button className="w-full text-left px-3 py-2 text-[11px] hover:bg-slate-50 transition-colors font-semibold text-slate-700 border-t border-slate-50">Lowest Value (₹)</button>
+                        <div className="px-3 py-2 border-t border-slate-50 bg-slate-50/50">
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Filter By</p>
+                        </div>
+                        <button className="w-full text-left px-3 py-2 text-[11px] hover:bg-slate-50 transition-colors font-semibold text-slate-700 border-t border-slate-50">Action Needed</button>
+                        <button className="w-full text-left px-3 py-2 text-[11px] hover:bg-slate-50 transition-colors font-semibold text-slate-700 border-t border-slate-50">High Priority Only</button>
+                      </div>
+                    )}
+                  </div>
                   <button className="flex items-center gap-1.5 text-[12px] text-slate-600 border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">
                     <Download size={12} />
                     Export
@@ -450,9 +503,13 @@ export default function SalesPortal() {
                   </thead>
                   <tbody>
                     {ALL_LEADS.map((lead, i) => (
-                      <tr key={i} className="border-b border-slate-50 hover:bg-slate-50/70 transition-colors">
+                      <tr 
+                        key={i} 
+                        onClick={() => openLeadModal(i)}
+                        className="border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer group"
+                      >
                         <td className="px-4 py-3">
-                          <span className="font-medium text-slate-700">{lead.name}</span>
+                          <span className="font-semibold text-slate-700">{lead.name}</span>
                         </td>
                         <td className="px-4 py-3 text-slate-500">{lead.company}</td>
                         <td className="px-4 py-3">
@@ -470,14 +527,29 @@ export default function SalesPortal() {
                             {lead.priority}
                           </span>
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center gap-1">
                             <button className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
                               <Eye size={13} />
                             </button>
-                            <button className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
-                              <MoreVertical size={13} />
-                            </button>
+                            <div className="relative">
+                              <button 
+                                onClick={() => setActiveLeadMenu(activeLeadMenu === i ? null : i)}
+                                className={`p-1.5 rounded-lg transition-colors ${
+                                  activeLeadMenu === i ? "bg-slate-100 text-slate-800" : "text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                                }`}
+                              >
+                                <MoreVertical size={13} />
+                              </button>
+                              {activeLeadMenu === i && (
+                                <div className="absolute right-0 top-full mt-1 w-36 bg-white border border-slate-200 rounded-lg shadow-xl z-30 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
+                                  <button className="w-full text-left px-3 py-2.5 text-[11px] hover:bg-slate-50 transition-colors font-semibold text-slate-700">View Details</button>
+                                  <button className="w-full text-left px-3 py-2.5 text-[11px] hover:bg-slate-50 transition-colors font-semibold text-slate-700 border-t border-slate-50">Edit Status</button>
+                                  <button className="w-full text-left px-3 py-2.5 text-[11px] hover:bg-slate-50 transition-colors font-semibold text-slate-700 border-t border-slate-50">Mark as Hot</button>
+                                  <button className="w-full text-left px-3 py-2.5 text-[11px] hover:bg-red-50 text-red-600 transition-colors font-bold border-t border-slate-50">Archive Lead</button>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </td>
                       </tr>
@@ -507,6 +579,240 @@ export default function SalesPortal() {
           </div>
         </div>
       </div>
+
+      {/* ── Lead Detail Modal ── */}
+      {selectedLeadIndex !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300" 
+            onClick={() => setSelectedLeadIndex(null)}
+          />
+          
+          <div className="relative w-full max-w-5xl h-[90vh] bg-slate-50 rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 fade-in duration-300 mx-4">
+            {/* Modal Header */}
+            <div className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 flex-shrink-0">
+              <div className="flex items-center gap-4">
+                <button 
+                  onClick={() => setSelectedLeadIndex(null)}
+                  className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors"
+                >
+                  <X size={20} />
+                </button>
+                <div className="h-6 w-[1px] bg-slate-200 mx-1" />
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => switchLead('prev')}
+                    className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors"
+                  >
+                    <ChevronLeft size={20} />
+                  </button>
+                  <span className="text-xs font-bold text-slate-400 font-mono uppercase tracking-tighter">
+                    LD-{1000 + selectedLeadIndex}
+                  </span>
+                  <button 
+                    onClick={() => switchLead('next')}
+                    className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors"
+                  >
+                    <ChevronRight size={20} />
+                  </button>
+                </div>
+              </div>
+
+              {!isModalLoading && (
+                <div className="flex items-center gap-3">
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest bg-blue-50 text-blue-600 border border-blue-100">
+                    {ALL_LEADS[selectedLeadIndex].stage}
+                  </span>
+                  <button className="bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-sm hover:bg-blue-700 transition-all">
+                    Update Lead
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Content */}
+            <div className="flex-1 overflow-y-auto">
+              {isModalLoading ? (
+                <div className="h-full w-full flex flex-col items-center justify-center space-y-4">
+                  <div className="w-10 h-10 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin" />
+                  <p className="text-sm font-bold text-slate-400 uppercase tracking-widest animate-pulse">Syncing Lead Intelligence...</p>
+                </div>
+              ) : (
+                <div className="p-8">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    {/* Left Section */}
+                    <div className="lg:col-span-2 space-y-6">
+                      <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
+                        <div className="flex items-start justify-between mb-8">
+                          <div>
+                            <h1 className="text-3xl font-bold text-slate-900 tracking-tight mb-2">{ALL_LEADS[selectedLeadIndex].name}</h1>
+                            <div className="flex items-center gap-2 text-slate-500">
+                              <Building2 size={16} />
+                              <span className="text-sm font-semibold">{ALL_LEADS[selectedLeadIndex].company}</span>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Lead Owner</p>
+                            <div className="flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-700">SM</div>
+                              <span className="text-sm font-bold text-slate-900">{ALL_LEADS[selectedLeadIndex].owner}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                          {/* Contact Info */}
+                          <div className="space-y-4">
+                            <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Contact Protocol</h3>
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center">
+                                <Phone size={14} />
+                              </div>
+                              <div>
+                                <p className="text-[9px] font-bold text-slate-400 uppercase">Primary Mobile</p>
+                                <p className="text-sm font-semibold text-slate-800">+91 98765 43210</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-lg bg-slate-50 text-slate-400 flex items-center justify-center">
+                                <Phone size={14} />
+                              </div>
+                              <div>
+                                <p className="text-[9px] font-bold text-slate-400 uppercase">Secondary Mobile</p>
+                                <p className="text-sm font-medium text-slate-500 font-mono">+91 98765 99999</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                                <Mail size={14} />
+                              </div>
+                              <div>
+                                <p className="text-[9px] font-bold text-slate-400 uppercase">Email ID</p>
+                                <p className="text-sm font-semibold text-slate-800">{ALL_LEADS[selectedLeadIndex].name.toLowerCase().replace(' ', '.')}@mehta.com</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-lg bg-slate-50 text-slate-400 flex items-center justify-center">
+                                <Mail size={14} />
+                              </div>
+                              <div>
+                                <p className="text-[9px] font-bold text-slate-400 uppercase">Secondary Email</p>
+                                <p className="text-sm font-medium text-slate-500">contact@mehta.com</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Intelligence */}
+                          <div className="space-y-4">
+                            <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Engagement Metrics</h3>
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
+                                <Briefcase size={14} />
+                              </div>
+                              <div>
+                                <p className="text-[9px] font-bold text-slate-400 uppercase">Interested In</p>
+                                <p className="text-sm font-semibold text-slate-800">Enterprise CRM Suite</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                                <Globe size={14} />
+                              </div>
+                              <div>
+                                <p className="text-[9px] font-bold text-slate-400 uppercase">Source</p>
+                                <p className="text-sm font-semibold text-slate-800">Direct Referral</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center">
+                                <Tag size={14} />
+                              </div>
+                              <div>
+                                <p className="text-[9px] font-bold text-slate-400 uppercase">Current Sub-Status</p>
+                                <p className="text-sm font-semibold text-slate-800">Nurturing Phase</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-lg bg-pink-50 text-pink-600 flex items-center justify-center">
+                                <History size={14} />
+                              </div>
+                              <div>
+                                <p className="text-[9px] font-bold text-slate-400 uppercase">Created On</p>
+                                <p className="text-sm font-semibold text-slate-800 font-mono">Mar 24, 2024</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Activity Log */}
+                      <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
+                        <div className="flex items-center justify-between mb-6">
+                           <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                             <TrendingDown size={16} className="text-blue-600" />
+                             Latest Activity Log
+                           </h3>
+                        </div>
+                        <div className="bg-slate-50/50 rounded-xl p-6 border border-slate-100 flex gap-4">
+                           <div className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center flex-shrink-0">
+                             <Clock size={16} className="text-slate-400" />
+                           </div>
+                           <div className="flex-1">
+                             <div className="flex items-center justify-between mb-2">
+                               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Today, 11:30 AM</span>
+                               <span className="text-[9px] font-bold px-2 py-0.5 rounded bg-blue-600 text-white uppercase">Latest Note</span>
+                             </div>
+                             <p className="text-sm text-slate-700 leading-relaxed font-medium">The client requested a specialized demo focusing on multi-team synchronization and legacy data migration timelines.</p>
+                           </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Column Metadata */}
+                    <div className="space-y-6">
+                      <div className="bg-slate-900 rounded-2xl p-6 text-white shadow-xl">
+                        <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-6">Execution Summary</h3>
+                        <div className="space-y-5">
+                          <div>
+                            <p className="text-[9px] font-bold text-slate-500 uppercase mb-1">Engagement Health</p>
+                            <div className="flex items-center gap-3">
+                              <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                                <div className="w-4/5 h-full bg-green-500" />
+                              </div>
+                              <span className="text-xs font-bold">85%</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-slate-500 uppercase">Last Contact</span>
+                            <span className="text-xs font-bold">2h ago</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-slate-500 uppercase">Priority Level</span>
+                            <span className="text-xs font-bold py-1 px-2 bg-red-500/20 text-red-500 rounded border border-red-500/30">CRITICAL</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+                         <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Decision Protocol</h3>
+                         <div className="space-y-3">
+                           {["Verify license count", "Draft SLA agreement", "Check server capacity"].map(task => (
+                             <div key={task} className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-100">
+                               <div className="w-4 h-4 rounded border border-slate-300 bg-white" />
+                               <span className="text-xs font-bold text-slate-600">{task}</span>
+                             </div>
+                           ))}
+                         </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
