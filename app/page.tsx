@@ -12,43 +12,10 @@ import {
   ArrowLeft, ArrowRight
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Sidebar from "@/components/layout/Sidebar";
+import Navbar from "@/components/layout/Navbar";
 
-const SIDEBAR_ITEMS = [
-  {
-    items: [
-      { icon: AlertTriangle, label: "Alerts", badge: 5, badgeColor: "bg-red-500" },
-      { icon: LayoutDashboard, label: "Dashboard", active: true },
-    ],
-  },
-  {
-    section: "LEADS",
-    items: [
-      { icon: UserPlus, label: "New Leads", badge: 32, badgeColor: "bg-blue-500" },
-      { icon: Phone, label: "Follow Ups", badge: 18, badgeColor: "bg-orange-500" },
-      { icon: CheckCircle2, label: "Closed Won" },
-      { icon: FileText, label: "Proposed" },
-      { icon: CalendarCheck, label: "Meeting Set" },
-      { icon: XCircle, label: "Closed Lost" },
-    ],
-  },
-  {
-    section: "REPORTS",
-    items: [
-      { icon: BarChart2, label: "Pipeline" },
-      { icon: Activity, label: "Performance" },
-      { icon: PieChart, label: "Source Report" },
-    ],
-  },
-  {
-    section: "SETTINGS",
-    items: [
-      { icon: Users2, label: "Users" },
-      { icon: Users, label: "Team" },
-      { icon: Puzzle, label: "Integrations" },
-      { icon: Settings, label: "Settings" },
-    ],
-  },
-];
+
 
 const KPI_CARDS = [
   {
@@ -186,6 +153,7 @@ const avatarColors = [
 export default function SalesPortal() {
   const router = useRouter();
   const [activeNav, setActiveNav] = useState("Dashboard");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [activeLeadMenu, setActiveLeadMenu] = useState<number | null>(null);
   const [selectedLeadIndex, setSelectedLeadIndex] = useState<number | null>(null);
@@ -214,108 +182,16 @@ export default function SalesPortal() {
 
   return (
     <div className="flex h-screen bg-slate-50 font-sans overflow-hidden">
-      {/* ── Sidebar ── */}
-      <aside className="w-56 bg-[#111827] flex flex-col flex-shrink-0 overflow-y-auto">
-        {/* Logo */}
-        <div className="flex items-center gap-2 px-4 py-4 border-b border-white/10">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center">
-            <span className="text-white text-xs font-bold">S</span>
-          </div>
-          <span className="text-white font-semibold text-sm tracking-wide">SALES PORTAL</span>
-        </div>
-
-        {/* Nav Groups */}
-        <nav className="flex-1 px-3 py-3 space-y-5">
-          {SIDEBAR_ITEMS.map((group, gi) => (
-            <div key={gi}>
-              {group.section && (
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 px-2 mb-1">
-                  {group.section}
-                </p>
-              )}
-              <ul className="space-y-0.5">
-                {group.items.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = activeNav === item.label;
-                  return (
-                    <li key={item.label}>
-                      <button
-                        onClick={() => setActiveNav(item.label)}
-                        className={`w-full flex items-center justify-between gap-2.5 px-3 py-2 rounded-lg text-left transition-all duration-150 group ${
-                          isActive
-                            ? "bg-blue-600 text-white"
-                            : "text-slate-400 hover:bg-white/10 hover:text-white"
-                        }`}
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <Icon size={15} className="flex-shrink-0" />
-                          <span className="text-[13px] font-medium">{item.label}</span>
-                        </div>
-                        {item.badge && (
-                          <span
-                            className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white ${
-                              isActive ? "bg-white/30" : item.badgeColor ?? "bg-slate-600"
-                            }`}
-                          >
-                            {item.badge}
-                          </span>
-                        )}
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          ))}
-        </nav>
-
-        {/* User Footer */}
-        <div className="px-3 py-3 border-t border-white/10">
-          <div className="flex items-center gap-2.5 px-2">
-            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center flex-shrink-0">
-              <span className="text-white text-[11px] font-bold">AM</span>
-            </div>
-            <div className="min-w-0">
-              <p className="text-white text-[12px] font-medium truncate">Arjun Mehta</p>
-              <p className="text-slate-500 text-[10px]">Sales Owner</p>
-            </div>
-          </div>
-        </div>
-      </aside>
+      <Sidebar 
+        activeNav={activeNav} 
+        setActiveNav={setActiveNav} 
+        isOpen={isSidebarOpen} 
+        setIsOpen={setIsSidebarOpen} 
+      />
 
       {/* ── Main ── */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* ── Top Bar ── */}
-        <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-5 flex-shrink-0">
-          <h1 className="text-lg font-semibold text-slate-800">Dashboard</h1>
-          <div className="flex items-center gap-3">
-            {/* Search */}
-            <div className="relative hidden md:block">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                className="pl-8 pr-3 py-1.5 text-[13px] bg-slate-50 border border-slate-200 rounded-lg w-60 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 placeholder:text-slate-400"
-                placeholder="Search by name, company, phone..."
-              />
-              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 bg-slate-200 rounded px-1">⌘K</span>
-            </div>
-            {/* Notifications */}
-            <button className="relative p-1.5 rounded-lg hover:bg-slate-100 text-slate-500">
-              <Bell size={16} />
-              <span className="absolute top-0.5 right-0.5 w-3.5 h-3.5 bg-red-500 rounded-full text-[8px] text-white flex items-center justify-center font-bold">6</span>
-            </button>
-            {/* User */}
-            <button className="flex items-center gap-2 pl-2 pr-3 py-1 rounded-lg hover:bg-slate-100 border border-slate-200">
-              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center">
-                <span className="text-white text-[9px] font-bold">AM</span>
-              </div>
-              <div className="text-left hidden sm:block">
-                <p className="text-[12px] font-medium text-slate-700 leading-tight">Arjun Mehta</p>
-                <p className="text-[10px] text-slate-500 leading-tight">Sales Owner</p>
-              </div>
-              <ChevronDown size={12} className="text-slate-400 ml-1" />
-            </button>
-          </div>
-        </header>
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <Navbar onMenuClick={() => setIsSidebarOpen(true)} />
 
         {/* ── Scrollable Content ── */}
         <div className="flex-1 overflow-auto">
@@ -326,7 +202,7 @@ export default function SalesPortal() {
             </p>
 
             {/* ── KPI Row 1 ── */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               {KPI_CARDS.slice(0, 4).map((card) => {
                 const Icon = card.icon;
                 return (
