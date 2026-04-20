@@ -47,7 +47,7 @@ export default function LeadDetailModal({ lead, onClose, isLoading, onSwitch, on
   });
 
   const [showSchedule, setShowSchedule] = useState(false);
-  const [scheduleData, setScheduleData] = useState({ date: "", time: "", note: "" });
+  const [scheduleData, setScheduleData] = useState({ date: "", time: "", note: "", method: "phone" });
   const [internalNote, setInternalNote] = useState("");
   const [sessionNotes, setSessionNotes] = useState<{ id: string; text: string; time: string }[]>([]);
   const [status, setStatus] = useState(lead?.status);
@@ -57,6 +57,7 @@ export default function LeadDetailModal({ lead, onClose, isLoading, onSwitch, on
   const [isRequirementEditable, setIsRequirementEditable] = useState(false);
   const [dealValue, setDealValue] = useState(lead?.value || "");
   const [isValueEditable, setIsValueEditable] = useState(false);
+  const [owner, setOwner] = useState(lead?.owner || "Sahil Mehta");
 
   const saveCurrentNote = (text: string) => {
     if (!text.trim()) return;
@@ -73,7 +74,7 @@ export default function LeadDetailModal({ lead, onClose, isLoading, onSwitch, on
 
   const handleScheduleSubmit = () => {
     if (scheduleData.note) {
-      saveCurrentNote(`[Scheduled Followup]: ${scheduleData.note} (Target: ${scheduleData.date} ${scheduleData.time})`);
+      saveCurrentNote(`[Scheduled Followup - ${scheduleData.method.toUpperCase()}]: ${scheduleData.note} (Target: ${scheduleData.date} ${scheduleData.time})`);
     }
     setShowSchedule(false);
     toast.success("Follow-up Protocol Initialized", { icon: '📅' });
@@ -84,7 +85,7 @@ export default function LeadDetailModal({ lead, onClose, isLoading, onSwitch, on
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div 
-        className="absolute inset-0 bg-slate-900 backdrop-blur-[2px] animate-in fade-in duration-300"
+        className="absolute inset-0 bg-transparent backdrop-blur-[2px] animate-in fade-in duration-300"
         onClick={onClose}
       />
       
@@ -174,8 +175,24 @@ export default function LeadDetailModal({ lead, onClose, isLoading, onSwitch, on
                 <div className="flex flex-col items-end text-right">
                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-2">Lead Owner</p>
                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600">SM</div>
-                      <span className="text-lg font-bold text-slate-800">{lead.owner}</span>
+                      <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600">
+                        {owner.split(' ').map(n => n[0]).join('')}
+                      </div>
+                      <div className="relative">
+                        <select 
+                          value={owner}
+                          onChange={(e) => {
+                            setOwner(e.target.value);
+                            toast.success(`Protocol: Lead Assigned to ${e.target.value}`, { icon: '👤' });
+                          }}
+                          className="text-lg font-bold text-slate-800 bg-transparent focus:outline-none appearance-none cursor-pointer pr-6 hover:text-slate-600 transition-colors"
+                        >
+                          {["Sahil Mehta", "Anjali Sharma", "Rahul Verma", "Priya Das", "Vikram Singh"].map(o => (
+                            <option key={o} value={o}>{o}</option>
+                          ))}
+                        </select>
+                        <ChevronDown size={14} className="absolute right-0 top-1.5 text-slate-400 pointer-events-none" />
+                      </div>
                    </div>
                 </div>
               </div>
@@ -334,28 +351,29 @@ export default function LeadDetailModal({ lead, onClose, isLoading, onSwitch, on
                 </div>
 
                 {/* DEAL VALUE - VISIBLE ONLY IF WON */}
-                {status === "Won" && (
-                   <div className="animate-in slide-in-from-top-2 duration-300">
-                      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col gap-2">
-                        <div className="flex items-center justify-between px-1">
-                          <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Deal Value</label>
-                          {!isValueEditable && <span className="text-[8px] font-bold text-slate-300 uppercase tracking-tight">(Locked until submit)</span>}
-                        </div>
-                        <input 
-                          type="text"
-                          value={dealValue}
-                          onChange={(e) => setDealValue(e.target.value)}
-                          readOnly={!isValueEditable}
-                          className={`w-full bg-white border rounded-xl px-4 py-3 text-sm font-bold transition-all ${
-                            isValueEditable 
-                              ? "border-slate-300 text-slate-900 focus:ring-2 focus:ring-slate-900 shadow-sm" 
-                              : "border-slate-100 text-slate-400 cursor-not-allowed bg-slate-50 bg-opacity-50"
-                          }`}
-                          placeholder="e.g. ₹5,00,000"
-                        />
+                <div className="animate-in slide-in-from-top-2 duration-300">
+                  <div className={`border rounded-2xl p-4 flex flex-col gap-2 transition-all ${status === 'Won' ? 'bg-slate-50 border-slate-200' : 'bg-slate-100 border-slate-200 opacity-60'}`}>
+                    <div className="flex items-center justify-between px-1">
+                      <div className="flex items-center gap-2">
+                        <label className={`text-[9px] font-bold uppercase tracking-widest ${status === 'Won' ? 'text-slate-600' : 'text-slate-400'}`}>Deal Value</label>
+                        {status !== 'Won' && <span className="text-[7px] font-bold text-slate-400 bg-white px-1.5 py-0.5 rounded border border-slate-200 shadow-sm">INACTIVE PROTOCOL</span>}
                       </div>
-                   </div>
-                )}
+                      {!isValueEditable && <span className="text-[8px] font-bold text-slate-300 uppercase tracking-tight">(Locked until submit)</span>}
+                    </div>
+                    <input 
+                      type="text"
+                      value={dealValue}
+                      onChange={(e) => setDealValue(e.target.value)}
+                      readOnly={!isValueEditable}
+                      className={`w-full border rounded-xl px-4 py-3 text-sm font-bold transition-all ${
+                        isValueEditable 
+                          ? "bg-white border-slate-300 text-slate-900 focus:ring-2 focus:ring-slate-900 shadow-sm" 
+                          : "border-slate-100 text-slate-400 cursor-not-allowed bg-slate-50 bg-opacity-50"
+                      }`}
+                      placeholder="e.g. ₹5,00,000"
+                    />
+                  </div>
+                </div>
 
                 {/* Gatekeeper Protocol Section */}
                 <GatekeeperProtocol checklist={checklist} toggleChecklist={toggleChecklist} />
@@ -407,12 +425,6 @@ export default function LeadDetailModal({ lead, onClose, isLoading, onSwitch, on
             >
               Push Changes
             </button>
-          </div>
-          <div className="flex items-center gap-3">
-              <span className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest ${PRIORITY_STYLES[lead.priority]}`}>
-                {lead.priority} Priority
-              </span>
-              <div className="h-8 w-[1px] bg-slate-100 mx-2" />
           </div>
         </div>
       </div>

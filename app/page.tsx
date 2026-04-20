@@ -4,6 +4,7 @@ import Sidebar from "@/components/layout/Sidebar";
 import Navbar from "@/components/layout/Navbar";
 import DashboardView from "@/components/dashboard/DashboardView";
 import ModulePlaceholder from "@/components/dashboard/ModulePlaceholder";
+import AlertsView from "@/components/dashboard/AlertsView";
 import LeadDetailModal from "@/components/dashboard/LeadDetailModal";
 import UpdateIntelligenceModal from "@/components/dashboard/UpdateIntelligenceModal";
 import AddLeadModal from "@/components/dashboard/AddLeadModal";
@@ -59,8 +60,7 @@ export default function SalesPortal() {
           />
         );
       case "Alerts":
-        // Returning dummy as requested: "just keep dummy alert tab in middle it should say alert tab"
-        return <ModulePlaceholder title="Alerts" />;
+        return <AlertsView />;
       default:
         // Use placeholder for all other sidebar elements as requested
         return <ModulePlaceholder title={activeNav} />;

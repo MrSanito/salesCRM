@@ -47,7 +47,7 @@ export default function Navbar({ onMenuClick = () => {} }: NavbarProps) {
           >
             <Bell size={18} className="sm:w-4 sm:h-4" />
             <span className="absolute top-0 right-0 w-3.5 h-3.5 bg-red-500 rounded-full text-[8px] text-white flex items-center justify-center font-bold border-2 border-white">
-              3
+              5
             </span>
           </button>
           
@@ -58,45 +58,26 @@ export default function Navbar({ onMenuClick = () => {} }: NavbarProps) {
                 <button className="text-[10px] font-bold text-blue-600 hover:text-blue-700 uppercase tracking-wider">Mark all read</button>
               </div>
               <div className="max-h-80 overflow-y-auto">
-                <button className="w-full text-left p-4 hover:bg-slate-50 transition-colors border-b border-slate-50 flex gap-3">
-                  <div className="mt-0.5 w-6 h-6 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
-                    <AlertCircle size={12} />
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-slate-800">Follow-up due soon</p>
-                    <p className="text-[11px] text-slate-500 leading-snug mt-0.5">You have a critical follow-up with TechNova Inc in 30 minutes.</p>
-                    <div className="flex items-center gap-1 mt-1.5">
-                      <Clock size={10} className="text-slate-400" />
-                      <span className="text-[9px] font-bold text-slate-400 uppercase">20m ago</span>
+                {[
+                  { id: 1, type: 'warning', msg: 'Verify new phone number', time: '2h ago', bg: 'bg-orange-50', text: 'text-orange-600' },
+                  { id: 2, type: 'success', msg: 'Summary saved successfully', time: '4h ago', bg: 'bg-green-50', text: 'text-green-600' },
+                  { id: 3, type: 'info', msg: 'Vikram wants this lead', time: '1d ago', bg: 'bg-blue-50', text: 'text-blue-600' },
+                  { id: 4, type: 'error', msg: 'Missed a follow-up call', time: '2d ago', bg: 'bg-red-50', text: 'text-red-600' },
+                  { id: 5, type: 'info', msg: 'Add deal value now', time: '3d ago', bg: 'bg-blue-50', text: 'text-blue-600' }
+                ].map(alert => (
+                  <button key={alert.id} className="w-full text-left p-4 hover:bg-slate-50 transition-colors border-b border-slate-50 flex gap-3">
+                    <div className={`mt-0.5 w-6 h-6 rounded-full ${alert.bg} ${alert.text} flex items-center justify-center flex-shrink-0`}>
+                      <AlertCircle size={12} />
                     </div>
-                  </div>
-                </button>
-                <button className="w-full text-left p-4 hover:bg-slate-50 transition-colors border-b border-slate-50 flex gap-3">
-                  <div className="mt-0.5 w-6 h-6 rounded-full bg-green-50 text-green-600 flex items-center justify-center flex-shrink-0">
-                    <CheckCircle2 size={12} />
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-slate-800">Proposal Accepted</p>
-                    <p className="text-[11px] text-slate-500 leading-snug mt-0.5">DataCore Systems has signed the enterprise agreement.</p>
-                    <div className="flex items-center gap-1 mt-1.5">
-                      <Clock size={10} className="text-slate-400" />
-                      <span className="text-[9px] font-bold text-slate-400 uppercase">1h ago</span>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-800 tracking-tight">{alert.msg}</p>
+                      <div className="flex items-center gap-1 mt-1.5">
+                        <Clock size={10} className="text-slate-400" />
+                        <span className="text-[9px] font-bold text-slate-400 uppercase">{alert.time}</span>
+                      </div>
                     </div>
-                  </div>
-                </button>
-                <button className="w-full text-left p-4 hover:bg-slate-50 transition-colors flex gap-3 opacity-60">
-                  <div className="mt-0.5 w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center flex-shrink-0">
-                    <Bell size={12} />
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-slate-800">New lead assigned</p>
-                    <p className="text-[11px] text-slate-500 leading-snug mt-0.5">Admin assigned a new inbound lead: CloudScale Ltd.</p>
-                    <div className="flex items-center gap-1 mt-1.5">
-                      <Clock size={10} className="text-slate-400" />
-                      <span className="text-[9px] font-bold text-slate-400 uppercase">3h ago</span>
-                    </div>
-                  </div>
-                </button>
+                  </button>
+                ))}
               </div>
               <div className="p-2 border-t border-slate-100 flex justify-center bg-slate-50">
                 <button className="text-[11px] font-bold text-slate-500 hover:text-slate-800 transition-colors">View All Notifications</button>
