@@ -1,10 +1,15 @@
-import { Search, Bell, ChevronDown, Menu } from "lucide-react";
+"use client";
+
+import { Search, Bell, ChevronDown, Menu, CheckCircle2, AlertCircle, Clock } from "lucide-react";
+import { useState } from "react";
 
 interface NavbarProps {
-  onMenuClick: () => void;
+  onMenuClick?: () => void;
 }
 
-export default function Navbar({ onMenuClick }: NavbarProps) {
+export default function Navbar({ onMenuClick = () => {} }: NavbarProps) {
+  const [showNotifications, setShowNotifications] = useState(false);
+
   return (
     <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-4 sm:px-5 flex-shrink-0">
       <div className="flex items-center gap-3">
@@ -35,12 +40,70 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
         </button>
 
         {/* Notifications */}
-        <button className="relative p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors">
-          <Bell size={18} className="sm:w-4 sm:h-4" />
-          <span className="absolute top-0.5 right-0.5 w-3.5 h-3.5 bg-red-500 rounded-full text-[8px] text-white flex items-center justify-center font-bold border-2 border-white">
-            6
-          </span>
-        </button>
+        <div className="relative">
+          <button 
+            onClick={() => setShowNotifications(!showNotifications)}
+            className={`relative p-1.5 rounded-lg transition-colors ${showNotifications ? "bg-slate-100 text-slate-800" : "hover:bg-slate-100 text-slate-500"}`}
+          >
+            <Bell size={18} className="sm:w-4 sm:h-4" />
+            <span className="absolute top-0 right-0 w-3.5 h-3.5 bg-red-500 rounded-full text-[8px] text-white flex items-center justify-center font-bold border-2 border-white">
+              3
+            </span>
+          </button>
+          
+          {showNotifications && (
+            <div className="absolute right-0 top-full mt-2 w-72 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
+              <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <p className="text-xs font-bold text-slate-800">Alerts</p>
+                <button className="text-[10px] font-bold text-blue-600 hover:text-blue-700 uppercase tracking-wider">Mark all read</button>
+              </div>
+              <div className="max-h-80 overflow-y-auto">
+                <button className="w-full text-left p-4 hover:bg-slate-50 transition-colors border-b border-slate-50 flex gap-3">
+                  <div className="mt-0.5 w-6 h-6 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
+                    <AlertCircle size={12} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-slate-800">Follow-up due soon</p>
+                    <p className="text-[11px] text-slate-500 leading-snug mt-0.5">You have a critical follow-up with TechNova Inc in 30 minutes.</p>
+                    <div className="flex items-center gap-1 mt-1.5">
+                      <Clock size={10} className="text-slate-400" />
+                      <span className="text-[9px] font-bold text-slate-400 uppercase">20m ago</span>
+                    </div>
+                  </div>
+                </button>
+                <button className="w-full text-left p-4 hover:bg-slate-50 transition-colors border-b border-slate-50 flex gap-3">
+                  <div className="mt-0.5 w-6 h-6 rounded-full bg-green-50 text-green-600 flex items-center justify-center flex-shrink-0">
+                    <CheckCircle2 size={12} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-slate-800">Proposal Accepted</p>
+                    <p className="text-[11px] text-slate-500 leading-snug mt-0.5">DataCore Systems has signed the enterprise agreement.</p>
+                    <div className="flex items-center gap-1 mt-1.5">
+                      <Clock size={10} className="text-slate-400" />
+                      <span className="text-[9px] font-bold text-slate-400 uppercase">1h ago</span>
+                    </div>
+                  </div>
+                </button>
+                <button className="w-full text-left p-4 hover:bg-slate-50 transition-colors flex gap-3 opacity-60">
+                  <div className="mt-0.5 w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center flex-shrink-0">
+                    <Bell size={12} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-slate-800">New lead assigned</p>
+                    <p className="text-[11px] text-slate-500 leading-snug mt-0.5">Admin assigned a new inbound lead: CloudScale Ltd.</p>
+                    <div className="flex items-center gap-1 mt-1.5">
+                      <Clock size={10} className="text-slate-400" />
+                      <span className="text-[9px] font-bold text-slate-400 uppercase">3h ago</span>
+                    </div>
+                  </div>
+                </button>
+              </div>
+              <div className="p-2 border-t border-slate-100 flex justify-center bg-slate-50">
+                <button className="text-[11px] font-bold text-slate-500 hover:text-slate-800 transition-colors">View All Notifications</button>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* User Profile */}
         <button className="flex items-center gap-2 pl-1 sm:pl-2 pr-1 sm:pr-3 py-1 rounded-lg hover:bg-slate-100 sm:border border-slate-200 transition-colors">

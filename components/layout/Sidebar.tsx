@@ -1,3 +1,4 @@
+"use client"
 import { useState } from "react";
 import {
   AlertTriangle, LayoutDashboard, UserPlus, Phone, CheckCircle2,
@@ -20,7 +21,7 @@ const SIDEBAR_ITEMS = [
       { icon: CheckCircle2, label: "Closed Won" },
       { icon: FileText, label: "Proposed" },
       { icon: CalendarCheck, label: "Meeting Set" },
-      { icon: XCircle, label: "Closed Lost" },
+      { icon: XCircle, label: "Closed " },
     ],
   },
   {
@@ -43,13 +44,18 @@ const SIDEBAR_ITEMS = [
 ];
 
 interface SidebarProps {
-  activeNav: string;
-  setActiveNav: (nav: string) => void;
-  isOpen: boolean;
-  setIsOpen: (isOpen: boolean) => void;
+  activeNav?: string;
+  setActiveNav?: (nav: string) => void;
+  isOpen?: boolean;
+  setIsOpen?: (isOpen: boolean) => void;
 }
 
-export default function Sidebar({ activeNav, setActiveNav, isOpen, setIsOpen }: SidebarProps) {
+export default function Sidebar({ 
+  activeNav = "Dashboard", 
+  setActiveNav = () => {}, 
+  isOpen = false, 
+  setIsOpen = () => {} 
+}: SidebarProps) {
   return (
     <>
       {/* Mobile backdrop */}
