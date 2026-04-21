@@ -5,9 +5,10 @@ import { useState } from "react";
 
 interface NavbarProps {
   onMenuClick?: () => void;
+  activeNav?: string;
 }
 
-export default function Navbar({ onMenuClick = () => {} }: NavbarProps) {
+export default function Navbar({ onMenuClick = () => {}, activeNav = "Dashboard" }: NavbarProps) {
   const [showNotifications, setShowNotifications] = useState(false);
 
   return (
@@ -20,7 +21,7 @@ export default function Navbar({ onMenuClick = () => {} }: NavbarProps) {
         >
           <Menu size={20} />
         </button>
-        <h1 className="text-lg font-semibold text-slate-800">Dashboard</h1>
+        <h1 className="text-lg font-semibold text-slate-800">{activeNav}</h1>
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">
@@ -93,7 +94,7 @@ export default function Navbar({ onMenuClick = () => {} }: NavbarProps) {
           </div>
           <div className="text-left hidden sm:block">
             <p className="text-[12px] font-medium text-slate-700 leading-tight">Arjun Mehta</p>
-            <p className="text-[10px] text-slate-500 leading-tight">Sales Owner</p>
+            <p className="text-[10px] text-slate-500 leading-tight">Designation</p>
           </div>
           <ChevronDown size={12} className="text-slate-400 ml-1 hidden sm:block" />
         </button>

@@ -8,6 +8,7 @@ interface EngagementStreamProps {
   setInternalNote: (note: string) => void;
   saveCurrentNote: (note: string) => void;
   sessionNotes: { id: string; text: string; time: string }[];
+  owner: string;
 }
 
 export default function EngagementStream({ 
@@ -15,7 +16,8 @@ export default function EngagementStream({
   internalNote, 
   setInternalNote, 
   saveCurrentNote, 
-  sessionNotes 
+  sessionNotes,
+  owner
 }: EngagementStreamProps) {
   return (
     <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm space-y-6 flex flex-col h-full">
@@ -49,12 +51,15 @@ export default function EngagementStream({
           {/* CURRENT SESSION SAVED NOTES */}
           {sessionNotes.map((note) => (
             <div key={note.id} className="flex gap-3 animate-in fade-in slide-in-from-top-1 duration-500">
-              <div className="w-8 h-8 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center flex-shrink-0 text-white font-bold text-[9px]">NOW</div>
+              <div className="w-8 h-8 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center flex-shrink-0 text-white font-bold text-[9px]">
+                {owner.split(' ').map((n: string) => n[0]).join('')}
+              </div>
               <div className="flex-1 min-w-0">
                  <div className="flex items-center justify-between mb-1">
                    <p className="text-[11px] font-black text-slate-900 uppercase tracking-tighter">Last Activity</p>
                    <span className="text-[8px] font-bold text-slate-500 uppercase">{note.time}</span>
                  </div>
+                 <p className="text-[9px] font-semibold text-blue-600 mb-1">by {owner}</p>
                  <p className="text-[12px] text-slate-700 font-medium border-l-2 border-slate-900 pl-3 py-1 bg-slate-50 rounded-r-lg">
                    {note.text}
                  </p>
@@ -64,7 +69,9 @@ export default function EngagementStream({
 
           {/* HISTORICAL ACTIVITY */}
           <div className={`flex gap-3 transition-opacity duration-500 ${sessionNotes.length > 0 ? 'opacity-50' : 'opacity-100'}`}>
-            <div className="w-8 h-8 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center flex-shrink-0 text-slate-400 font-bold text-[9px]">AM</div>
+            <div className="w-8 h-8 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center flex-shrink-0 text-slate-400 font-bold text-[9px]">
+              {(lead.owner || owner).split(' ').map((n: string) => n[0]).join('')}
+            </div>
             <div className="flex-1 min-w-0">
                <div className="flex items-center justify-between mb-1">
                  <p className="text-[11px] font-bold text-slate-900 uppercase tracking-tighter">
@@ -72,6 +79,7 @@ export default function EngagementStream({
                  </p>
                  <span className="text-[8px] font-bold text-slate-400 uppercase">{lead.date}</span>
                </div>
+               <p className="text-[9px] font-semibold text-slate-400 mb-1">by {lead.owner || owner}</p>
                <p className="text-[12px] text-slate-500 italic truncate border-l-2 border-slate-100 pl-3 py-1">
                  {lead.lastActivity}
                </p>

@@ -1,7 +1,7 @@
 "use client"
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { X, ChevronLeft, ChevronRight, Building2, Phone, Mail, CalendarCheck, ChevronDown } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Building2, Phone, Mail, CalendarCheck, ChevronDown, MessageCircle } from "lucide-react";
 import { PIPELINE_STAGES, SUB_STATUSES, PRIORITY_STYLES, Lead, LeadContext } from "@/lib/data";
 import toast from "react-hot-toast";
 
@@ -120,29 +120,16 @@ export default function LeadDetailModal({ lead, onClose, isLoading, onSwitch, on
           {!isLoading && (
             <div className="flex items-center gap-3">
               <div className="hidden sm:flex items-center bg-slate-100 p-1 rounded-xl">
-                 <a 
-                   href={lead.primaryMobile ? `tel:${lead.primaryMobile.replace(/\s+/g, '')}` : '#'} 
-                   className="p-2 bg-white text-green-600 rounded-lg shadow-sm border border-slate-200 hover:bg-green-50 transition-all flex items-center justify-center"
-                   title="Dial Pulse"
-                 >
-                   <Phone size={14} strokeWidth={2.5} />
-                 </a>
+                 
                  <div className="w-[1px] h-3 bg-slate-200 mx-1" />
-                 <a 
-                   href={lead.email ? `mailto:${lead.email}` : '#'} 
-                   className="p-2 bg-white text-blue-600 rounded-lg shadow-sm border border-slate-200 hover:bg-blue-50 transition-all flex items-center justify-center"
-                   title="Log Protocol"
-                 >
-                   <Mail size={14} strokeWidth={2.5} />
-                 </a>
+                 
               </div>
 
               <button 
-                onClick={onUpdateClick}
+                onClick={() => router.push(`/edit/${lead.id}`)}
                 className="bg-slate-900 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-100 hover:bg-slate-800 transition-all active:scale-95"
               >
-                Update Data
-              </button>
+Edit Details              </button>
             </div>
           )}
         </div>
@@ -199,72 +186,76 @@ export default function LeadDetailModal({ lead, onClose, isLoading, onSwitch, on
 
               {/* Contact & Metrics Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-10 mb-12">
-                <div className="space-y-6">
-                    <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-4 border-b border-slate-50 pb-2">Contact Protocol</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                      <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center flex-shrink-0 border border-orange-100">
-                            <Phone size={16} strokeWidth={2.5} />
-                          </div>
-                          <div>
-                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Primary Mobile</p>
-                            <a href={`tel:${lead.primaryMobile}`} className="text-base font-bold text-slate-700 tracking-tight hover:text-blue-600 transition-colors">
-                              {lead.primaryMobile}
-                            </a>
-                          </div>
+                <div className="space-y-4">
+                  <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] border-b border-slate-50 pb-2">Contact Protocol</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center flex-shrink-0 border border-orange-100">
+                        <Phone size={16} strokeWidth={2.5} />
                       </div>
-                      <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-xl bg-slate-50 text-slate-300 flex items-center justify-center flex-shrink-0">
-                            <Phone size={16} strokeWidth={2.5} />
-                          </div>
-                          <div>
-                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Secondary Mobile</p>
-                            <p className="text-base font-semibold text-slate-400 tracking-tight">{lead.secondaryMobile || "Not Provided"}</p>
-                          </div>
-                      </div>
-                      <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0 border border-blue-100">
-                            <Mail size={16} strokeWidth={2.5} />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Email ID</p>
-                            <a href={`mailto:${lead.email}`} className="text-[15px] font-bold text-slate-700 tracking-tight lowercase truncate hover:text-blue-600 transition-colors block">
-                              {lead.email}
-                            </a>
-                          </div>
-                      </div>
-                      <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-xl bg-slate-50 text-slate-300 flex items-center justify-center flex-shrink-0">
-                            <Mail size={16} strokeWidth={2.5} />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Secondary Email</p>
-                            <p className="text-[15px] font-semibold text-slate-400 tracking-tight lowercase truncate">contact@mehta.com</p>
-                          </div>
+                      <div className="min-w-0">
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Primary Mobile</p>
+                        <a href={`tel:${lead.primaryMobile}`} className="text-[14px] font-bold text-slate-700 tracking-tight hover:text-blue-600 transition-colors block truncate">
+                          {lead.primaryMobile}
+                        </a>
                       </div>
                     </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-slate-50 text-slate-300 flex items-center justify-center flex-shrink-0">
+                        <Phone size={16} strokeWidth={2.5} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Secondary Mobile</p>
+                        <p className="text-[14px] font-semibold text-slate-400 tracking-tight truncate">{lead.secondaryMobile || "Not Provided"}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0 border border-blue-100">
+                        <Mail size={16} strokeWidth={2.5} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Email ID</p>
+                        <a href={`mailto:${lead.email}`} className="text-[14px] font-bold text-slate-700 tracking-tight lowercase truncate hover:text-blue-600 transition-colors block">
+                          {lead.email}
+                        </a>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-slate-50 text-slate-300 flex items-center justify-center flex-shrink-0">
+                        <Mail size={16} strokeWidth={2.5} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Secondary Email</p>
+                        <p className="text-[14px] font-semibold text-slate-400 tracking-tight lowercase truncate">contact@mehta.com</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="space-y-6">
-                    <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-4 border-b border-slate-50 pb-2">Engagement Metrics</h3>
-                    <div className="grid grid-cols-2 gap-y-6">
-                      <div>
-                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Interested In</p>
-                        <p className="text-[14px] font-bold text-slate-700 leading-tight">{lead.interestedIn || "Enterprise CRM Suite"}</p>
-                      </div>
-                      <div>
-                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Source</p>
-                        <p className="text-[14px] font-bold text-slate-700 leading-tight">{lead.source}</p>
-                      </div>
-                      <div>
-                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Created On</p>
-                        <p className="text-[14px] font-bold text-slate-700">{lead.createdOn}</p>
-                      </div>
-                      <div>
-                        <p className="text-[9px] font-bold text-orange-500 uppercase tracking-wider mb-1">Last Communication</p>
-                        <p className="text-[14px] font-bold text-orange-600">{lead.date}</p>
-                      </div>
+                <div className="space-y-4">
+                  <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] border-b border-slate-50 pb-2">Engagement Metrics</h3>
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-5">
+                    <div>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Interested In</p>
+                      <p className="text-[14px] font-bold text-slate-700 leading-tight">{lead.interestedIn || "Enterprise CRM Suite"}</p>
                     </div>
+                    <div>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Source</p>
+                      <p className="text-[14px] font-bold text-slate-700 leading-tight">{lead.source}</p>
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Created On</p>
+                      <p className="text-[14px] font-bold text-slate-700">{lead.createdOn}</p>
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-bold text-orange-500 uppercase tracking-wider mb-1">Last Communication</p>
+                      <p className="text-[14px] font-bold text-orange-600">{lead.date}</p>
+                    </div>
+                  </div>
+                  <div className="pt-3 border-t border-slate-50">
+                    <p className="text-[9px] font-bold text-orange-500 uppercase tracking-wider mb-1">Requirements</p>
+                    <p className="text-[13px] font-semibold text-slate-700 leading-relaxed">{lead.contextSummary?.requirement || "Here are the Requirements of the consumer"}</p>
+                  </div>
                 </div>
               </div>
 
@@ -291,6 +282,21 @@ export default function LeadDetailModal({ lead, onClose, isLoading, onSwitch, on
                       <p className="text-[11px] font-black text-slate-700 tracking-tight uppercase">Send Message</p>
                     </div>
                   </button>
+
+                  <a
+                    href={`https://wa.me/${lead.primaryMobile?.replace(/[^0-9]/g, '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 bg-white border border-slate-100 rounded-2xl px-6 py-4 flex items-center justify-center gap-3 group hover:border-green-200 hover:bg-green-50 transition-all active:scale-[0.98] shadow-sm"
+                  >
+                    <div className="w-8 h-8 rounded-xl bg-green-50 text-green-600 flex items-center justify-center border border-green-100 group-hover:scale-110 transition-transform">
+                      <MessageCircle size={14} strokeWidth={2.5} />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-[8px] font-bold text-slate-400 uppercase tracking-[0.2em] leading-none mb-1">WhatsApp</p>
+                      <p className="text-[11px] font-black text-slate-700 tracking-tight uppercase">Open Chat</p>
+                    </div>
+                  </a>
 
                   <button 
                     onClick={() => setShowSchedule(true)}
@@ -386,6 +392,7 @@ export default function LeadDetailModal({ lead, onClose, isLoading, onSwitch, on
                     setInternalNote={setInternalNote}
                     saveCurrentNote={saveCurrentNote}
                     sessionNotes={sessionNotes}
+                    owner={owner}
                   />
 
                   <IntelligenceDossier 
@@ -423,7 +430,7 @@ export default function LeadDetailModal({ lead, onClose, isLoading, onSwitch, on
               }}
               className="px-12 py-3.5 rounded-2xl bg-blue-600 text-white font-bold text-sm shadow-xl shadow-blue-100 hover:bg-blue-700 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2"
             >
-              Push Changes
+              Push 
             </button>
           </div>
         </div>

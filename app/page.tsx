@@ -70,7 +70,7 @@ export default function SalesPortal() {
   return (
     <div className="flex flex-col h-screen bg-slate-50 font-sans overflow-hidden">
       {/* ── Top Navbar ── */}
-      <Navbar onMenuClick={() => setIsSidebarOpen(true)} />
+      <Navbar onMenuClick={() => setIsSidebarOpen(true)} activeNav={activeNav} />
 
       <div className="flex flex-1 overflow-hidden">
         {/* ── Sidebar ── */}

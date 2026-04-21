@@ -20,12 +20,7 @@ export default function DashboardView({ onAddLead, onLeadClick, activeNav }: Das
           <p className="text-[15px] text-slate-600">
             Welcome back, <span className="font-semibold text-slate-800">Arjun Mehta</span> 👋
           </p>
-          <button 
-            onClick={onAddLead}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 shadow-lg shadow-blue-100 transition-all active:scale-95"
-          >
-            <UserPlus size={14} /> New Lead
-          </button>
+          
         </div>
       </header>
 

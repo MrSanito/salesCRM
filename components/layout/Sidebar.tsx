@@ -145,7 +145,7 @@ export default function Sidebar({
             </div>
             <div className="min-w-0">
               <p className="text-white text-[12px] font-medium truncate">Arjun Mehta</p>
-              <p className="text-slate-500 text-[10px]">Sales Owner</p>
+              <p className="text-slate-500 text-[10px]">Designation</p>
             </div>
           </div>
         </div>

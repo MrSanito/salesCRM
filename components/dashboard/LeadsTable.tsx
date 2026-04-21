@@ -42,8 +42,7 @@ export default function LeadsTable({ onLeadClick, activeNav }: LeadsTableProps) 
                 </div>
                 <button className="w-full text-left px-3 py-2 text-[11px] hover:bg-slate-50 transition-colors font-semibold text-slate-700">Newest to Oldest</button>
                 <button className="w-full text-left px-3 py-2 text-[11px] hover:bg-slate-50 transition-colors font-semibold text-slate-700 border-t border-slate-50">Oldest to Newest</button>
-                <button className="w-full text-left px-3 py-2 text-[11px] hover:bg-slate-50 transition-colors font-semibold text-slate-700 border-t border-slate-50">Highest Value (₹)</button>
-                <button className="w-full text-left px-3 py-2 text-[11px] hover:bg-slate-50 transition-colors font-semibold text-slate-700 border-t border-slate-50">Lowest Value (₹)</button>
+                
                 <div className="px-3 py-2 border-t border-slate-50 bg-slate-50/50">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Filter By</p>
                 </div>

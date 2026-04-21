@@ -22,8 +22,7 @@ export default function IntelligenceDossier({
 }: IntelligenceDossierProps) {
   
   const fields = [
-    { id: "requirement", label: "Requirement", icon: <Target size={12} /> },
-    { id: "useCase", label: "Use Case", icon: <Info size={12} /> },
+     { id: "useCase", label: "Use Case", icon: <Info size={12} /> },
     { id: "scope", label: "Scope", icon: <Briefcase size={12} /> },
     { id: "constraints", label: "Constraints", icon: <Edit size={12} /> },
     { id: "drivers", label: "Drivers", icon: <TrendingUp size={12} /> },
