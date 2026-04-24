@@ -8,8 +8,12 @@ interface NavbarProps {
   activeNav?: string;
 }
 
+import { useAuth } from "@/components/auth/AuthContext";
+
 export default function Navbar({ onMenuClick = () => {}, activeNav = "Dashboard" }: NavbarProps) {
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const { user, logout } = useAuth();
 
   return (
     <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-4 sm:px-5 flex-shrink-0">
@@ -35,7 +39,7 @@ export default function Navbar({ onMenuClick = () => {}, activeNav = "Dashboard"
           <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] drop-shadow-sm font-medium text-slate-400 bg-slate-200 rounded px-1">⌘K</span>
         </div>
 
-        {/* Mobile Search Icon (only visible on mobile) */}
+        {/* Mobile Search Icon */}
         <button className="md:hidden p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors">
           <Search size={18} />
         </button>
@@ -80,25 +84,42 @@ export default function Navbar({ onMenuClick = () => {}, activeNav = "Dashboard"
                   </button>
                 ))}
               </div>
-              <div className="p-2 border-t border-slate-100 flex justify-center bg-slate-50">
-                <button className="text-[11px] font-bold text-slate-500 hover:text-slate-800 transition-colors">View All Notifications</button>
-              </div>
             </div>
           )}
         </div>
 
         {/* User Profile */}
-        <button className="flex items-center gap-2 pl-1 sm:pl-2 pr-1 sm:pr-3 py-1 rounded-lg hover:bg-slate-100 sm:border border-slate-200 transition-colors">
-          <div className="w-7 h-7 sm:w-6 sm:h-6 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center">
-            <span className="text-white text-[10px] sm:text-[9px] font-bold">AM</span>
-          </div>
-          <div className="text-left hidden sm:block">
-            <p className="text-[12px] font-medium text-slate-700 leading-tight">Arjun Mehta</p>
-            <p className="text-[10px] text-slate-500 leading-tight">Designation</p>
-          </div>
-          <ChevronDown size={12} className="text-slate-400 ml-1 hidden sm:block" />
-        </button>
+        <div className="relative">
+          <button 
+            onClick={() => setShowProfileMenu(!showProfileMenu)}
+            className="flex items-center gap-2 pl-1 sm:pl-2 pr-1 sm:pr-3 py-1 rounded-lg hover:bg-slate-100 sm:border border-slate-200 transition-colors"
+          >
+            <div className="w-7 h-7 sm:w-6 sm:h-6 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center">
+              <span className="text-white text-[10px] sm:text-[9px] font-bold">{user?.initials || "U"}</span>
+            </div>
+            <div className="text-left hidden sm:block">
+              <p className="text-[12px] font-medium text-slate-700 leading-tight">{user?.name || "Guest"}</p>
+              <p className="text-[10px] text-slate-500 leading-tight">{user?.role || "Designation"}</p>
+            </div>
+            <ChevronDown size={12} className="text-slate-400 ml-1 hidden sm:block" />
+          </button>
+
+          {showProfileMenu && (
+            <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden py-1 animate-in fade-in slide-in-from-top-1 duration-200">
+              <button className="w-full text-left px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Profile Settings</button>
+              <button className="w-full text-left px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Team View</button>
+              <hr className="my-1 border-slate-100" />
+              <button 
+                onClick={logout}
+                className="w-full text-left px-4 py-2 text-xs font-bold text-red-600 hover:bg-red-50 transition-colors"
+              >
+                Sign Out
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );
 }
+

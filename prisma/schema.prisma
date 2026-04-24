@@ -1,0 +1,344 @@
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "library"
+}
+
+
+datasource db {
+  provider  = "postgresql"
+}
+
+
+
+
+
+enum Role {
+  MANAGER
+  SALES_REP
+}
+
+enum LeadPriority {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum LeadStage {
+  NEW
+  CONTACTED
+  QUALIFIED
+  PROPOSAL_SENT
+  NEGOTIATION
+  WON
+  CLOSED_LOST
+}
+
+enum InteractionType {
+  CALL
+  EMAIL
+  WHATSAPP
+  MEETING
+  IN_PERSON
+}
+
+enum ReminderType {
+  CALL
+  EMAIL
+  WHATSAPP
+  MEETING
+}
+
+enum ReminderStatus {
+  PENDING
+  DONE
+  SNOOZED
+  CANCELLED
+}
+
+enum AlertType {
+  FOLLOW_UP_DUE
+  LEAD_ASSIGNED
+  STAGE_CHANGED
+  REMINDER_DUE
+  AI_REMINDER
+  SYSTEM
+}
+
+enum AttachmentMimeType {
+  PDF       // application/pdf  ← primary use-case
+  DOCX      // application/vnd.openxmlformats-officedocument.wordprocessingml.document
+  XLSX      // application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+  PNG       // image/png
+  JPEG      // image/jpeg
+  OTHER
+}
+
+// ─────────────────────────────────────────────────────────────
+// USER & TEAM
+// ─────────────────────────────────────────────────────────────
+
+model User {
+  id         String   @id @default(uuid())
+  name       String
+  email      String   @unique
+  password   String
+  initials   String   @db.VarChar(4)
+
+  role       Role     @default(SALES_REP)
+  avatarUrl  String?
+
+  // Self-referential: manager → subordinates
+  managerId  String?
+  manager    User?    @relation("UserHierarchy", fields: [managerId], references: [id])
+  subordinates User[] @relation("UserHierarchy")
+
+  // Team membership
+  teamId     String?
+  team       Team?    @relation("TeamMembers", fields: [teamId], references: [id])
+
+  // Team that this user manages (one user = one managed team)
+  managedTeam Team?   @relation("TeamManager")
+
+  // Leads
+  ownedLeads    Lead[]        @relation("LeadOwner")
+  createdLeads  Lead[]        @relation("LeadCreator")
+
+  // Activity
+  interactions  Interaction[]
+  notes         Note[]
+  reminders     Reminder[]
+  alerts        Alert[]
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("users")
+}
+
+model Team {
+  id         String   @id @default(uuid())
+  name       String
+
+  // The user who manages this team
+  managerId  String   @unique
+  manager    User     @relation("TeamManager", fields: [managerId], references: [id])
+
+  // Members of this team
+  members    User[]   @relation("TeamMembers")
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("teams")
+}
+
+// ─────────────────────────────────────────────────────────────
+// LEAD SOURCE & PIPELINE
+// ─────────────────────────────────────────────────────────────
+
+model LeadSource {
+  id    String @id @default(uuid())
+  name  String @unique  // "Inbound", "Cold Call", "Referral", "Website", …
+
+  leads Lead[]
+
+  @@map("lead_sources")
+}
+
+model PipelineStage {
+  id          String @id @default(uuid())
+  name        String @unique  // matches LeadStage enum values
+  orderIndex  Int    @unique   // 1 = New … 7 = Closed Lost
+  colorClass  String           // Tailwind class, e.g. "bg-blue-100 text-blue-700"
+  description String?
+
+  leads Lead[]
+
+  @@map("pipeline_stages")
+}
+
+// ─────────────────────────────────────────────────────────────
+// LEAD  (core business entity)
+// ─────────────────────────────────────────────────────────────
+
+model Lead {
+  id          String       @id @default(uuid())
+  contactName String
+  company     String
+  email       String?
+  phone       String?
+
+  // Stage & value
+  stage       LeadStage    @default(NEW)
+  dealValueInr Decimal     @default(0) @db.Decimal(15, 2)
+  priority    LeadPriority @default(MEDIUM)
+
+  // Relations to ref tables
+  pipelineStageId String?
+  pipelineStage   PipelineStage? @relation(fields: [pipelineStageId], references: [id])
+
+  sourceId    String?
+  source      LeadSource?  @relation(fields: [sourceId], references: [id])
+
+  // Ownership
+  ownerId     String
+  owner       User         @relation("LeadOwner",   fields: [ownerId],   references: [id])
+  createdById String
+  createdBy   User         @relation("LeadCreator", fields: [createdById], references: [id])
+
+  // Timestamps
+  followUpAt  DateTime?
+  closedAt    DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  // Child records
+  interactions Interaction[]
+  notes        Note[]         // direct notes on lead (not tied to an interaction)
+  reminders    Reminder[]
+  alerts       Alert[]
+
+  @@index([ownerId])
+  @@index([stage])
+  @@index([priority])
+  @@index([followUpAt])
+  @@map("leads")
+}
+
+// ─────────────────────────────────────────────────────────────
+// INTERACTION  (every contact with a lead must be recorded)
+// ─────────────────────────────────────────────────────────────
+
+model Interaction {
+  id          String          @id @default(uuid())
+  leadId      String
+  lead        Lead            @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  userId      String
+  user        User            @relation(fields: [userId], references: [id])
+
+  type        InteractionType
+  summary     String?          // short one-liner captured at log time
+  durationMin Int?             // for calls / meetings
+  occurredAt  DateTime         @default(now())
+  createdAt   DateTime         @default(now())
+
+  // Each interaction gets exactly one note  (1 : 0-1)
+  note        Note?            @relation("InteractionNote")
+
+  @@index([leadId])
+  @@index([userId])
+  @@index([occurredAt])
+  @@map("interactions")
+}
+
+// ─────────────────────────────────────────────────────────────
+// NOTE
+//   • Can live on an Interaction (interactionId set)   ← "interaction note"
+//   • Can live directly on a Lead (interactionId null) ← "standalone lead note"
+//   A Lead therefore has MANY notes in total.
+//   PDF attachments are stored in NoteAttachment.
+// ─────────────────────────────────────────────────────────────
+
+model Note {
+  id            String   @id @default(uuid())
+
+  // Always linked to a lead
+  leadId        String
+  lead          Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  // Authored by
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+
+  // Optionally linked to one interaction (unique → 1:1 from interaction side)
+  interactionId String?  @unique
+  interaction   Interaction? @relation("InteractionNote", fields: [interactionId], references: [id], onDelete: SetNull)
+
+  // Content
+  content       String   @db.Text
+  aiExtracted   Boolean  @default(false)  // true when AI parsed it from a call transcript / reminder
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // PDF / file attachments on this note
+  attachments   NoteAttachment[]
+
+  @@index([leadId])
+  @@index([interactionId])
+  @@map("notes")
+}
+
+// ─────────────────────────────────────────────────────────────
+// NOTE ATTACHMENT  (PDFs and other files on a note)
+// ─────────────────────────────────────────────────────────────
+
+model NoteAttachment {
+  id          String             @id @default(uuid())
+
+  noteId      String
+  note        Note               @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  fileName    String             // original file name, e.g. "proposal_v2.pdf"
+  fileUrl     String             // storage URL (S3 / Supabase / Cloudflare R2)
+  fileKey     String             // storage key / path for deletion
+  fileSizeBytes Int              // raw byte size
+  mimeType    AttachmentMimeType @default(PDF)
+  pageCount   Int?               // populated for PDFs after upload processing
+
+  uploadedAt  DateTime           @default(now())
+
+  @@index([noteId])
+  @@map("note_attachments")
+}
+
+// ─────────────────────────────────────────────────────────────
+// REMINDER
+// ─────────────────────────────────────────────────────────────
+
+model Reminder {
+  id           String         @id @default(uuid())
+  leadId       String
+  lead         Lead           @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  userId       String
+  user         User           @relation(fields: [userId], references: [id])
+
+  type         ReminderType
+  status       ReminderStatus @default(PENDING)
+  aiExtracted  Boolean        @default(false)  // true = parsed from a Note by AI
+  scheduledAt  DateTime
+  completedAt  DateTime?
+  description  String?
+
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@index([userId, scheduledAt])
+  @@index([leadId])
+  @@map("reminders")
+}
+
+// ─────────────────────────────────────────────────────────────
+// ALERT
+// ─────────────────────────────────────────────────────────────
+
+model Alert {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  leadId    String?
+  lead      Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
+  type      AlertType
+  title     String
+  body      String?
+  isRead    Boolean   @default(false)
+
+  createdAt DateTime  @default(now())
+
+  @@index([userId, isRead])
+  @@map("alerts")
+}

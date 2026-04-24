@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { DM_Sans, DM_Mono } from "next/font/google";
 import "./globals.css";
+import { AuthProvider } from "@/components/auth/AuthContext";
+import { Toaster } from "react-hot-toast";
 
 const dmSans = DM_Sans({
   variable: "--font-dm-sans",
@@ -19,8 +21,6 @@ export const metadata: Metadata = {
   description: "A premium, high-precision Sales CRM dashboard.",
 };
 
-import { Toaster } from "react-hot-toast";
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -32,8 +32,10 @@ export default function RootLayout({
       className={`${dmSans.variable} ${dmMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans">
-        <Toaster position="top-right" />
-        {children}
+        <AuthProvider>
+          <Toaster position="top-right" />
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );
