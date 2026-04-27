@@ -3,10 +3,15 @@ import { useState } from "react";
 import Sidebar from "@/components/layout/Sidebar";
 import Navbar from "@/components/layout/Navbar";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/components/auth/AuthContext";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const pathname = usePathname();
+
+  // If not loading and no user, don't show anything (AuthContext will redirect)
+  if (!loading && !user) return null;
   
   // Map pathname to activeNav label
   const getActiveNav = () => {
