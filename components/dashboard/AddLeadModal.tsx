@@ -4,10 +4,12 @@ import { useAuth } from "@/components/auth/AuthContext";
 import toast from "react-hot-toast";
 
 interface AddLeadModalProps {
+  isOpen?: boolean; // For compatibility with different usage patterns
   onClose: () => void;
+  onSuccess?: () => void;
 }
 
-export default function AddLeadModal({ onClose }: AddLeadModalProps) {
+export default function AddLeadModal({ onClose, onSuccess }: AddLeadModalProps) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -38,6 +40,7 @@ export default function AddLeadModal({ onClose }: AddLeadModalProps) {
 
       if (res.ok) {
         toast.success("Lead Created Successfully!");
+        onSuccess?.();
         onClose();
       } else {
         const error = await res.json();
