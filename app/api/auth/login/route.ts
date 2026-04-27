@@ -13,9 +13,24 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email },
-    });
+    let user = null;
+    let attempts = 0;
+    while (attempts < 3) {
+      try {
+        user = await prisma.user.findUnique({
+          where: { email },
+        });
+        break;
+      } catch (err: any) {
+        attempts++;
+        console.error(`[Login] Database attempt ${attempts} failed: ${err.message}`);
+        if (attempts >= 3) {
+          console.error("[Login] Final attempt failed. Database is likely unreachable due to slow internet.");
+          throw err;
+        }
+        await new Promise(resolve => setTimeout(resolve, 3000)); // Wait 3s
+      }
+    }
 
     if (!user) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
