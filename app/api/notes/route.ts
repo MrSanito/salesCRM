@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
 
     const notes = await prisma.note.findMany({
       where: { leadId, organizationId: user.organizationId },
-      include: { user: { select: { name: true, initials: true } } },
+      include: { user: { select: { name: true, initials: true, role: true } } },
       orderBy: { createdAt: "desc" },
     });
 
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
         organizationId: user.organizationId,
         content: content.trim(),
       },
-      include: { user: { select: { name: true, initials: true } } },
+      include: { user: { select: { name: true, initials: true, role: true } } },
     });
 
     return NextResponse.json(note, { status: 201 });

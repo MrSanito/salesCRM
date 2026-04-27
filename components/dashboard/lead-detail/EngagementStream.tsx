@@ -6,7 +6,7 @@ interface DbNote {
   id: string;
   content: string;
   createdAt: string;
-  user: { name: string; initials: string };
+  user: { name: string; initials: string; role: string };
 }
 
 interface EngagementStreamProps {
@@ -100,7 +100,12 @@ export default function EngagementStream({ leadId, ownerName }: EngagementStream
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between mb-1">
-                <p className="text-[11px] font-black text-slate-900 uppercase tracking-tighter">{note.user.name}</p>
+                <div className="flex flex-col">
+                  <p className="text-[11px] font-black text-slate-900 uppercase tracking-tighter leading-none">{note.user.name}</p>
+                  <p className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
+                    {note.user.role.replace("ORG_", "").replace("_", " ")}
+                  </p>
+                </div>
                 <span className="text-[8px] font-bold text-slate-500 uppercase">{formatDate(note.createdAt)}</span>
               </div>
               <p className="text-[12px] text-slate-700 font-medium border-l-2 border-slate-900 pl-3 py-1 bg-slate-50 rounded-r-lg">
