@@ -48,7 +48,6 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch }
   const [loading, setLoading] = useState(true);
   const [stage, setStage] = useState("");
   const [showSchedule, setShowSchedule] = useState(false);
-  const [scheduleData, setScheduleData] = useState({ date: "", time: "", note: "", method: "phone" });
   const [isDossierOpen, setIsDossierOpen] = useState(true);
   const [expandedField, setExpandedField] = useState<string | null>("wholeSummary");
   const [context, setContext] = useState({
@@ -86,10 +85,7 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch }
     setContext((prev) => ({ ...prev, [field]: val }));
   };
 
-  const handleScheduleSubmit = () => {
-    setShowSchedule(false);
-    toast.success("Follow-up Protocol Initialized", { icon: "📅" });
-  };
+
 
   if (!lead && !loading && !isLoading) return null;
 
@@ -361,9 +357,8 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch }
       <ScheduleFollowupModal
         isOpen={showSchedule}
         onClose={() => setShowSchedule(false)}
-        data={scheduleData}
-        setData={setScheduleData}
-        onSubmit={handleScheduleSubmit}
+        leadId={lead?.id || ""}
+        leadName={lead?.contactName}
       />
     </div>
   );

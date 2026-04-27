@@ -283,44 +283,131 @@ async function main() {
   })
   console.log('✅ Interactions seeded')
 
-  // ── 8. Reminders ───────────────────────────────────────────────────────────
+  // ── 8. Reminders — overdue, today, upcoming mix ────────────────────────────
+  const now = new Date()
+
+  // Helper to make a relative date
+  const rel = (hours: number) => new Date(now.getTime() + hours * 60 * 60 * 1000)
+
   await prisma.reminder.createMany({
     data: [
+      // ── OVERDUE (negative hours = in the past) ──
+      {
+        leadId: lead3.id,
+        userId: worker1.id,
+        organizationId: org.id,
+        type: ReminderType.CALL,
+        scheduledAt: rel(-26),    // yesterday
+        description: 'Missed call with Vikas Singh — urgent re-engage needed',
+        status: 'PENDING',
+      },
+      {
+        leadId: lead4.id,
+        userId: worker2.id,
+        organizationId: org.id,
+        type: ReminderType.EMAIL,
+        scheduledAt: rel(-3),     // 3 hours ago
+        description: 'Overdue: Send pricing doc to Priya Patel',
+        status: 'PENDING',
+      },
+
+      // ── TODAY (positive hours within 0–12h) ──
       {
         leadId: lead1.id,
         userId: worker1.id,
         organizationId: org.id,
         type: ReminderType.CALL,
-        scheduledAt: new Date(Date.now() + 2 * 60 * 60 * 1000),
-        description: 'Follow-up call with Rohit Sharma re: ERP proposal',
+        scheduledAt: rel(2),
+        description: 'Follow-up call with Rohit Sharma re: ERP proposal timeline',
+        status: 'PENDING',
+      },
+      {
+        leadId: lead5.id,
+        userId: worker2.id,
+        organizationId: org.id,
+        type: ReminderType.WHATSAPP,
+        scheduledAt: rel(4),
+        description: 'WhatsApp check-in with Sneha Choudhary on Starter plan',
+        status: 'PENDING',
       },
       {
         leadId: lead2.id,
         userId: worker1.id,
         organizationId: org.id,
         type: ReminderType.EMAIL,
-        scheduledAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-        description: 'Send API cost breakdown to Amit Kumar',
+        scheduledAt: rel(6),
+        description: 'Send API cost breakdown email to Amit Kumar',
+        status: 'PENDING',
+      },
+      {
+        leadId: lead6.id,
+        userId: worker2.id,
+        organizationId: org.id,
+        type: ReminderType.MEETING,
+        scheduledAt: rel(8),
+        description: 'Virtual demo session with Karan Prasad team',
+        status: 'PENDING',
+      },
+
+      // ── UPCOMING (tomorrow and beyond) ──
+      {
+        leadId: lead1.id,
+        userId: worker1.id,
+        organizationId: org.id,
+        type: ReminderType.MEETING,
+        scheduledAt: rel(28),     // tomorrow
+        description: 'In-person meeting with Rohit Sharma to sign proposal',
+        status: 'PENDING',
       },
       {
         leadId: lead4.id,
         userId: worker2.id,
         organizationId: org.id,
-        type: ReminderType.WHATSAPP,
-        scheduledAt: new Date(Date.now() + 4 * 60 * 60 * 1000),
-        description: 'Send pricing comparison doc to Priya Patel',
+        type: ReminderType.CALL,
+        scheduledAt: rel(30),     // tomorrow
+        description: 'Final pricing call with Priya Patel',
+        status: 'PENDING',
+      },
+      {
+        leadId: lead2.id,
+        userId: worker1.id,
+        organizationId: org.id,
+        type: ReminderType.EMAIL,
+        scheduledAt: rel(48),     // 2 days out
+        description: 'Send revised proposal v2 to Amit Kumar',
+        status: 'PENDING',
       },
       {
         leadId: lead5.id,
         userId: worker2.id,
         organizationId: org.id,
         type: ReminderType.EMAIL,
-        scheduledAt: new Date(Date.now() + 48 * 60 * 60 * 1000),
-        description: 'Chase Sneha Choudhary for Starter plan response',
+        scheduledAt: rel(72),     // 3 days out
+        description: 'Chase Sneha Choudhary for Starter plan decision',
+        status: 'PENDING',
+      },
+      {
+        leadId: lead6.id,
+        userId: worker2.id,
+        organizationId: org.id,
+        type: ReminderType.WHATSAPP,
+        scheduledAt: rel(96),     // 4 days out
+        description: 'WhatsApp follow-up on CTO approval from Karan Prasad',
+        status: 'PENDING',
+      },
+      {
+        leadId: lead3.id,
+        userId: worker1.id,
+        organizationId: org.id,
+        type: ReminderType.CALL,
+        scheduledAt: rel(120),    // 5 days out
+        description: 'Re-engage Vikas Singh after budget review',
+        status: 'PENDING',
       },
     ],
   })
-  console.log('✅ Reminders seeded')
+  console.log('✅ Reminders seeded (overdue / today / upcoming)')
+
 
   // ── 9. Alerts ──────────────────────────────────────────────────────────────
   await prisma.alert.createMany({
