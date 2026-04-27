@@ -2,80 +2,58 @@
 import { useState } from "react";
 import DashboardView from "@/components/dashboard/DashboardView";
 import LeadDetailModal from "@/components/dashboard/LeadDetailModal";
-import UpdateIntelligenceModal from "@/components/dashboard/UpdateIntelligenceModal";
 import AddLeadModal from "@/components/dashboard/AddLeadModal";
 import AddEmployeeModal from "@/components/dashboard/AddEmployeeModal";
-import { ALL_LEADS } from "@/lib/data";
 
 export default function DashboardPage() {
-  const [selectedLeadId, setSelectedLeadId] = useState<number | null>(null);
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [isModalLoading, setIsModalLoading] = useState(false);
-  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+  const [leadIds, setLeadIds] = useState<string[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isAddEmployeeModalOpen, setIsAddEmployeeModalOpen] = useState(false);
 
-  const displayedLeads = ALL_LEADS;
-  const selectedLead = ALL_LEADS.find(l => l.id === selectedLeadId);
-
-  const openLeadModal = (id: number) => {
+  const openLeadModal = (id: string, allIds?: string[]) => {
     setSelectedLeadId(id);
+    if (allIds) setLeadIds(allIds);
     setIsModalLoading(true);
-    setTimeout(() => {
-      setIsModalLoading(false);
-    }, 1500);
+    setTimeout(() => setIsModalLoading(false), 600);
   };
 
-  const switchLead = (dir: 'next' | 'prev') => {
-    if (selectedLeadId === null) return;
-    const currentIndex = displayedLeads.findIndex(l => l.id === selectedLeadId);
-    let newIndex = dir === 'next' ? currentIndex + 1 : currentIndex - 1;
-    
-    if (newIndex < 0) newIndex = displayedLeads.length - 1;
-    if (newIndex >= displayedLeads.length) newIndex = 0;
-    
-    setSelectedLeadId(displayedLeads[newIndex].id);
+  const switchLead = (dir: "next" | "prev") => {
+    if (!selectedLeadId || leadIds.length === 0) return;
+    const currentIndex = leadIds.indexOf(selectedLeadId);
+    let newIndex = dir === "next" ? currentIndex + 1 : currentIndex - 1;
+    if (newIndex < 0) newIndex = leadIds.length - 1;
+    if (newIndex >= leadIds.length) newIndex = 0;
+    setSelectedLeadId(leadIds[newIndex]);
     setIsModalLoading(true);
-    setTimeout(() => {
-      setIsModalLoading(false);
-    }, 1000);
+    setTimeout(() => setIsModalLoading(false), 600);
   };
 
   return (
     <>
-      <DashboardView 
-        onAddLead={() => setIsAddModalOpen(true)} 
+      <DashboardView
+        onAddLead={() => setIsAddModalOpen(true)}
         onAddEmployee={() => setIsAddEmployeeModalOpen(true)}
-        onLeadClick={openLeadModal}
+        onLeadClick={(id, allIds) => openLeadModal(id, allIds)}
         activeNav="Dashboard"
       />
 
-      {/* ── Overlays and Modals ── */}
-      {selectedLead && (
-        <LeadDetailModal 
-          lead={selectedLead} 
-          isLoading={isModalLoading} 
+      {selectedLeadId && (
+        <LeadDetailModal
+          leadId={selectedLeadId}
+          isLoading={isModalLoading}
           onClose={() => setSelectedLeadId(null)}
           onSwitch={switchLead}
-          onUpdateClick={() => setIsUpdateModalOpen(true)}
-        />
-      )}
-
-      {isUpdateModalOpen && (
-        <UpdateIntelligenceModal 
-          onClose={() => setIsUpdateModalOpen(false)} 
         />
       )}
 
       {isAddModalOpen && (
-        <AddLeadModal 
-          onClose={() => setIsAddModalOpen(false)} 
-        />
+        <AddLeadModal onClose={() => setIsAddModalOpen(false)} />
       )}
 
       {isAddEmployeeModalOpen && (
-        <AddEmployeeModal 
-          onClose={() => setIsAddEmployeeModalOpen(false)} 
-        />
+        <AddEmployeeModal onClose={() => setIsAddEmployeeModalOpen(false)} />
       )}
     </>
   );

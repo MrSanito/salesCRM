@@ -9,7 +9,7 @@ import { UserPlus, UserCircle2, Plus } from "lucide-react";
 interface DashboardViewProps {
   onAddLead: () => void;
   onAddEmployee: () => void;
-  onLeadClick: (id: number) => void;
+  onLeadClick: (id: string, allIds?: string[]) => void;
   activeNav: string;
 }
 

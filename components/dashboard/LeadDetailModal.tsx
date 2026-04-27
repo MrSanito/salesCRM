@@ -1,96 +1,104 @@
 "use client"
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { X, ChevronLeft, ChevronRight, Building2, Phone, Mail, CalendarCheck, ChevronDown, MessageCircle } from "lucide-react";
-import { PIPELINE_STAGES, SUB_STATUSES, PRIORITY_STYLES, Lead, LeadContext } from "@/lib/data";
+import { useState, useEffect } from "react";
+import { X, ChevronLeft, ChevronRight, Building2, Phone, Mail, CalendarCheck, ChevronDown, MessageCircle, ShieldAlert } from "lucide-react";
+import { useAuth } from "@/components/auth/AuthContext";
 import toast from "react-hot-toast";
 
-// Sub-components
 import EngagementStream from "./lead-detail/EngagementStream";
 import IntelligenceDossier from "./lead-detail/IntelligenceDossier";
 import GatekeeperProtocol from "./lead-detail/GatekeeperProtocol";
 import ScheduleFollowupModal from "./lead-detail/ScheduleFollowupModal";
 
-interface LeadDetailModalProps {
-  lead: Lead;
-  onClose: () => void;
-  isLoading: boolean;
-  onSwitch: (dir: 'next' | 'prev') => void;
-  onUpdateClick: () => void;
+const STAGE_LABEL: Record<string, string> = {
+  NEW: "New", CONTACTED: "Contacted", QUALIFIED: "Qualified",
+  PROPOSAL_SENT: "Proposal Sent", NEGOTIATION: "Negotiation",
+  WON: "Won", CLOSED_LOST: "Closed Lost",
+};
+
+const PIPELINE_STAGES = ["NEW", "CONTACTED", "QUALIFIED", "PROPOSAL_SENT", "NEGOTIATION", "WON", "CLOSED_LOST"];
+
+export interface DbLead {
+  id: string;
+  contactName: string;
+  company: string;
+  email: string | null;
+  phone: string | null;
+  stage: string;
+  priority: string;
+  dealValueInr: string;
+  followUpAt: string | null;
+  createdAt: string;
+  owner: { name: string; initials: string };
 }
 
-export default function LeadDetailModal({ lead, onClose, isLoading, onSwitch, onUpdateClick }: LeadDetailModalProps) {
+interface LeadDetailModalProps {
+  leadId: string;
+  onClose: () => void;
+  isLoading: boolean;
+  onSwitch: (dir: "next" | "prev") => void;
+}
+
+export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch }: LeadDetailModalProps) {
   const router = useRouter();
-  
-  // State management
-  const [context, setContext] = useState(lead?.contextSummary || {
-    wholeSummary: "",
-    requirement: "",
-    useCase: "",
-    scope: "",
-    constraints: "",
-    drivers: "",
-    objections: "",
-    commitments: ""
-  });
+  const { user } = useAuth();
+  const canChangeOwner = user?.role === "ORG_ADMIN" || user?.role === "MANAGER";
 
-  const updateContext = (field: string, val: string) => {
-    setContext(prev => ({ ...prev, [field]: val }));
-  };
-
-  const [checklist, setChecklist] = useState(lead?.checklist || {
-    contactVerified: false,
-    requirementDefined: false,
-    dataReceived: false,
-    orderConfirmed: false,
-    proposalSigned: false
-  });
-
+  const [lead, setLead] = useState<DbLead | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [stage, setStage] = useState("");
   const [showSchedule, setShowSchedule] = useState(false);
   const [scheduleData, setScheduleData] = useState({ date: "", time: "", note: "", method: "phone" });
-  const [internalNote, setInternalNote] = useState("");
-  const [sessionNotes, setSessionNotes] = useState<{ id: string; text: string; time: string }[]>([]);
-  const [status, setStatus] = useState(lead?.status);
-  const [subStatus, setSubStatus] = useState(lead?.subStatus);
-  const [expandedField, setExpandedField] = useState<string | null>("wholeSummary");
   const [isDossierOpen, setIsDossierOpen] = useState(true);
-  const [isRequirementEditable, setIsRequirementEditable] = useState(false);
-  const [dealValue, setDealValue] = useState(lead?.value || "");
+  const [expandedField, setExpandedField] = useState<string | null>("wholeSummary");
+  const [context, setContext] = useState({
+    wholeSummary: "", requirement: "", useCase: "", scope: "",
+    constraints: "", drivers: "", objections: "", commitments: ""
+  });
+  const [checklist, setChecklist] = useState({
+    contactVerified: false, requirementDefined: false,
+    dataReceived: false, orderConfirmed: false, proposalSigned: false,
+  });
+  const [dealValue, setDealValue] = useState("");
   const [isValueEditable, setIsValueEditable] = useState(false);
-  const [owner, setOwner] = useState(lead?.owner || "Sahil Mehta");
 
-  const saveCurrentNote = (text: string) => {
-    if (!text.trim()) return;
-    setSessionNotes(prev => [{
-      id: Math.random().toString(36).substr(2, 9),
-      text: text.trim(),
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    }, ...prev]);
-  };
+  // Fetch lead from DB by ID
+  useEffect(() => {
+    if (!leadId) return;
+    setLoading(true);
+    fetch(`/api/leads/${leadId}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.id) {
+          setLead(d);
+          setStage(d.stage);
+          setDealValue(d.dealValueInr || "");
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [leadId]);
 
   const toggleChecklist = (id: string) => {
-    setChecklist(prev => ({ ...prev, [id]: !prev[id as keyof typeof checklist] }));
+    setChecklist((prev) => ({ ...prev, [id]: !prev[id as keyof typeof checklist] }));
+  };
+  const updateContext = (field: string, val: string) => {
+    setContext((prev) => ({ ...prev, [field]: val }));
   };
 
   const handleScheduleSubmit = () => {
-    if (scheduleData.note) {
-      saveCurrentNote(`[Scheduled Followup - ${scheduleData.method.toUpperCase()}]: ${scheduleData.note} (Target: ${scheduleData.date} ${scheduleData.time})`);
-    }
     setShowSchedule(false);
-    toast.success("Follow-up Protocol Initialized", { icon: '📅' });
+    toast.success("Follow-up Protocol Initialized", { icon: "📅" });
   };
 
-  if (!lead) return null;
+  if (!lead && !loading && !isLoading) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div 
-        className="absolute inset-0 bg-transparent backdrop-blur-[2px] animate-in fade-in duration-300"
-        onClick={onClose}
-      />
-      
+      <div className="absolute inset-0 bg-transparent backdrop-blur-[2px] animate-in fade-in duration-300" onClick={onClose} />
+
       <div className="relative bg-white w-full max-w-4xl h-[90vh] rounded-2xl shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] overflow-hidden animate-in zoom-in-95 fade-in duration-300 border border-slate-100 flex flex-col">
-        
+
         {/* Header */}
         <div className="h-16 bg-white border-b border-slate-50 flex items-center justify-between px-8 flex-shrink-0 z-20">
           <div className="flex items-center gap-4">
@@ -99,88 +107,67 @@ export default function LeadDetailModal({ lead, onClose, isLoading, onSwitch, on
             </button>
             <div className="h-6 w-[1px] bg-slate-100 mx-1" />
             <div className="flex items-center gap-1">
-              <button 
-                onClick={() => onSwitch('prev')}
-                className="p-2 hover:bg-slate-50 rounded-xl text-slate-400 hover:text-slate-900 transition-all active:scale-95"
-              >
+              <button onClick={() => onSwitch("prev")} className="p-2 hover:bg-slate-50 rounded-xl text-slate-400 hover:text-slate-900 transition-all active:scale-95">
                 <ChevronLeft size={22} />
               </button>
               <span className="text-[10px] font-bold text-slate-300 font-mono uppercase tracking-[0.2em] px-2">
-                LD-{lead.id}
+                {lead?.id.slice(0, 8).toUpperCase() || "—"}
               </span>
-              <button 
-                onClick={() => onSwitch('next')}
-                className="p-2 hover:bg-slate-50 rounded-xl text-slate-400 hover:text-slate-900 transition-all active:scale-95"
-              >
+              <button onClick={() => onSwitch("next")} className="p-2 hover:bg-slate-50 rounded-xl text-slate-400 hover:text-slate-900 transition-all active:scale-95">
                 <ChevronRight size={22} />
               </button>
             </div>
           </div>
 
-          {!isLoading && (
-            <div className="flex items-center gap-3">
-              <div className="hidden sm:flex items-center bg-slate-100 p-1 rounded-xl">
-                 
-                 <div className="w-[1px] h-3 bg-slate-200 mx-1" />
-                 
-              </div>
-
-              <button 
-                onClick={() => router.push(`/edit/${lead.id}`)}
-                className="bg-slate-900 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-100 hover:bg-slate-800 transition-all active:scale-95"
-              >
-Edit Details              </button>
-            </div>
+          {!loading && !isLoading && (
+            <button
+              className="bg-slate-900 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-100 hover:bg-slate-800 transition-all active:scale-95"
+            >
+              Edit Details
+            </button>
           )}
         </div>
 
-        {/* Modal Body */}
+        {/* Body */}
         <div className="flex-1 overflow-y-auto">
-          {isLoading ? (
+          {(loading || isLoading) ? (
             <div className="h-full w-full flex flex-col items-center justify-center space-y-4">
-              <div className="w-10 h-10 border-4 border-blue-600 border-t-blue-600 rounded-full animate-spin" />
+              <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] animate-pulse">Syncing Intelligence...</p>
             </div>
-          ) : (
+          ) : lead && (
             <div className="p-8 sm:p-10 pt-4">
-              {/* Lead Info Section */}
+              {/* Lead Info */}
               <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-8">
                 <div>
-                  <div onClick={() => router.push(`/lead/${lead.id}`)} className="cursor-pointer group/name inline-block">
-                    <div className="flex items-center gap-3 mb-1">
-                      <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 uppercase tracking-tighter">
-                        ID: LD-{lead.id}
-                      </span>
-                      <h1 className="text-3xl font-bold text-slate-900 tracking-tight group-hover/name:text-blue-600 transition-colors">{lead.name}</h1>
-                    </div>
-                    <div className="flex items-center gap-2 text-slate-500">
-                      <Building2 size={16} className="text-slate-400 group-hover/name:text-blue-400" />
-                      <span className="text-base font-semibold group-hover/name:text-slate-700">{lead.company}</span>
-                    </div>
+                  <div className="flex items-center gap-3 mb-1">
+                    <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 uppercase tracking-tighter">
+                      {STAGE_LABEL[lead.stage] || lead.stage}
+                    </span>
+                    <h1 className="text-3xl font-bold text-slate-900 tracking-tight">{lead.contactName}</h1>
+                  </div>
+                  <div className="flex items-center gap-2 text-slate-500">
+                    <Building2 size={16} className="text-slate-400" />
+                    <span className="text-base font-semibold">{lead.company}</span>
                   </div>
                 </div>
+
+                {/* Lead Owner */}
                 <div className="flex flex-col items-end text-right">
-                   <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-2">Lead Owner</p>
-                   <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600">
-                        {owner.split(' ').map(n => n[0]).join('')}
-                      </div>
-                      <div className="relative">
-                        <select 
-                          value={owner}
-                          onChange={(e) => {
-                            setOwner(e.target.value);
-                            toast.success(`Protocol: Lead Assigned to ${e.target.value}`, { icon: '👤' });
-                          }}
-                          className="text-lg font-bold text-slate-800 bg-transparent focus:outline-none appearance-none cursor-pointer pr-6 hover:text-slate-600 transition-colors"
-                        >
-                          {["Sahil Mehta", "Anjali Sharma", "Rahul Verma", "Priya Das", "Vikram Singh"].map(o => (
-                            <option key={o} value={o}>{o}</option>
-                          ))}
-                        </select>
-                        <ChevronDown size={14} className="absolute right-0 top-1.5 text-slate-400 pointer-events-none" />
-                      </div>
-                   </div>
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-2">Lead Owner</p>
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600">
+                      {lead.owner?.initials || "—"}
+                    </div>
+                    <div className="relative group/owner">
+                      <span className={`text-lg font-bold ${canChangeOwner ? "text-slate-800" : "text-slate-400"}`}>
+                        {lead.owner?.name || "—"}
+                      </span>
+                      {!canChangeOwner && (
+                        <ShieldAlert size={12} className="inline ml-1 text-slate-300 opacity-0 group-hover/owner:opacity-100 transition-opacity" />
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -195,18 +182,9 @@ Edit Details              </button>
                       </div>
                       <div className="min-w-0">
                         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Primary Mobile</p>
-                        <a href={`tel:${lead.primaryMobile}`} className="text-[14px] font-bold text-slate-700 tracking-tight hover:text-blue-600 transition-colors block truncate">
-                          {lead.primaryMobile}
+                        <a href={`tel:${lead.phone}`} className="text-[14px] font-bold text-slate-700 tracking-tight hover:text-blue-600 transition-colors block truncate">
+                          {lead.phone || "Not Provided"}
                         </a>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-slate-50 text-slate-300 flex items-center justify-center flex-shrink-0">
-                        <Phone size={16} strokeWidth={2.5} />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Secondary Mobile</p>
-                        <p className="text-[14px] font-semibold text-slate-400 tracking-tight truncate">{lead.secondaryMobile || "Not Provided"}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
@@ -216,17 +194,8 @@ Edit Details              </button>
                       <div className="min-w-0">
                         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Email ID</p>
                         <a href={`mailto:${lead.email}`} className="text-[14px] font-bold text-slate-700 tracking-tight lowercase truncate hover:text-blue-600 transition-colors block">
-                          {lead.email}
+                          {lead.email || "Not Provided"}
                         </a>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-slate-50 text-slate-300 flex items-center justify-center flex-shrink-0">
-                        <Mail size={16} strokeWidth={2.5} />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Secondary Email</p>
-                        <p className="text-[14px] font-semibold text-slate-400 tracking-tight lowercase truncate">contact@mehta.com</p>
                       </div>
                     </div>
                   </div>
@@ -236,34 +205,37 @@ Edit Details              </button>
                   <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] border-b border-slate-50 pb-2">Engagement Metrics</h3>
                   <div className="grid grid-cols-2 gap-x-6 gap-y-5">
                     <div>
-                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Interested In</p>
-                      <p className="text-[14px] font-bold text-slate-700 leading-tight">{lead.interestedIn || "Enterprise CRM Suite"}</p>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Priority</p>
+                      <p className="text-[14px] font-bold text-slate-700">{lead.priority.charAt(0) + lead.priority.slice(1).toLowerCase()}</p>
                     </div>
                     <div>
-                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Source</p>
-                      <p className="text-[14px] font-bold text-slate-700 leading-tight">{lead.source}</p>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Deal Value</p>
+                      <p className="text-[14px] font-bold text-slate-700">
+                        ₹{parseFloat(lead.dealValueInr).toLocaleString("en-IN")}
+                      </p>
                     </div>
                     <div>
                       <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Created On</p>
-                      <p className="text-[14px] font-bold text-slate-700">{lead.createdOn}</p>
+                      <p className="text-[14px] font-bold text-slate-700">
+                        {new Date(lead.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                      </p>
                     </div>
                     <div>
-                      <p className="text-[9px] font-bold text-orange-500 uppercase tracking-wider mb-1">Last Communication</p>
-                      <p className="text-[14px] font-bold text-orange-600">{lead.date}</p>
+                      <p className="text-[9px] font-bold text-orange-500 uppercase tracking-wider mb-1">Follow Up</p>
+                      <p className="text-[14px] font-bold text-orange-600">
+                        {lead.followUpAt
+                          ? new Date(lead.followUpAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })
+                          : "Not Set"}
+                      </p>
                     </div>
-                  </div>
-                  <div className="pt-3 border-t border-slate-50">
-                    <p className="text-[9px] font-bold text-orange-500 uppercase tracking-wider mb-1">Requirements</p>
-                    <p className="text-[13px] font-semibold text-slate-700 leading-relaxed">{lead.contextSummary?.requirement || "Here are the Requirements of the consumer"}</p>
                   </div>
                 </div>
               </div>
 
               {/* Action Layer */}
               <div className="space-y-6">
-                {/* Protocol Quick Actions */}
                 <div className="flex flex-wrap items-center gap-4">
-                  <button className="flex-1 bg-white border border-slate-100 rounded-2xl px-6 py-4 flex items-center justify-center gap-3 group hover:border-orange-200 hover:bg-orange-50 transition-all active:scale-[0.98] shadow-sm">
+                  <a href={`tel:${lead.phone}`} className="flex-1 bg-white border border-slate-100 rounded-2xl px-6 py-4 flex items-center justify-center gap-3 group hover:border-orange-200 hover:bg-orange-50 transition-all active:scale-[0.98] shadow-sm">
                     <div className="w-8 h-8 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center border border-orange-100 group-hover:scale-110 transition-transform">
                       <Phone size={14} strokeWidth={2.5} />
                     </div>
@@ -271,9 +243,9 @@ Edit Details              </button>
                       <p className="text-[8px] font-bold text-slate-400 uppercase tracking-[0.2em] leading-none mb-1">Direct Call</p>
                       <p className="text-[11px] font-black text-slate-700 tracking-tight uppercase">Initiate Call</p>
                     </div>
-                  </button>
+                  </a>
 
-                  <button className="flex-1 bg-white border border-slate-100 rounded-2xl px-6 py-4 flex items-center justify-center gap-3 group hover:border-blue-200 hover:bg-blue-50 transition-all active:scale-[0.98] shadow-sm">
+                  <a href={`mailto:${lead.email}`} className="flex-1 bg-white border border-slate-100 rounded-2xl px-6 py-4 flex items-center justify-center gap-3 group hover:border-blue-200 hover:bg-blue-50 transition-all active:scale-[0.98] shadow-sm">
                     <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 group-hover:scale-110 transition-transform">
                       <Mail size={14} strokeWidth={2.5} />
                     </div>
@@ -281,10 +253,10 @@ Edit Details              </button>
                       <p className="text-[8px] font-bold text-slate-400 uppercase tracking-[0.2em] leading-none mb-1">Email Lead</p>
                       <p className="text-[11px] font-black text-slate-700 tracking-tight uppercase">Send Message</p>
                     </div>
-                  </button>
+                  </a>
 
                   <a
-                    href={`https://wa.me/${lead.primaryMobile?.replace(/[^0-9]/g, '')}`}
+                    href={`https://wa.me/${lead.phone?.replace(/[^0-9]/g, "")}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex-1 bg-white border border-slate-100 rounded-2xl px-6 py-4 flex items-center justify-center gap-3 group hover:border-green-200 hover:bg-green-50 transition-all active:scale-[0.98] shadow-sm"
@@ -298,7 +270,7 @@ Edit Details              </button>
                     </div>
                   </a>
 
-                  <button 
+                  <button
                     onClick={() => setShowSchedule(true)}
                     className="flex-1 bg-white border border-slate-100 rounded-2xl px-6 py-4 flex items-center justify-center gap-3 group hover:border-purple-200 hover:bg-purple-50 transition-all active:scale-[0.98] shadow-sm"
                   >
@@ -314,40 +286,36 @@ Edit Details              </button>
 
                 {/* Status Updaters */}
                 <div className="pt-6 border-t border-slate-50 grid grid-cols-2 gap-4">
-                   <div className="space-y-1.5 flex-1">
-                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-1 text-center block">Update Status</label>
+                  <div className="space-y-1.5 flex-1">
+                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-1 text-center block">Update Stage</label>
                     <div className="relative">
-                      <select 
-                        value={status}
-                        onChange={(e) => setStatus(e.target.value)}
+                      <select
+                        value={stage}
+                        onChange={(e) => setStage(e.target.value)}
                         className="w-full bg-slate-900 text-white rounded-xl px-4 py-3 text-[10px] font-black uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none cursor-pointer pr-10 shadow-lg shadow-slate-200"
                       >
-                        {PIPELINE_STAGES.map(s => <option key={s} className="bg-slate-900" value={s}>{s}</option>)}
+                        {PIPELINE_STAGES.map((s) => (
+                          <option key={s} className="bg-slate-900" value={s}>{STAGE_LABEL[s]}</option>
+                        ))}
                       </select>
                       <ChevronDown size={14} className="absolute right-3 top-1 -translate-y-1 text-white pointer-events-none" />
                     </div>
                   </div>
                   <div className="space-y-1.5 flex-1">
-                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-1 text-center block">Sub Status</label>
+                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-1 text-center block">Deal Value (₹)</label>
                     <div className="relative">
-                      <select 
-                        value={subStatus}
-                        onChange={(e) => setSubStatus(e.target.value)}
-                        className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-4 py-3 text-[10px] font-black uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-slate-500 transition-all appearance-none cursor-pointer pr-10"
-                      >
-                        {SUB_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                      </select>
-                      <ChevronDown size={14} className="absolute right-3 top-1 -translate-y-1 text-slate-400 pointer-events-none" />
+                      <input
+                        type="text"
+                        value={dealValue}
+                        onChange={(e) => setDealValue(e.target.value)}
+                        readOnly={stage !== "WON" && !isValueEditable}
+                        className={`w-full border rounded-xl px-4 py-3 text-sm font-bold transition-all ${stage === "WON" || isValueEditable ? "bg-white border-slate-300 text-slate-900 focus:ring-2 focus:ring-slate-900 shadow-sm" : "border-slate-100 text-slate-400 cursor-not-allowed bg-slate-50"}`}
+                        placeholder="e.g. 500000"
+                      />
                     </div>
-                    <button 
+                    <button
                       onClick={() => {
-                        if (status === "Won") {
-                          setIsValueEditable(true);
-                          setIsRequirementEditable(true);
-                          toast.success("Protocol: Won. Fields Unlocked", { icon: '💰' });
-                        } else {
-                          toast.success("Status Synchronized", { icon: '✅' });
-                        }
+                        toast.success("Status Synchronized", { icon: "✅" });
                       }}
                       className="mt-2 w-full py-2 bg-slate-900 hover:bg-slate-800 text-white text-[9px] font-black uppercase tracking-widest rounded-lg transition-all active:scale-95 shadow-md"
                     >
@@ -356,53 +324,20 @@ Edit Details              </button>
                   </div>
                 </div>
 
-                {/* DEAL VALUE - VISIBLE ONLY IF WON */}
-                <div className="animate-in slide-in-from-top-2 duration-300">
-                  <div className={`border rounded-2xl p-4 flex flex-col gap-2 transition-all ${status === 'Won' ? 'bg-slate-50 border-slate-200' : 'bg-slate-100 border-slate-200 opacity-60'}`}>
-                    <div className="flex items-center justify-between px-1">
-                      <div className="flex items-center gap-2">
-                        <label className={`text-[9px] font-bold uppercase tracking-widest ${status === 'Won' ? 'text-slate-600' : 'text-slate-400'}`}>Deal Value</label>
-                        {status !== 'Won' && <span className="text-[7px] font-bold text-slate-400 bg-white px-1.5 py-0.5 rounded border border-slate-200 shadow-sm">INACTIVE PROTOCOL</span>}
-                      </div>
-                      {!isValueEditable && <span className="text-[8px] font-bold text-slate-300 uppercase tracking-tight">(Locked until submit)</span>}
-                    </div>
-                    <input 
-                      type="text"
-                      value={dealValue}
-                      onChange={(e) => setDealValue(e.target.value)}
-                      readOnly={!isValueEditable}
-                      className={`w-full border rounded-xl px-4 py-3 text-sm font-bold transition-all ${
-                        isValueEditable 
-                          ? "bg-white border-slate-300 text-slate-900 focus:ring-2 focus:ring-slate-900 shadow-sm" 
-                          : "border-slate-100 text-slate-400 cursor-not-allowed bg-slate-50 bg-opacity-50"
-                      }`}
-                      placeholder="e.g. ₹5,00,000"
-                    />
-                  </div>
-                </div>
-
-                {/* Gatekeeper Protocol Section */}
+                {/* Gatekeeper */}
                 <GatekeeperProtocol checklist={checklist} toggleChecklist={toggleChecklist} />
 
-                {/* Split Layer: Engagement Stream & Intelligence Dossier */}
+                {/* Engagement + Intelligence */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-12">
-                  <EngagementStream 
-                    lead={lead}
-                    internalNote={internalNote}
-                    setInternalNote={setInternalNote}
-                    saveCurrentNote={saveCurrentNote}
-                    sessionNotes={sessionNotes}
-                    owner={owner}
-                  />
-
-                  <IntelligenceDossier 
+                  <EngagementStream leadId={lead.id} ownerName={user?.name || "You"} />
+                  <IntelligenceDossier
                     context={context}
                     updateContext={updateContext}
                     isDossierOpen={isDossierOpen}
                     setIsDossierOpen={setIsDossierOpen}
                     expandedField={expandedField}
                     setExpandedField={setExpandedField}
-                    isRequirementEditable={isRequirementEditable}
+                    isRequirementEditable={stage === "WON"}
                   />
                 </div>
               </div>
@@ -413,31 +348,17 @@ Edit Details              </button>
         {/* Footer */}
         <div className="bg-white border-t border-slate-50 px-10 py-6 flex items-center justify-between z-10 shrink-0">
           <div className="flex items-center gap-3">
-            <button 
-              onClick={() => {
-                toast.success("Pushed to Production!", {
-                  icon: '🚀',
-                  style: {
-                    borderRadius: '12px',
-                    background: '#0f172a',
-                    color: '#fff',
-                    fontSize: '12px',
-                    fontWeight: 'bold',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.1em'
-                  },
-                });
-              }}
+            <button
+              onClick={() => toast.success("Pushed to Production!", { icon: "🚀", style: { borderRadius: "12px", background: "#0f172a", color: "#fff", fontSize: "12px", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "0.1em" } })}
               className="px-12 py-3.5 rounded-2xl bg-blue-600 text-white font-bold text-sm shadow-xl shadow-blue-100 hover:bg-blue-700 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2"
             >
-              Push 
+              Push
             </button>
           </div>
         </div>
       </div>
 
-      {/* Schedule Modal Overlay */}
-      <ScheduleFollowupModal 
+      <ScheduleFollowupModal
         isOpen={showSchedule}
         onClose={() => setShowSchedule(false)}
         data={scheduleData}
