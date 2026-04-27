@@ -28,13 +28,22 @@ export async function POST(req: Request) {
     }
 
     const token = jwt.sign(
-      { userId: user.id, email: user.email, role: user.role },
+      { userId: user.id, email: user.email, role: user.role, organizationId: user.organizationId },
       JWT_SECRET,
       { expiresIn: "1d" }
     );
 
     const response = NextResponse.json(
-      { message: "Login successful", user: { id: user.id, name: user.name, email: user.email, role: user.role } },
+      { 
+        message: "Login successful", 
+        user: { 
+          id: user.id, 
+          name: user.name, 
+          email: user.email, 
+          role: user.role,
+          organizationId: user.organizationId 
+        } 
+      },
       { status: 200 }
     );
 

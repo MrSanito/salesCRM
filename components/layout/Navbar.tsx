@@ -1,8 +1,8 @@
 "use client";
 
-import { Search, Bell, ChevronDown, Menu, CheckCircle2, AlertCircle, Clock } from "lucide-react";
 import { useState } from "react";
-
+import Link from "next/link";
+import { Search, Bell, ChevronDown, Menu, CheckCircle2, AlertCircle, Clock } from "lucide-react";
 interface NavbarProps {
   onMenuClick?: () => void;
   activeNav?: string;
@@ -107,7 +107,9 @@ export default function Navbar({ onMenuClick = () => {}, activeNav = "Dashboard"
           {showProfileMenu && (
             <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden py-1 animate-in fade-in slide-in-from-top-1 duration-200">
               <button className="w-full text-left px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Profile Settings</button>
-              <button className="w-full text-left px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Team View</button>
+              <Link href="/dashboard/team" className="block w-full text-left px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
+                Team View
+              </Link>
               <hr className="my-1 border-slate-100" />
               <button 
                 onClick={logout}

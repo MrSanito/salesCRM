@@ -1,58 +1,56 @@
 "use client"
-import { useState } from "react";
 import {
   AlertTriangle, LayoutDashboard, UserPlus, Phone, CheckCircle2,
   FileText, CalendarCheck, XCircle, BarChart2, Activity, PieChart,
   Users2, Users, Puzzle, Settings, X
 } from "lucide-react";
+import Link from "next/link";
 
 const SIDEBAR_ITEMS = [
   {
     items: [
-      { icon: AlertTriangle, label: "Alerts", badge: 5, badgeColor: "bg-red-500" },
-      { icon: LayoutDashboard, label: "Dashboard", active: true },
+      { icon: AlertTriangle, label: "Alerts", href: "/dashboard/alerts", badge: 5, badgeColor: "bg-red-500" },
+      { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard", active: true },
     ],
   },
   {
     section: "LEADS",
     items: [
-      { icon: UserPlus, label: "New Leads", badge: 32, badgeColor: "bg-blue-500" },
-      { icon: Phone, label: "Follow Ups", badge: 18, badgeColor: "bg-orange-500" },
-      { icon: CheckCircle2, label: "Closed Won" },
-      { icon: FileText, label: "Proposed" },
-      { icon: CalendarCheck, label: "Meeting Set" },
-      { icon: XCircle, label: "Closed " },
+      { icon: UserPlus, label: "New Leads", href: "/dashboard/leads", badge: 32, badgeColor: "bg-blue-500" },
+      { icon: Phone, label: "Follow Ups", href: "/dashboard/follow-ups", badge: 18, badgeColor: "bg-orange-500" },
+      { icon: CheckCircle2, label: "Closed Won", href: "/dashboard/won" },
+      { icon: FileText, label: "Proposed", href: "/dashboard/proposed" },
+      { icon: CalendarCheck, label: "Meeting Set", href: "/dashboard/meetings" },
+      { icon: XCircle, label: "Closed ", href: "/dashboard/closed" },
     ],
   },
   {
     section: "REPORTS",
     items: [
-      { icon: BarChart2, label: "Pipeline" },
-      { icon: Activity, label: "Performance" },
-      { icon: PieChart, label: "Source Report" },
+      { icon: BarChart2, label: "Pipeline", href: "/dashboard/pipeline" },
+      { icon: Activity, label: "Performance", href: "/dashboard/performance" },
+      { icon: PieChart, label: "Source Report", href: "/dashboard/sources" },
     ],
   },
   {
     section: "SETTINGS",
     items: [
-      { icon: Users2, label: "Users" },
-      { icon: Users, label: "Team" },
-      { icon: Puzzle, label: "Integrations" },
-      { icon: Settings, label: "Settings" },
+      { icon: Users2, label: "Users", href: "/dashboard/users" },
+      { icon: Users, label: "Team", href: "/dashboard/team" },
+      { icon: Puzzle, label: "Integrations", href: "/dashboard/integrations" },
+      { icon: Settings, label: "Settings", href: "/dashboard/settings" },
     ],
   },
 ];
 
 interface SidebarProps {
   activeNav?: string;
-  setActiveNav?: (nav: string) => void;
   isOpen?: boolean;
   setIsOpen?: (isOpen: boolean) => void;
 }
 
 export default function Sidebar({ 
   activeNav = "Dashboard", 
-  setActiveNav = () => {}, 
   isOpen = false, 
   setIsOpen = () => {} 
 }: SidebarProps) {
@@ -104,11 +102,9 @@ export default function Sidebar({
                   const isActive = activeNav === item.label;
                   return (
                     <li key={item.label}>
-                      <button
-                        onClick={() => {
-                          setActiveNav(item.label);
-                          setIsOpen(false); // Close mobile menu when clicked
-                        }}
+                      <Link
+                        href={item.href}
+                        onClick={() => setIsOpen(false)}
                         className={`w-full flex items-center justify-between gap-2.5 px-3 py-2.5 rounded-xl text-left transition-all duration-300 group ${
                           isActive
                             ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-lg shadow-sidebar-primary/20"
@@ -128,7 +124,7 @@ export default function Sidebar({
                             {item.badge}
                           </span>
                         )}
-                      </button>
+                      </Link>
                     </li>
                   );
                 })}

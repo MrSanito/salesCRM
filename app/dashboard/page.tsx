@@ -1,28 +1,20 @@
 "use client"
 import { useState } from "react";
-import Sidebar from "@/components/layout/Sidebar";
-import Navbar from "@/components/layout/Navbar";
 import DashboardView from "@/components/dashboard/DashboardView";
-import ModulePlaceholder from "@/components/dashboard/ModulePlaceholder";
-import AlertsView from "@/components/dashboard/AlertsView";
 import LeadDetailModal from "@/components/dashboard/LeadDetailModal";
 import UpdateIntelligenceModal from "@/components/dashboard/UpdateIntelligenceModal";
 import AddLeadModal from "@/components/dashboard/AddLeadModal";
+import AddEmployeeModal from "@/components/dashboard/AddEmployeeModal";
 import { ALL_LEADS } from "@/lib/data";
 
-export default function SalesPortal() {
+export default function DashboardPage() {
   const [selectedLeadId, setSelectedLeadId] = useState<number | null>(null);
-  const [activeNav, setActiveNav] = useState("Dashboard");
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isModalLoading, setIsModalLoading] = useState(false);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isAddEmployeeModalOpen, setIsAddEmployeeModalOpen] = useState(false);
 
-  // Filter logic for displayed leads (used for modal switching)
-  const displayedLeads = activeNav === "Alerts" 
-    ? ALL_LEADS.filter(l => l.priority === "High" || l.status === "New") 
-    : ALL_LEADS;
-
+  const displayedLeads = ALL_LEADS;
   const selectedLead = ALL_LEADS.find(l => l.id === selectedLeadId);
 
   const openLeadModal = (id: number) => {
@@ -48,48 +40,16 @@ export default function SalesPortal() {
     }, 1000);
   };
 
-  // Content Router
-  const renderContent = () => {
-    switch (activeNav) {
-      case "Dashboard":
-        return (
-          <DashboardView 
-            onAddLead={() => setIsAddModalOpen(true)} 
-            onLeadClick={openLeadModal}
-            activeNav={activeNav}
-          />
-        );
-      case "Alerts":
-        return <AlertsView />;
-      default:
-        // Use placeholder for all other sidebar elements as requested
-        return <ModulePlaceholder title={activeNav} />;
-    }
-  };
-
   return (
-    <div className="flex flex-col h-screen bg-slate-50 font-sans overflow-hidden">
-      {/* ── Top Navbar ── */}
-      <Navbar onMenuClick={() => setIsSidebarOpen(true)} activeNav={activeNav} />
+    <>
+      <DashboardView 
+        onAddLead={() => setIsAddModalOpen(true)} 
+        onAddEmployee={() => setIsAddEmployeeModalOpen(true)}
+        onLeadClick={openLeadModal}
+        activeNav="Dashboard"
+      />
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* ── Sidebar ── */}
-        <Sidebar 
-          activeNav={activeNav} 
-          setActiveNav={setActiveNav} 
-          isOpen={isSidebarOpen} 
-          setIsOpen={setIsSidebarOpen} 
-        />
-
-        {/* ── Main Dashboard Content ── */}
-        <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-          <div className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
-            {renderContent()}
-          </div>
-        </main>
-      </div>
-
-      {/* ── Overlays and Modals (Global) ── */}
+      {/* ── Overlays and Modals ── */}
       {selectedLead && (
         <LeadDetailModal 
           lead={selectedLead} 
@@ -111,6 +71,12 @@ export default function SalesPortal() {
           onClose={() => setIsAddModalOpen(false)} 
         />
       )}
-    </div>
+
+      {isAddEmployeeModalOpen && (
+        <AddEmployeeModal 
+          onClose={() => setIsAddEmployeeModalOpen(false)} 
+        />
+      )}
+    </>
   );
 }

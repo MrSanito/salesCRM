@@ -1,18 +1,15 @@
+// Trigger reload - SaaS Multi-tenant Schema
 generator client {
   provider   = "prisma-client-js"
   engineType = "library"
 }
 
-
 datasource db {
-  provider  = "postgresql"
+  provider = "postgresql"
 }
 
-
-
-
-
 enum Role {
+  ORG_ADMIN
   MANAGER
   SALES_REP
 }
@@ -65,12 +62,38 @@ enum AlertType {
 }
 
 enum AttachmentMimeType {
-  PDF       // application/pdf  ← primary use-case
-  DOCX      // application/vnd.openxmlformats-officedocument.wordprocessingml.document
-  XLSX      // application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
-  PNG       // image/png
-  JPEG      // image/jpeg
+  PDF // application/pdf  ← primary use-case
+  DOCX // application/vnd.openxmlformats-officedocument.wordprocessingml.document
+  XLSX // application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+  PNG // image/png
+  JPEG // image/jpeg
   OTHER
+}
+
+// ─────────────────────────────────────────────────────────────
+// MULTI-TENANT (SaaS)
+// ─────────────────────────────────────────────────────────────
+
+model Organization {
+  id      String  @id @default(uuid())
+  name    String
+  slug    String  @unique
+  logoUrl String?
+
+  users        User[]
+  teams        Team[]
+  leads        Lead[]
+  sources      LeadSource[]
+  stages       PipelineStage[]
+  interactions Interaction[]
+  notes        Note[]
+  reminders    Reminder[]
+  alerts       Alert[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("organizations")
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -78,57 +101,67 @@ enum AttachmentMimeType {
 // ─────────────────────────────────────────────────────────────
 
 model User {
-  id         String   @id @default(uuid())
-  name       String
-  email      String   @unique
-  password   String
-  initials   String   @db.VarChar(4)
+  id       String @id @default(uuid())
+  name     String
+  email    String @unique
+  password String
+  initials String @db.VarChar(4)
 
-  role       Role     @default(SALES_REP)
-  avatarUrl  String?
+  role      Role    @default(SALES_REP)
+  avatarUrl String?
+
+  // SaaS Isolation
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
 
   // Self-referential: manager → subordinates
-  managerId  String?
-  manager    User?    @relation("UserHierarchy", fields: [managerId], references: [id])
-  subordinates User[] @relation("UserHierarchy")
+  managerId    String?
+  manager      User?   @relation("UserHierarchy", fields: [managerId], references: [id])
+  subordinates User[]  @relation("UserHierarchy")
 
   // Team membership
-  teamId     String?
-  team       Team?    @relation("TeamMembers", fields: [teamId], references: [id])
+  teamId String?
+  team   Team?   @relation("TeamMembers", fields: [teamId], references: [id])
 
   // Team that this user manages (one user = one managed team)
-  managedTeam Team?   @relation("TeamManager")
+  managedTeam Team? @relation("TeamManager")
 
   // Leads
-  ownedLeads    Lead[]        @relation("LeadOwner")
-  createdLeads  Lead[]        @relation("LeadCreator")
+  ownedLeads   Lead[] @relation("LeadOwner")
+  createdLeads Lead[] @relation("LeadCreator")
 
   // Activity
-  interactions  Interaction[]
-  notes         Note[]
-  reminders     Reminder[]
-  alerts        Alert[]
+  interactions Interaction[]
+  notes        Note[]
+  reminders    Reminder[]
+  alerts       Alert[]
 
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
+  @@index([organizationId])
   @@map("users")
 }
 
 model Team {
-  id         String   @id @default(uuid())
-  name       String
+  id   String @id @default(uuid())
+  name String
+
+  // SaaS Isolation
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
 
   // The user who manages this team
-  managerId  String   @unique
-  manager    User     @relation("TeamManager", fields: [managerId], references: [id])
+  managerId String @unique
+  manager   User   @relation("TeamManager", fields: [managerId], references: [id])
 
   // Members of this team
-  members    User[]   @relation("TeamMembers")
+  members User[] @relation("TeamMembers")
 
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
+  @@index([organizationId])
   @@map("teams")
 }
 
@@ -137,23 +170,34 @@ model Team {
 // ─────────────────────────────────────────────────────────────
 
 model LeadSource {
-  id    String @id @default(uuid())
-  name  String @unique  // "Inbound", "Cold Call", "Referral", "Website", …
+  id   String @id @default(uuid())
+  name String
+
+  // SaaS Isolation
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
 
   leads Lead[]
 
+  @@unique([name, organizationId])
   @@map("lead_sources")
 }
 
 model PipelineStage {
-  id          String @id @default(uuid())
-  name        String @unique  // matches LeadStage enum values
-  orderIndex  Int    @unique   // 1 = New … 7 = Closed Lost
-  colorClass  String           // Tailwind class, e.g. "bg-blue-100 text-blue-700"
+  id          String  @id @default(uuid())
+  name        String
+  orderIndex  Int
+  colorClass  String
   description String?
+
+  // SaaS Isolation
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
 
   leads Lead[]
 
+  @@unique([name, organizationId])
+  @@unique([orderIndex, organizationId])
   @@map("pipeline_stages")
 }
 
@@ -162,42 +206,47 @@ model PipelineStage {
 // ─────────────────────────────────────────────────────────────
 
 model Lead {
-  id          String       @id @default(uuid())
+  id          String  @id @default(uuid())
   contactName String
   company     String
   email       String?
   phone       String?
 
+  // SaaS Isolation
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
   // Stage & value
-  stage       LeadStage    @default(NEW)
-  dealValueInr Decimal     @default(0) @db.Decimal(15, 2)
-  priority    LeadPriority @default(MEDIUM)
+  stage        LeadStage    @default(NEW)
+  dealValueInr Decimal      @default(0) @db.Decimal(15, 2)
+  priority     LeadPriority @default(MEDIUM)
 
   // Relations to ref tables
   pipelineStageId String?
   pipelineStage   PipelineStage? @relation(fields: [pipelineStageId], references: [id])
 
-  sourceId    String?
-  source      LeadSource?  @relation(fields: [sourceId], references: [id])
+  sourceId String?
+  source   LeadSource? @relation(fields: [sourceId], references: [id])
 
   // Ownership
   ownerId     String
-  owner       User         @relation("LeadOwner",   fields: [ownerId],   references: [id])
+  owner       User   @relation("LeadOwner", fields: [ownerId], references: [id])
   createdById String
-  createdBy   User         @relation("LeadCreator", fields: [createdById], references: [id])
+  createdBy   User   @relation("LeadCreator", fields: [createdById], references: [id])
 
   // Timestamps
-  followUpAt  DateTime?
-  closedAt    DateTime?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  followUpAt DateTime?
+  closedAt   DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   // Child records
   interactions Interaction[]
-  notes        Note[]         // direct notes on lead (not tied to an interaction)
+  notes        Note[]
   reminders    Reminder[]
   alerts       Alert[]
 
+  @@index([organizationId])
   @@index([ownerId])
   @@index([stage])
   @@index([priority])
@@ -210,22 +259,26 @@ model Lead {
 // ─────────────────────────────────────────────────────────────
 
 model Interaction {
-  id          String          @id @default(uuid())
-  leadId      String
-  lead        Lead            @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  id     String @id @default(uuid())
+  leadId String
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
 
-  userId      String
-  user        User            @relation(fields: [userId], references: [id])
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  // SaaS Isolation
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
 
   type        InteractionType
-  summary     String?          // short one-liner captured at log time
-  durationMin Int?             // for calls / meetings
-  occurredAt  DateTime         @default(now())
-  createdAt   DateTime         @default(now())
+  summary     String?
+  durationMin Int?
+  occurredAt  DateTime        @default(now())
+  createdAt   DateTime        @default(now())
 
-  // Each interaction gets exactly one note  (1 : 0-1)
-  note        Note?            @relation("InteractionNote")
+  note Note? @relation("InteractionNote")
 
+  @@index([organizationId])
   @@index([leadId])
   @@index([userId])
   @@index([occurredAt])
@@ -241,30 +294,30 @@ model Interaction {
 // ─────────────────────────────────────────────────────────────
 
 model Note {
-  id            String   @id @default(uuid())
+  id String @id @default(uuid())
 
-  // Always linked to a lead
-  leadId        String
-  lead          Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  leadId String
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
 
-  // Authored by
-  userId        String
-  user          User     @relation(fields: [userId], references: [id])
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
 
-  // Optionally linked to one interaction (unique → 1:1 from interaction side)
-  interactionId String?  @unique
+  // SaaS Isolation
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  interactionId String?      @unique
   interaction   Interaction? @relation("InteractionNote", fields: [interactionId], references: [id], onDelete: SetNull)
 
-  // Content
-  content       String   @db.Text
-  aiExtracted   Boolean  @default(false)  // true when AI parsed it from a call transcript / reminder
+  content     String  @db.Text
+  aiExtracted Boolean @default(false)
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  // PDF / file attachments on this note
-  attachments   NoteAttachment[]
+  attachments NoteAttachment[]
 
+  @@index([organizationId])
   @@index([leadId])
   @@index([interactionId])
   @@map("notes")
@@ -275,19 +328,19 @@ model Note {
 // ─────────────────────────────────────────────────────────────
 
 model NoteAttachment {
-  id          String             @id @default(uuid())
+  id String @id @default(uuid())
 
-  noteId      String
-  note        Note               @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  noteId String
+  note   Note   @relation(fields: [noteId], references: [id], onDelete: Cascade)
 
-  fileName    String             // original file name, e.g. "proposal_v2.pdf"
-  fileUrl     String             // storage URL (S3 / Supabase / Cloudflare R2)
-  fileKey     String             // storage key / path for deletion
-  fileSizeBytes Int              // raw byte size
-  mimeType    AttachmentMimeType @default(PDF)
-  pageCount   Int?               // populated for PDFs after upload processing
+  fileName      String // original file name, e.g. "proposal_v2.pdf"
+  fileUrl       String // storage URL (S3 / Supabase / Cloudflare R2)
+  fileKey       String // storage key / path for deletion
+  fileSizeBytes Int // raw byte size
+  mimeType      AttachmentMimeType @default(PDF)
+  pageCount     Int? // populated for PDFs after upload processing
 
-  uploadedAt  DateTime           @default(now())
+  uploadedAt DateTime @default(now())
 
   @@index([noteId])
   @@map("note_attachments")
@@ -298,23 +351,28 @@ model NoteAttachment {
 // ─────────────────────────────────────────────────────────────
 
 model Reminder {
-  id           String         @id @default(uuid())
-  leadId       String
-  lead         Lead           @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  id     String @id @default(uuid())
+  leadId String
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
 
-  userId       String
-  user         User           @relation(fields: [userId], references: [id])
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
 
-  type         ReminderType
-  status       ReminderStatus @default(PENDING)
-  aiExtracted  Boolean        @default(false)  // true = parsed from a Note by AI
-  scheduledAt  DateTime
-  completedAt  DateTime?
-  description  String?
+  // SaaS Isolation
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
 
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  type        ReminderType
+  status      ReminderStatus @default(PENDING)
+  aiExtracted Boolean        @default(false)
+  scheduledAt DateTime
+  completedAt DateTime?
+  description String?
 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
   @@index([userId, scheduledAt])
   @@index([leadId])
   @@map("reminders")
@@ -325,20 +383,25 @@ model Reminder {
 // ─────────────────────────────────────────────────────────────
 
 model Alert {
-  id        String    @id @default(uuid())
-  userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  leadId    String?
-  lead      Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  // SaaS Isolation
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
 
-  type      AlertType
-  title     String
-  body      String?
-  isRead    Boolean   @default(false)
+  leadId String?
+  lead   Lead?   @relation(fields: [leadId], references: [id], onDelete: SetNull)
 
-  createdAt DateTime  @default(now())
+  type   AlertType
+  title  String
+  body   String?
+  isRead Boolean   @default(false)
 
+  createdAt DateTime @default(now())
+
+  @@index([organizationId])
   @@index([userId, isRead])
   @@map("alerts")
 }
