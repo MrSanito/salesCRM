@@ -40,11 +40,12 @@ interface DbLead {
 }
 
 interface LeadsTableProps {
-  onLeadClick: (id: string) => void;
+  onLeadClick: (id: string, allIds?: string[]) => void;
   activeNav: string;
+  refreshKey?: number;
 }
 
-export default function LeadsTable({ onLeadClick, activeNav }: LeadsTableProps) {
+export default function LeadsTable({ onLeadClick, activeNav, refreshKey = 0 }: LeadsTableProps) {
   const [leads, setLeads] = useState<DbLead[]>([]);
   const [loading, setLoading] = useState(true);
   const [showFilterMenu, setShowFilterMenu] = useState(false);
@@ -53,12 +54,13 @@ export default function LeadsTable({ onLeadClick, activeNav }: LeadsTableProps) 
   const [filterPriority, setFilterPriority] = useState<string | null>(null);
 
   useEffect(() => {
+    setLoading(true);
     fetch("/api/leads")
       .then((r) => r.json())
       .then((d) => { if (Array.isArray(d)) setLeads(d); })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [refreshKey]);
 
   let displayedLeads = [...leads];
   if (activeNav === "Alerts") displayedLeads = displayedLeads.filter((l) => l.priority === "HIGH");
@@ -150,7 +152,7 @@ export default function LeadsTable({ onLeadClick, activeNav }: LeadsTableProps) 
             {displayedLeads.map((lead) => (
               <tr
                 key={lead.id}
-                onClick={() => onLeadClick(lead.id)}
+                onClick={() => onLeadClick(lead.id, displayedLeads.map(l => l.id))}
                 className="border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer group"
               >
                 <td className="px-3 sm:px-4 py-3">

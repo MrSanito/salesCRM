@@ -11,6 +11,7 @@ export default function DashboardPage() {
   const [leadIds, setLeadIds] = useState<string[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isAddEmployeeModalOpen, setIsAddEmployeeModalOpen] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const openLeadModal = (id: string, allIds?: string[]) => {
     setSelectedLeadId(id);
@@ -30,6 +31,8 @@ export default function DashboardPage() {
     setTimeout(() => setIsModalLoading(false), 600);
   };
 
+  const triggerRefresh = () => setRefreshKey(prev => prev + 1);
+
   return (
     <>
       <DashboardView
@@ -37,6 +40,7 @@ export default function DashboardPage() {
         onAddEmployee={() => setIsAddEmployeeModalOpen(true)}
         onLeadClick={(id, allIds) => openLeadModal(id, allIds)}
         activeNav="Dashboard"
+        refreshKey={refreshKey}
       />
 
       {selectedLeadId && (
@@ -45,6 +49,7 @@ export default function DashboardPage() {
           isLoading={isModalLoading}
           onClose={() => setSelectedLeadId(null)}
           onSwitch={switchLead}
+          onUpdate={triggerRefresh}
         />
       )}
 

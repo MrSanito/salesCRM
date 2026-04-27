@@ -105,33 +105,13 @@ export default function TeamView() {
               <div className={`mt-6 p-4 rounded-2xl flex flex-col gap-3 ${
                 isOrgAdmin ? 'bg-white/5' : 'bg-white border border-slate-100'
               }`}>
-                <div className="flex items-center justify-between">
-                  <div className="flex flex-col">
-                    <span className={`text-[8px] font-bold uppercase tracking-tighter ${isOrgAdmin ? 'text-white/40' : 'text-slate-400'}`}>Performance Index</span>
-                    <span className={`text-sm font-black ${isOrgAdmin ? 'text-white' : 'text-slate-900'}`}>
-                      {((member._count?.ownedLeads || 0) * 8.4).toFixed(1)}%
-                    </span>
-                  </div>
-                  <div className="flex flex-col items-end">
+                  <div className="flex flex-col items-start">
                     <span className={`text-[8px] font-bold uppercase tracking-tighter ${isOrgAdmin ? 'text-white/40' : 'text-slate-400'}`}>Active Leads</span>
                     <span className={`text-sm font-black ${isOrgAdmin ? 'text-white' : 'text-slate-900'}`}>
                       {member._count?.ownedLeads || 0}
                     </span>
                   </div>
-                </div>
 
-                {/* Micro Bar Chart (The "Graph Form") */}
-                <div className="flex items-end justify-between h-8 gap-1 px-1">
-                  {activityData.map((val, i) => (
-                    <div 
-                      key={i}
-                      className={`w-full rounded-t-sm transition-all duration-500 group-hover:opacity-100 ${
-                        isOrgAdmin ? 'bg-amber-400 opacity-60' : 'bg-blue-500 opacity-40'
-                      }`}
-                      style={{ height: `${val}%` }}
-                    />
-                  ))}
-                </div>
               </div>
 
               {/* Add Subordinate Button */}
@@ -277,9 +257,6 @@ export default function TeamView() {
                 <div className="flex flex-col">
                   <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Active Leads</span>
                   <span className="text-lg font-black text-slate-900">{member._count?.ownedLeads || 0}</span>
-                </div>
-                <div className="w-16 h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                   <div className="h-full bg-blue-500 rounded-full" style={{ width: `${Math.min(((member._count?.ownedLeads || 0) / 20) * 100, 100)}%` }} />
                 </div>
               </div>
 

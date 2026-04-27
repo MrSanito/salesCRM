@@ -17,6 +17,10 @@ interface Reminder {
   user: { name: string; initials: string };
 }
 
+interface RemindersListProps {
+  refreshKey?: number;
+}
+
 const TYPE_META: Record<string, { Icon: any; color: string; label: string }> = {
   CALL:     { Icon: Phone,          color: "text-blue-500 bg-blue-50 border-blue-100",    label: "Call" },
   EMAIL:    { Icon: Mail,           color: "text-purple-500 bg-purple-50 border-purple-100", label: "Email" },
@@ -56,7 +60,7 @@ function formatTime(dateStr: string) {
   return `${d.toLocaleDateString("en-IN", { day: "numeric", month: "short" })} ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
 }
 
-export default function RemindersList() {
+export default function RemindersList({ refreshKey = 0 }: RemindersListProps) {
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [loading, setLoading] = useState(true);
   const [completing, setCompleting] = useState<string | null>(null);
@@ -76,7 +80,7 @@ export default function RemindersList() {
     // Auto-refresh every 60s
     const interval = setInterval(fetchReminders, 60000);
     return () => clearInterval(interval);
-  }, [fetchReminders]);
+  }, [fetchReminders, refreshKey]);
 
   const markDone = async (id: string) => {
     setCompleting(id);

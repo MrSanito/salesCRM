@@ -38,9 +38,10 @@ interface LeadDetailModalProps {
   onClose: () => void;
   isLoading?: boolean;
   onSwitch?: (dir: "next" | "prev") => void;
+  onUpdate?: () => void;
 }
 
-export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch }: LeadDetailModalProps) {
+export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, onUpdate }: LeadDetailModalProps) {
   const router = useRouter();
   const { user } = useAuth();
   const canChangeOwner = user?.role === "ORG_ADMIN" || user?.role === "MANAGER";
@@ -96,24 +97,26 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch }
     fetchData();
   }, [leadId, canChangeOwner]);
 
-  const handleUpdate = async () => {
+  const handleUpdate = async (overrideStage?: string, overrideOwner?: string) => {
     setUpdating(true);
     try {
+      const payload = {
+        stage: overrideStage || stage,
+        dealValueInr: parseFloat(dealValue) || 0,
+        ownerId: overrideOwner || (ownerId !== lead?.ownerId ? ownerId : undefined),
+      };
+
       const res = await fetch(`/api/leads/${leadId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          stage,
-          dealValueInr: parseFloat(dealValue) || 0,
-          ownerId: ownerId !== lead?.ownerId ? ownerId : undefined,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (res.ok) {
         toast.success("Intelligence Synchronized");
-        // Optionally refresh lead data
         const updated = await res.json();
         setLead(updated);
+        onUpdate?.(); // Notify parent to refresh
       } else {
         toast.error("Protocol Update Failed");
       }
@@ -211,7 +214,11 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch }
                         <div className="relative">
                           <select
                             value={ownerId}
-                            onChange={(e) => setOwnerId(e.target.value)}
+                            onChange={(e) => {
+                              const newOwnerId = e.target.value;
+                              setOwnerId(newOwnerId);
+                              handleUpdate(undefined, newOwnerId);
+                            }}
                             className="bg-transparent text-lg font-bold text-slate-800 focus:outline-none appearance-none pr-6 cursor-pointer"
                           >
                             {team.map((member) => (
@@ -355,7 +362,11 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch }
                     <div className="relative">
                       <select
                         value={stage}
-                        onChange={(e) => setStage(e.target.value)}
+                        onChange={(e) => {
+                          const newStage = e.target.value;
+                          setStage(newStage);
+                          handleUpdate(newStage);
+                        }}
                         className="w-full bg-slate-900 text-white rounded-xl px-4 py-3 text-[10px] font-black uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none cursor-pointer pr-10 shadow-lg shadow-slate-200"
                       >
                         {PIPELINE_STAGES.map((s) => (
@@ -378,7 +389,7 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch }
                       />
                     </div>
                     <button
-                      onClick={handleUpdate}
+                      onClick={() => handleUpdate()}
                       disabled={updating}
                       className="mt-2 w-full py-2 bg-slate-900 hover:bg-slate-800 text-white text-[9px] font-black uppercase tracking-widest rounded-lg transition-all active:scale-95 shadow-md disabled:opacity-50"
                     >

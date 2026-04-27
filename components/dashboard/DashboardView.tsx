@@ -11,9 +11,10 @@ interface DashboardViewProps {
   onAddEmployee: () => void;
   onLeadClick: (id: string, allIds?: string[]) => void;
   activeNav: string;
+  refreshKey?: number;
 }
 
-export default function DashboardView({ onAddLead, onAddEmployee, onLeadClick, activeNav }: DashboardViewProps) {
+export default function DashboardView({ onAddLead, onAddEmployee, onLeadClick, activeNav, refreshKey = 0 }: DashboardViewProps) {
   const { user } = useAuth();
 
   return (
@@ -55,19 +56,20 @@ export default function DashboardView({ onAddLead, onAddEmployee, onLeadClick, a
       </header>
 
       {/* Metrics and Pipeline Sections */}
-      <KpiGrid />
+      <KpiGrid refreshKey={refreshKey} />
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
         <div className="xl:col-span-2">
-          <PipelineFunnel />
+          <PipelineFunnel refreshKey={refreshKey} />
         </div>
-        <RemindersList />
+        <RemindersList refreshKey={refreshKey} />
       </div>
 
       {/* Leads Management Section */}
       <LeadsTable 
         activeNav={activeNav} 
         onLeadClick={onLeadClick} 
+        refreshKey={refreshKey}
       />
     </div>
   );

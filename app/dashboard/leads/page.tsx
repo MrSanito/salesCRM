@@ -10,11 +10,26 @@ export default function LeadsPage() {
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [leadIds, setLeadIds] = useState<string[]>([]);
   const { user } = useAuth();
+
+  const switchLead = (dir: "next" | "prev") => {
+    if (!selectedLeadId || leadIds.length === 0) return;
+    const currentIndex = leadIds.indexOf(selectedLeadId);
+    let newIndex = dir === "next" ? currentIndex + 1 : currentIndex - 1;
+    if (newIndex < 0) newIndex = leadIds.length - 1;
+    if (newIndex >= leadIds.length) newIndex = 0;
+    setSelectedLeadId(leadIds[newIndex]);
+  };
 
   // Only CEO and Manager can add leads based on previous instructions, 
   // but let's check if the user is authorized.
   const canAddLead = user?.role === "CEO" || user?.role === "MANAGER";
+
+  const handleLeadClick = (id: string, allIds?: string[]) => {
+    setSelectedLeadId(id);
+    if (allIds) setLeadIds(allIds);
+  };
 
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-[1600px] mx-auto">
@@ -68,12 +83,18 @@ export default function LeadsPage() {
         </select>
       </div>
 
-      <LeadsTable key={refreshKey} onLeadClick={setSelectedLeadId} activeNav="Leads" />
+      <LeadsTable 
+        refreshKey={refreshKey} 
+        onLeadClick={handleLeadClick} 
+        activeNav="Leads" 
+      />
 
       {selectedLeadId && (
         <LeadDetailModal 
           leadId={selectedLeadId} 
           onClose={() => setSelectedLeadId(null)} 
+          onUpdate={() => setRefreshKey(prev => prev + 1)}
+          onSwitch={switchLead}
         />
       )}
 

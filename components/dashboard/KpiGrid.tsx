@@ -17,7 +17,11 @@ function formatINR(n: number) {
   return `₹${n}`;
 }
 
-export default function KpiGrid() {
+interface KpiGridProps {
+  refreshKey?: number;
+}
+
+export default function KpiGrid({ refreshKey = 0 }: KpiGridProps) {
   const [kpis, setKpis] = useState<KpiData | null>(null);
 
   useEffect(() => {
@@ -25,7 +29,7 @@ export default function KpiGrid() {
       .then((r) => r.json())
       .then((d) => { if (d.kpis) setKpis(d.kpis); })
       .catch(() => {});
-  }, []);
+  }, [refreshKey]);
 
   const cards = [
     { label: "Total Leads", value: kpis ? String(kpis.totalLeads) : "—", icon: Users, iconBg: "bg-blue-50", iconColor: "text-blue-500", change: "Pipeline", up: true },

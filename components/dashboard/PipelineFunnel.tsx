@@ -13,7 +13,11 @@ function formatINR(n: number) {
   return `₹${n.toLocaleString("en-IN")}`;
 }
 
-export default function PipelineFunnel() {
+interface PipelineFunnelProps {
+  refreshKey?: number;
+}
+
+export default function PipelineFunnel({ refreshKey = 0 }: PipelineFunnelProps) {
   const [pipeline, setPipeline] = useState<PipelineStage[]>([]);
   const [totalValue, setTotalValue] = useState(0);
 
@@ -25,7 +29,7 @@ export default function PipelineFunnel() {
         if (d.kpis?.totalPipelineValue) setTotalValue(d.kpis.totalPipelineValue);
       })
       .catch(() => {});
-  }, []);
+  }, [refreshKey]);
 
   const totalLeads = pipeline.reduce((s, p) => s + p.count, 0);
   const wonCount = pipeline.find((p) => p.label === "Won")?.count || 0;
