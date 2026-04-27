@@ -67,16 +67,22 @@ export async function POST(req: Request) {
 
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     const body = await req.json();
-    const { name, company, phone, email, value, source, requirements, notes } = body;
+    const { name, company, phone, email, value, source, requirements, notes, ownerId } = body;
 
-    // Fetch user for org context
+    // Fetch user for org context and role
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
-      select: { organizationId: true }
+      select: { organizationId: true, role: true }
     });
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // Determine owner: if worker, they are the owner. If manager/admin, they can specify.
+    let finalOwnerId = decoded.userId;
+    if (ownerId && (user.role === "ORG_ADMIN" || user.role === "MANAGER")) {
+      finalOwnerId = ownerId;
     }
 
     const lead = await prisma.lead.create({
@@ -85,9 +91,9 @@ export async function POST(req: Request) {
         company,
         phone,
         email,
-        dealValueInr: value || 0,
+        dealValueInr: value.toString() || "0",
         organizationId: user.organizationId,
-        ownerId: decoded.userId,
+        ownerId: finalOwnerId,
         createdById: decoded.userId,
         stage: "NEW",
         // Standalone note if provided

@@ -29,6 +29,7 @@ export interface DbLead {
   dealValueInr: string;
   followUpAt: string | null;
   createdAt: string;
+  ownerId: string;
   owner: { name: string; initials: string };
 }
 
@@ -47,6 +48,9 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch }
   const [lead, setLead] = useState<DbLead | null>(null);
   const [loading, setLoading] = useState(true);
   const [stage, setStage] = useState("");
+  const [ownerId, setOwnerId] = useState("");
+  const [team, setTeam] = useState<any[]>([]);
+  const [updating, setUpdating] = useState(false);
   const [showSchedule, setShowSchedule] = useState(false);
   const [isDossierOpen, setIsDossierOpen] = useState(true);
   const [expandedField, setExpandedField] = useState<string | null>("wholeSummary");
@@ -61,22 +65,64 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch }
   const [dealValue, setDealValue] = useState("");
   const [isValueEditable, setIsValueEditable] = useState(false);
 
-  // Fetch lead from DB by ID
+  // Fetch lead and team
   useEffect(() => {
     if (!leadId) return;
     setLoading(true);
-    fetch(`/api/leads/${leadId}`)
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.id) {
-          setLead(d);
-          setStage(d.stage);
-          setDealValue(d.dealValueInr || "");
+    
+    const fetchData = async () => {
+      try {
+        const leadRes = await fetch(`/api/leads/${leadId}`);
+        const leadData = await leadRes.json();
+        if (leadData.id) {
+          setLead(leadData);
+          setStage(leadData.stage);
+          setDealValue(leadData.dealValueInr || "");
+          setOwnerId(leadData.ownerId);
         }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [leadId]);
+
+        if (canChangeOwner) {
+          const teamRes = await fetch("/api/team");
+          const teamData = await teamRes.json();
+          if (Array.isArray(teamData)) setTeam(teamData);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [leadId, canChangeOwner]);
+
+  const handleUpdate = async () => {
+    setUpdating(true);
+    try {
+      const res = await fetch(`/api/leads/${leadId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          stage,
+          dealValueInr: parseFloat(dealValue) || 0,
+          ownerId: ownerId !== lead?.ownerId ? ownerId : undefined,
+        }),
+      });
+
+      if (res.ok) {
+        toast.success("Intelligence Synchronized");
+        // Optionally refresh lead data
+        const updated = await res.json();
+        setLead(updated);
+      } else {
+        toast.error("Protocol Update Failed");
+      }
+    } catch (err) {
+      toast.error("Network Error");
+    } finally {
+      setUpdating(false);
+    }
+  };
 
   const toggleChecklist = (id: string) => {
     setChecklist((prev) => ({ ...prev, [id]: !prev[id as keyof typeof checklist] }));
@@ -121,6 +167,7 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch }
 
           {!loading && !isLoading && (
             <button
+              onClick={() => router.push(`/lead/${leadId}/edit`)}
               className="bg-slate-900 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-100 hover:bg-slate-800 transition-all active:scale-95"
             >
               Edit Details
@@ -157,14 +204,31 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch }
                   <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-2">Lead Owner</p>
                   <div className="flex items-center gap-2.5">
                     <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600">
-                      {lead.owner?.initials || "—"}
+                      {team.find(t => t.id === ownerId)?.initials || lead.owner?.initials || "—"}
                     </div>
                     <div className="relative group/owner">
-                      <span className={`text-lg font-bold ${canChangeOwner ? "text-slate-800" : "text-slate-400"}`}>
-                        {lead.owner?.name || "—"}
-                      </span>
-                      {!canChangeOwner && (
-                        <ShieldAlert size={12} className="inline ml-1 text-slate-300 opacity-0 group-hover/owner:opacity-100 transition-opacity" />
+                      {canChangeOwner ? (
+                        <div className="relative">
+                          <select
+                            value={ownerId}
+                            onChange={(e) => setOwnerId(e.target.value)}
+                            className="bg-transparent text-lg font-bold text-slate-800 focus:outline-none appearance-none pr-6 cursor-pointer"
+                          >
+                            {team.map((member) => (
+                              <option key={member.id} value={member.id}>
+                                {member.name}
+                              </option>
+                            ))}
+                          </select>
+                          <ChevronDown size={14} className="absolute right-0 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                        </div>
+                      ) : (
+                        <div className="flex items-center">
+                          <span className="text-lg font-bold text-slate-400">
+                            {lead.owner?.name || "—"}
+                          </span>
+                          <ShieldAlert size={12} className="inline ml-1 text-slate-300 opacity-0 group-hover/owner:opacity-100 transition-opacity" />
+                        </div>
                       )}
                     </div>
                   </div>
@@ -314,12 +378,11 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch }
                       />
                     </div>
                     <button
-                      onClick={() => {
-                        toast.success("Status Synchronized", { icon: "✅" });
-                      }}
-                      className="mt-2 w-full py-2 bg-slate-900 hover:bg-slate-800 text-white text-[9px] font-black uppercase tracking-widest rounded-lg transition-all active:scale-95 shadow-md"
+                      onClick={handleUpdate}
+                      disabled={updating}
+                      className="mt-2 w-full py-2 bg-slate-900 hover:bg-slate-800 text-white text-[9px] font-black uppercase tracking-widest rounded-lg transition-all active:scale-95 shadow-md disabled:opacity-50"
                     >
-                      Process & Submit
+                      {updating ? "Syncing..." : "Process & Submit"}
                     </button>
                   </div>
                 </div>

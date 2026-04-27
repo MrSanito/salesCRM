@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, User, Building, Phone, Mail, IndianRupee, MessageSquare, Info } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthContext";
 import toast from "react-hot-toast";
@@ -12,6 +12,7 @@ interface AddLeadModalProps {
 export default function AddLeadModal({ onClose, onSuccess }: AddLeadModalProps) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [team, setTeam] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     name: "",
     company: "",
@@ -20,8 +21,25 @@ export default function AddLeadModal({ onClose, onSuccess }: AddLeadModalProps) 
     value: "",
     source: "Direct Referral",
     requirements: "",
-    notes: ""
+    notes: "",
+    ownerId: ""
   });
+
+  const canAssign = user?.role === "ORG_ADMIN" || user?.role === "MANAGER";
+
+  useEffect(() => {
+    if (canAssign) {
+      fetch("/api/team")
+        .then(r => r.json())
+        .then(d => {
+          if (Array.isArray(d)) {
+            setTeam(d);
+            // Default to current user
+            setFormData(prev => ({ ...prev, ownerId: user?.id || "" }));
+          }
+        });
+    }
+  }, [canAssign, user?.id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -155,6 +173,20 @@ export default function AddLeadModal({ onClose, onSuccess }: AddLeadModalProps) 
                   <option>Cold Outreach</option>
                 </select>
               </div>
+              {canAssign && (
+                <div className="space-y-2">
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Assign To</label>
+                  <select 
+                    value={formData.ownerId}
+                    onChange={e => setFormData({ ...formData, ownerId: e.target.value })}
+                    className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 bg-slate-50 outline-none transition-all appearance-none"
+                  >
+                    {team.map(m => (
+                      <option key={m.id} value={m.id}>{m.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
             <div className="space-y-2">
               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Initial Requirement</label>

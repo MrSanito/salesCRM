@@ -41,3 +41,59 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: "Failed to fetch lead" }, { status: 500 });
   }
 }
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get("token")?.value;
+    if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      select: { organizationId: true, role: true, id: true },
+    });
+    if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
+
+    const { id } = await params;
+    const data = await req.json();
+
+    // Check if lead exists and belongs to org
+    const existingLead = await prisma.lead.findFirst({
+      where: { id, organizationId: user.organizationId }
+    });
+
+    if (!existingLead) return NextResponse.json({ error: "Lead not found" }, { status: 404 });
+
+    // Authorization: Workers can only update stage/value of their own leads
+    if (user.role === "SALES_REP" && existingLead.ownerId !== user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Role-based restrictions: Only ORG_ADMIN and MANAGER can change owner
+    if (data.ownerId && (user.role !== "ORG_ADMIN" && user.role !== "MANAGER")) {
+      delete data.ownerId;
+    }
+
+    const updatedLead = await prisma.lead.update({
+      where: { id },
+      data: {
+        ...(data.contactName && { contactName: data.contactName }),
+        ...(data.company && { company: data.company }),
+        ...(data.email && { email: data.email }),
+        ...(data.phone && { phone: data.phone }),
+        ...(data.stage && { stage: data.stage }),
+        ...(data.priority && { priority: data.priority }),
+        ...(data.dealValueInr !== undefined && { dealValueInr: data.dealValueInr.toString() }),
+        ...(data.ownerId && { ownerId: data.ownerId }),
+      },
+      include: {
+        owner: { select: { name: true, initials: true } },
+      }
+    });
+
+    return NextResponse.json(updatedLead);
+  } catch (error) {
+    console.error("Lead PATCH error:", error);
+    return NextResponse.json({ error: "Failed to update lead" }, { status: 500 });
+  }
+}

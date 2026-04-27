@@ -1,179 +1,235 @@
 "use client";
 import React, { useState, useEffect, use } from 'react';
-import { ALL_LEADS, PIPELINE_STAGES, Lead } from "@/lib/data";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
-  Building2, Phone, User, Save, X, ArrowLeft, ChevronDown
+  Building2, Phone, User, Save, X, ArrowLeft, ChevronDown, Mail, ShieldAlert
 } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Sidebar from "@/components/layout/Sidebar";
+import { useAuth } from "@/components/auth/AuthContext";
+import toast from "react-hot-toast";
+
+const STAGE_LABEL: Record<string, string> = {
+  NEW: "New", CONTACTED: "Contacted", QUALIFIED: "Qualified",
+  PROPOSAL_SENT: "Proposal Sent", NEGOTIATION: "Negotiation",
+  WON: "Won", CLOSED_LOST: "Closed Lost",
+};
+
+const PIPELINE_STAGES = ["NEW", "CONTACTED", "QUALIFIED", "PROPOSAL_SENT", "NEGOTIATION", "WON", "CLOSED_LOST"];
 
 export default function EditLeadPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
+  const { user } = useAuth();
   const resolvedParams = use(params);
-  const leadId = parseInt(resolvedParams.id);
-  const initialLead = ALL_LEADS.find(l => l.id === leadId) as Lead | undefined;
-
-  // In a real app we'd fetch this from API and not use a hardcoded fallback if not found, 
-  // but for the frontend demo we can just redirect.
-  useEffect(() => {
-    if (!initialLead) {
-      router.push('/');
-    }
-  }, [initialLead, router]);
-
-  const [formData, setFormData] = useState<Lead>(initialLead || {
-    id: 0, 
-    initials: '', 
-    name: '', 
-    company: '', 
-    status: '', 
-    subStatus: '', 
-    owner: '', 
-    value: '', 
-    priority: '', 
-    date: '',
-    primaryMobile: '',
-    secondaryMobile: '',
-    email: '',
-    secondaryEmail: '',
-    interestedIn: '',
-    source: ''
+  const leadId = resolvedParams.id;
+  
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [team, setTeam] = useState<any[]>([]);
+  const [formData, setFormData] = useState({
+    contactName: "",
+    company: "",
+    phone: "",
+    email: "",
+    stage: "",
+    priority: "MEDIUM",
+    dealValueInr: "0",
+    ownerId: ""
   });
 
-  if (!initialLead) return null;
+  const canAssign = user?.role === "ORG_ADMIN" || user?.role === "MANAGER";
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const leadRes = await fetch(`/api/leads/${leadId}`);
+        const leadData = await leadRes.json();
+        
+        if (leadData.id) {
+          setFormData({
+            contactName: leadData.contactName,
+            company: leadData.company,
+            phone: leadData.phone || "",
+            email: leadData.email || "",
+            stage: leadData.stage,
+            priority: leadData.priority,
+            dealValueInr: leadData.dealValueInr || "0",
+            ownerId: leadData.ownerId
+          });
+        }
+
+        const teamRes = await fetch("/api/team");
+        const teamData = await teamRes.json();
+        if (Array.isArray(teamData)) setTeam(teamData);
+
+      } catch (err) {
+        toast.error("Failed to load data");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [leadId]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/leads/${leadId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      if (res.ok) {
+        toast.success("Intelligence Synchronized");
+        router.push("/dashboard/leads");
+      } else {
+        toast.error("Protocol Update Failed");
+      }
+    } catch (err) {
+      toast.error("Network Error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) return (
+    <div className="h-screen w-screen flex items-center justify-center bg-slate-50">
+      <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col sm:flex-row">
-      <Sidebar />
+      <Sidebar activeNav="New Leads" />
       <div className="flex-1 flex flex-col min-w-0 transition-all duration-300 ml-0 sm:ml-64">
-        <Navbar />
+        <Navbar activeNav="Edit Intelligence" />
         <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
           <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* Header section */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <button onClick={() => router.back()} className="text-sm font-semibold text-slate-500 hover:text-slate-700 flex items-center gap-2 mb-2 transition-colors">
-                  <ArrowLeft size={16} /> Back to Lead Detail
+                <button onClick={() => router.back()} className="text-sm font-bold text-slate-400 hover:text-slate-700 flex items-center gap-2 mb-2 transition-colors uppercase tracking-widest">
+                  <ArrowLeft size={16} /> Back to Dashboard
                 </button>
                 <div className="flex items-center gap-3">
                   <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">Edit Lead</h1>
-                  <span className="text-xs font-bold text-slate-400 font-mono uppercase tracking-tighter bg-white px-2 py-1 rounded-md border border-slate-200">
-                    LD-{initialLead.id}
+                  <span className="text-[10px] font-bold text-slate-400 font-mono uppercase tracking-tighter bg-white px-2 py-1 rounded-md border border-slate-200">
+                    ID: {leadId.slice(0, 8).toUpperCase()}
                   </span>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                 <Link href={`/lead/${initialLead.id}`} className="bg-white text-slate-700 px-4 py-2 rounded-lg text-sm font-semibold shadow-sm border border-slate-200 hover:bg-slate-50 transition-all flex items-center gap-2">
+                 <button onClick={() => router.back()} className="bg-white text-slate-500 px-6 py-2.5 rounded-xl text-xs font-bold shadow-sm border border-slate-200 hover:bg-slate-50 transition-all flex items-center gap-2 uppercase tracking-widest">
                    <X size={16} /> Cancel
-                 </Link>
-                 <button onClick={() => router.push(`/lead/${initialLead.id}`)} className="bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-bold shadow-sm hover:bg-blue-700 transition-all flex items-center gap-2">
-                   <Save size={16} /> Save Changes
+                 </button>
+                 <button 
+                  onClick={handleSave} 
+                  disabled={saving}
+                  className="bg-slate-900 text-white px-8 py-2.5 rounded-xl text-xs font-bold shadow-lg shadow-slate-200 hover:bg-slate-800 transition-all flex items-center gap-2 uppercase tracking-widest active:scale-95 disabled:opacity-50"
+                 >
+                   {saving ? "Saving..." : "Save Changes"} <Save size={16} />
                  </button>
               </div>
             </div>
 
             {/* Form */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-               <div className="p-6 md:p-8 border-b border-slate-100">
-                  <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-                     <User size={18} className="text-blue-500" /> Basic Information
+            <div className="bg-white rounded-[32px] border border-slate-100 shadow-xl shadow-slate-200/50 overflow-hidden">
+               <div className="p-8 md:p-10 border-b border-slate-50">
+                  <h2 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-8 flex items-center gap-3">
+                     <User size={14} className="text-blue-500" /> Basic Identity
                   </h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                     <div>
-                       <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Client Name</label>
-                       <input type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all" />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                     <div className="space-y-2">
+                       <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Client Name</label>
+                       <input type="text" value={formData.contactName} onChange={e => setFormData({...formData, contactName: e.target.value})} className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 focus:bg-white transition-all shadow-inner" />
                      </div>
-                     <div>
-                       <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Company Name</label>
-                       <input type="text" value={formData.company} onChange={e => setFormData({...formData, company: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all" />
+                     <div className="space-y-2">
+                       <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Company Entity</label>
+                       <input type="text" value={formData.company} onChange={e => setFormData({...formData, company: e.target.value})} className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 focus:bg-white transition-all shadow-inner" />
                      </div>
-                     <div>
-                       <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Lead Owner</label>
-                       <input type="text" value={formData.owner} onChange={e => setFormData({...formData, owner: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all" />
+                     <div className="space-y-2">
+                       <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Lead Owner</label>
+                       {canAssign ? (
+                          <div className="relative">
+                            <select 
+                              value={formData.ownerId} 
+                              onChange={e => setFormData({...formData, ownerId: e.target.value})} 
+                              className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 focus:bg-white transition-all appearance-none cursor-pointer pr-12 shadow-inner"
+                            >
+                              {team.map(m => (
+                                <option key={m.id} value={m.id}>{m.name} ({m.role.replace("ORG_", "")})</option>
+                              ))}
+                            </select>
+                            <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                          </div>
+                       ) : (
+                         <div className="w-full px-5 py-4 bg-slate-100 border border-slate-100 rounded-2xl text-sm font-bold text-slate-400 flex items-center justify-between">
+                            <span>{team.find(m => m.id === formData.ownerId)?.name || "Restricted Access"}</span>
+                            <ShieldAlert size={14} />
+                         </div>
+                       )}
                      </div>
                   </div>
                </div>
 
-               <div className="p-6 md:p-8 border-b border-slate-100 bg-slate-50/50">
-                  <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-                     <Phone size={18} className="text-orange-500" /> Contact Protocol
+               <div className="p-8 md:p-10 border-b border-slate-50 bg-slate-50/30">
+                  <h2 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-8 flex items-center gap-3">
+                     <Phone size={14} className="text-orange-500" /> Contact Protocol
                   </h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                     <div>
-                       <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Primary Mobile</label>
-                       <input type="text" value={formData.primaryMobile || ""} onChange={e => setFormData({...formData, primaryMobile: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-mono" />
-                     </div>
-                     <div>
-                       <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Secondary Mobile</label>
-                       <input type="text" value={formData.secondaryMobile || ""} onChange={e => setFormData({...formData, secondaryMobile: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-mono" />
-                     </div>
-                     <div>
-                       <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Email ID</label>
-                       <input type="email" value={formData.email || ""} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
-                     </div>
-                     <div>
-                       <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Secondary Email ID</label>
-                       <input type="email" value={formData.secondaryEmail || ""} onChange={e => setFormData({...formData, secondaryEmail: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
-                     </div>
-                  </div>
-               </div>
-
-               <div className="p-6 md:p-8">
-                  <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-                     <Building2 size={18} className="text-emerald-500" /> Pipeline Alignment
-                  </h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                     <div>
-                       <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Status</label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                     <div className="space-y-2">
+                       <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Primary Mobile</label>
                        <div className="relative">
-                         <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all appearance-none cursor-pointer pr-10">
-                           {PIPELINE_STAGES.map(stage => (
-                             <option key={stage} value={stage}>{stage}</option>
+                        <Phone size={14} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" />
+                        <input type="text" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full pl-12 pr-5 py-4 bg-white border border-slate-200 rounded-2xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-orange-500/5 focus:border-orange-500 transition-all font-mono" />
+                       </div>
+                     </div>
+                     <div className="space-y-2">
+                       <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Email ID</label>
+                       <div className="relative">
+                        <Mail size={14} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" />
+                        <input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full pl-12 pr-5 py-4 bg-white border border-slate-200 rounded-2xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all" />
+                       </div>
+                     </div>
+                  </div>
+               </div>
+
+               <div className="p-8 md:p-10">
+                  <h2 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-8 flex items-center gap-3">
+                     <Building2 size={14} className="text-emerald-500" /> Intelligence Stream
+                  </h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                     <div className="space-y-2">
+                       <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Pipeline Stage</label>
+                       <div className="relative">
+                         <select value={formData.stage} onChange={e => setFormData({...formData, stage: e.target.value})} className="w-full px-5 py-4 bg-slate-900 text-white border-none rounded-2xl text-[10px] font-black uppercase tracking-widest focus:outline-none focus:ring-4 focus:ring-blue-500/20 transition-all appearance-none cursor-pointer pr-12 shadow-lg shadow-slate-200">
+                           {PIPELINE_STAGES.map(s => (
+                             <option key={s} value={s}>{STAGE_LABEL[s]}</option>
                            ))}
                          </select>
-                         <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                         <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/50 pointer-events-none" />
                        </div>
                      </div>
-                     <div>
-                       <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Sub Status</label>
-                       <input type="text" value={formData.subStatus} onChange={e => setFormData({...formData, subStatus: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all" />
-                     </div>
-                     <div>
-                       <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Value</label>
-                       <input type="text" value={formData.value} onChange={e => setFormData({...formData, value: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all font-mono" />
-                     </div>
-                     <div>
-                       <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Priority</label>
+                     <div className="space-y-2">
+                       <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Lead Priority</label>
                        <div className="relative">
-                         <select value={formData.priority} onChange={e => setFormData({...formData, priority: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all appearance-none cursor-pointer pr-10">
-                             <option value="High">High</option>
-                             <option value="Medium">Medium</option>
-                             <option value="Low">Low</option>
+                         <select value={formData.priority} onChange={e => setFormData({...formData, priority: e.target.value})} className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all appearance-none cursor-pointer pr-12">
+                             <option value="HIGH">High Priority</option>
+                             <option value="MEDIUM">Medium Priority</option>
+                             <option value="LOW">Low Priority</option>
                          </select>
-                         <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                         <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                        </div>
+                     </div>
+                     <div className="space-y-2">
+                       <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Contract Value (INR)</label>
+                       <input type="text" value={formData.dealValueInr} onChange={e => setFormData({...formData, dealValueInr: e.target.value})} className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all font-mono" />
                      </div>
                   </div>
                </div>
-
-                <div className="p-6 md:p-8 bg-slate-50/50">
-                  <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-                     <Building2 size={18} className="text-purple-500" /> Intelligence
-                  </h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                     <div>
-                       <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Interested In</label>
-                       <input type="text" value={formData.interestedIn || ""} onChange={e => setFormData({...formData, interestedIn: e.target.value})} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-semibold" />
-                     </div>
-                     <div>
-                       <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Source</label>
-                       <input type="text" value={formData.source || ""} onChange={e => setFormData({...formData, source: e.target.value})} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-semibold" />
-                     </div>
-                  </div>
-                </div>
-             </div>
+            </div>
 
           </div>
         </main>
