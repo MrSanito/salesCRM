@@ -35,8 +35,8 @@ export interface DbLead {
 interface LeadDetailModalProps {
   leadId: string;
   onClose: () => void;
-  isLoading: boolean;
-  onSwitch: (dir: "next" | "prev") => void;
+  isLoading?: boolean;
+  onSwitch?: (dir: "next" | "prev") => void;
 }
 
 export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch }: LeadDetailModalProps) {
@@ -103,15 +103,19 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch }
             </button>
             <div className="h-6 w-[1px] bg-slate-100 mx-1" />
             <div className="flex items-center gap-1">
-              <button onClick={() => onSwitch("prev")} className="p-2 hover:bg-slate-50 rounded-xl text-slate-400 hover:text-slate-900 transition-all active:scale-95">
-                <ChevronLeft size={22} />
-              </button>
+              {onSwitch && (
+                <button onClick={() => onSwitch("prev")} className="p-2 hover:bg-slate-50 rounded-xl text-slate-400 hover:text-slate-900 transition-all active:scale-95">
+                  <ChevronLeft size={22} />
+                </button>
+              )}
               <span className="text-[10px] font-bold text-slate-300 font-mono uppercase tracking-[0.2em] px-2">
                 {lead?.id.slice(0, 8).toUpperCase() || "—"}
               </span>
-              <button onClick={() => onSwitch("next")} className="p-2 hover:bg-slate-50 rounded-xl text-slate-400 hover:text-slate-900 transition-all active:scale-95">
-                <ChevronRight size={22} />
-              </button>
+              {onSwitch && (
+                <button onClick={() => onSwitch("next")} className="p-2 hover:bg-slate-50 rounded-xl text-slate-400 hover:text-slate-900 transition-all active:scale-95">
+                  <ChevronRight size={22} />
+                </button>
+              )}
             </div>
           </div>
 
