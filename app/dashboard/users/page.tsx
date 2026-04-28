@@ -1,6 +1,6 @@
 "use client"
-import ModulePlaceholder from "@/components/dashboard/ModulePlaceholder";
+import TeamView from "@/components/dashboard/TeamView";
 
 export default function UsersPage() {
-  return <ModulePlaceholder title="Users" />;
+  return <TeamView defaultView="grid" />;
 }

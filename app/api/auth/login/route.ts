@@ -5,11 +5,19 @@ import { NextResponse } from "next/server";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-me";
 
+export async function GET() {
+  return NextResponse.json({ message: "Login API is alive. Use POST to authenticate." });
+}
+
 export async function POST(req: Request) {
+  console.log(">>> [DEBUG] LOGIN HANDLER STARTING <<<");
   try {
-    const { email, password } = await req.json();
+    const body = await req.json();
+    console.log(">>> [DEBUG] Body parsed:", body.email);
+    const { email, password } = body;
 
     if (!email || !password) {
+      console.log(">>> [DEBUG] Missing fields");
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
 
@@ -17,6 +25,7 @@ export async function POST(req: Request) {
     let attempts = 0;
     while (attempts < 3) {
       try {
+        console.log(`>>> [DEBUG] DB Attempt ${attempts + 1}`);
         user = await prisma.user.findUnique({
           where: { email },
         });
@@ -25,20 +34,21 @@ export async function POST(req: Request) {
         attempts++;
         console.error(`[Login] Database attempt ${attempts} failed: ${err.message}`);
         if (attempts >= 3) {
-          console.error("[Login] Final attempt failed. Database is likely unreachable due to slow internet.");
           throw err;
         }
-        await new Promise(resolve => setTimeout(resolve, 3000)); // Wait 3s
+        await new Promise(resolve => setTimeout(resolve, 3000));
       }
     }
 
     if (!user) {
+      console.log(">>> [DEBUG] User not found");
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
+      console.log(">>> [DEBUG] Password invalid");
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
     }
 
@@ -62,7 +72,6 @@ export async function POST(req: Request) {
       { status: 200 }
     );
 
-    // Set cookie
     response.cookies.set("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -71,9 +80,10 @@ export async function POST(req: Request) {
       path: "/",
     });
 
+    console.log(">>> [DEBUG] Login successful, returning 200");
     return response;
   } catch (error: any) {
-    console.error("Login error:", error);
+    console.error(">>> [DEBUG] LOGIN HANDLER CRASHED <<<", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

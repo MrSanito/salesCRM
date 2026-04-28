@@ -17,11 +17,15 @@ interface TeamMember {
   };
 }
 
-export default function TeamView() {
+interface TeamViewProps {
+  defaultView?: "grid" | "graph";
+}
+
+export default function TeamView({ defaultView = "graph" }: TeamViewProps) {
   const { user } = useAuth();
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
-  const [viewType, setViewType] = useState<"grid" | "graph">("graph");
+  const [viewType, setViewType] = useState<"grid" | "graph">(defaultView);
   const [addingSubTo, setAddingSubTo] = useState<{ id: string, name: string } | null>(null);
 
   const fetchTeam = async () => {

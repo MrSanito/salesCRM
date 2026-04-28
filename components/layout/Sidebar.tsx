@@ -5,6 +5,7 @@ import {
   Users2, Users, Puzzle, Settings, X
 } from "lucide-react";
 import Link from "next/link";
+import { useAuth } from "@/components/auth/AuthContext";
 
 const SIDEBAR_ITEMS = [
   {
@@ -54,6 +55,7 @@ export default function Sidebar({
   isOpen = false, 
   setIsOpen = () => {} 
 }: SidebarProps) {
+  const { user } = useAuth();
   return (
     <>
       {/* Mobile backdrop */}
@@ -137,11 +139,13 @@ export default function Sidebar({
         <div className="px-3 py-3 border-t border-sidebar-border shrink-0">
           <div className="flex items-center gap-2.5 px-2">
             <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center flex-shrink-0">
-              <span className="text-white text-[11px] font-bold">AM</span>
+              <span className="text-white text-[11px] font-bold">{user?.initials || "U"}</span>
             </div>
             <div className="min-w-0">
-              <p className="text-sidebar-foreground text-[12px] font-medium truncate">Arjun Mehta</p>
-              <p className="text-sidebar-foreground/40 text-[10px]">Sales Owner</p>
+              <p className="text-sidebar-foreground text-[12px] font-medium truncate">{user?.name || "User"}</p>
+              <p className="text-sidebar-foreground/40 text-[10px] truncate">
+                {user?.role ? user.role.replace("ORG_", "").replace("_", " ").toLowerCase() : "Sales Staff"}
+              </p>
             </div>
           </div>
         </div>
