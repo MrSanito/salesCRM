@@ -85,6 +85,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         ...(data.priority && { priority: data.priority }),
         ...(data.dealValueInr !== undefined && { dealValueInr: data.dealValueInr.toString() }),
         ...(data.ownerId && { ownerId: data.ownerId }),
+        ...(data.requirement !== undefined && { requirement: data.requirement }),
       },
       include: {
         owner: { select: { name: true, initials: true } },

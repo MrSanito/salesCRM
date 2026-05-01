@@ -5,6 +5,7 @@ import LeadDetailModal from "@/components/dashboard/LeadDetailModal";
 import AddLeadModal from "@/components/dashboard/AddLeadModal";
 import { Plus, Search, Filter, Download } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthContext";
+import * as XLSX from "xlsx";
 
 export default function LeadsPage() {
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
@@ -26,6 +27,33 @@ export default function LeadsPage() {
   // but let's check if the user is authorized.
   const canAddLead = user?.role === "CEO" || user?.role === "MANAGER";
 
+  const handleExportCSV = async () => {
+    try {
+      const res = await fetch("/api/leads");
+      const leads = await res.json();
+      if (!Array.isArray(leads)) return;
+
+      const worksheetData = leads.map((lead: any) => ({
+        "Contact Name": lead.contactName,
+        "Company": lead.company,
+        "Stage": lead.stage,
+        "Phone": lead.phone || "",
+        "Email": lead.email || "",
+        "Deal Value (INR)": lead.dealValueInr,
+        "Priority": lead.priority,
+        "Owner": lead.owner?.name || "",
+        "Created At": new Date(lead.createdAt).toLocaleDateString("en-IN")
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(worksheetData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Leads");
+      XLSX.writeFile(workbook, "Leads_Pipeline.csv", { bookType: "csv" });
+    } catch (e) {
+      console.error("Export failed", e);
+    }
+  };
+
   const handleLeadClick = (id: string, allIds?: string[]) => {
     setSelectedLeadId(id);
     if (allIds) setLeadIds(allIds);
@@ -40,7 +68,10 @@ export default function LeadsPage() {
         </div>
         
         <div className="flex items-center gap-2">
-          <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">
+          <button 
+            onClick={handleExportCSV}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+          >
             <Download size={16} />
             Export CSV
           </button>

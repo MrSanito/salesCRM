@@ -27,6 +27,7 @@ export interface DbLead {
   stage: string;
   priority: string;
   dealValueInr: string;
+  requirement: string | null;
   followUpAt: string | null;
   createdAt: string;
   ownerId: string;
@@ -80,6 +81,11 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
           setStage(leadData.stage);
           setDealValue(leadData.dealValueInr || "");
           setOwnerId(leadData.ownerId);
+          setContext(prev => ({
+            ...prev,
+            requirement: leadData.requirement || "",
+            // Populate others if they exist in schema/data, otherwise leave as empty
+          }));
         }
 
         if (canChangeOwner) {

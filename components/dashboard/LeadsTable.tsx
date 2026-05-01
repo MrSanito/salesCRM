@@ -1,6 +1,7 @@
 "use client"
 import { useState, useEffect } from "react";
 import { Filter, ChevronDown, Download, Eye, MoreVertical, ChevronRight } from "lucide-react";
+import * as XLSX from "xlsx";
 
 // Stage/priority style maps — kept in sync with schema enums
 const STAGE_STYLES: Record<string, string> = {
@@ -35,6 +36,7 @@ interface DbLead {
   phone: string | null;
   email: string | null;
   followUpAt: string | null;
+  requirement: string | null;
   createdAt: string;
   owner: { name: string; initials: string };
 }
@@ -52,6 +54,47 @@ export default function LeadsTable({ onLeadClick, activeNav, refreshKey = 0 }: L
   const [activeLeadMenu, setActiveLeadMenu] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
   const [filterPriority, setFilterPriority] = useState<string | null>(null);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+
+  const handleExportExcel = (dataToExport: DbLead[], filename: string) => {
+    const worksheetData = dataToExport.map(lead => ({
+      "Contact Name": lead.contactName,
+      "Company": lead.company,
+      "Stage": STAGE_LABEL[lead.stage] || lead.stage,
+      "Phone": lead.phone || "",
+      "Email": lead.email || "",
+      "Deal Value (INR)": lead.dealValueInr,
+      "Priority": lead.priority,
+      "Requirement": lead.requirement || "",
+      "Owner": lead.owner?.name || "",
+      "Created At": new Date(lead.createdAt).toLocaleDateString("en-IN")
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(worksheetData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Leads");
+    XLSX.writeFile(workbook, `${filename}.xlsx`);
+  };
+
+  const handleExportCSV = (dataToExport: DbLead[], filename: string) => {
+    const worksheetData = dataToExport.map(lead => ({
+      "Contact Name": lead.contactName,
+      "Company": lead.company,
+      "Stage": STAGE_LABEL[lead.stage] || lead.stage,
+      "Phone": lead.phone || "",
+      "Email": lead.email || "",
+      "Deal Value (INR)": lead.dealValueInr,
+      "Priority": lead.priority,
+      "Requirement": lead.requirement || "",
+      "Owner": lead.owner?.name || "",
+      "Created At": new Date(lead.createdAt).toLocaleDateString("en-IN")
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(worksheetData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Leads");
+    XLSX.writeFile(workbook, `${filename}.csv`, { bookType: "csv" });
+  };
 
   useEffect(() => {
     setLoading(true);
@@ -121,9 +164,43 @@ export default function LeadsTable({ onLeadClick, activeNav, refreshKey = 0 }: L
               </div>
             )}
           </div>
-          <button className="flex items-center gap-1.5 text-[12px] text-slate-600 border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">
-            <Download size={12} /> Export
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              className={`flex items-center gap-1.5 text-[12px] border px-3 py-1.5 rounded-lg transition-all ${showExportMenu ? "bg-slate-100 border-slate-300 text-slate-900" : "text-slate-600 border-slate-200 hover:bg-slate-50"}`}
+            >
+              <Download size={12} /> Export
+              <ChevronDown size={11} className={`text-slate-400 transition-transform ${showExportMenu ? "rotate-180" : ""}`} />
+            </button>
+            {showExportMenu && (
+              <div className="absolute right-0 top-full mt-1 w-52 bg-white border border-slate-200 rounded-lg shadow-xl z-30 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
+                <div className="px-3 py-2 border-b border-slate-50 bg-slate-50/50">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Export Options</p>
+                </div>
+                <button 
+                  onClick={() => { handleExportExcel(leads, "All_Leads"); setShowExportMenu(false); }} 
+                  className="w-full text-left px-3 py-2.5 text-[11px] hover:bg-slate-50 transition-colors font-semibold text-slate-700 flex items-center gap-2"
+                >
+                  <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                  Excel (.xlsx) - All Leads
+                </button>
+                <button 
+                  onClick={() => { handleExportExcel(displayedLeads, "Filtered_Leads"); setShowExportMenu(false); }} 
+                  className="w-full text-left px-3 py-2.5 text-[11px] hover:bg-slate-50 transition-colors font-semibold text-slate-700 border-t border-slate-50 flex items-center gap-2"
+                >
+                  <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                  Excel (.xlsx) - Filtered
+                </button>
+                <button 
+                  onClick={() => { handleExportCSV(leads, "All_Leads"); setShowExportMenu(false); }} 
+                  className="w-full text-left px-3 py-2.5 text-[11px] hover:bg-slate-50 transition-colors font-semibold text-slate-700 border-t border-slate-50 flex items-center gap-2"
+                >
+                  <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                  CSV (.csv) - All Leads
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

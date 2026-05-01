@@ -20,7 +20,7 @@ export default function AddLeadModal({ onClose, onSuccess }: AddLeadModalProps) 
     email: "",
     value: "",
     source: "Direct Referral",
-    requirements: "",
+    requirement: "",
     notes: "",
     ownerId: ""
   });
@@ -193,8 +193,8 @@ export default function AddLeadModal({ onClose, onSuccess }: AddLeadModalProps) 
               <div className="relative">
                 <MessageSquare size={14} className="absolute left-4 top-3 text-slate-400" />
                 <textarea 
-                  value={formData.requirements}
-                  onChange={e => setFormData({ ...formData, requirements: e.target.value })}
+                  value={formData.requirement}
+                  onChange={e => setFormData({ ...formData, requirement: e.target.value })}
                   className="w-full border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-sm font-bold text-slate-800 focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 bg-slate-50 outline-none transition-all h-20 resize-none" 
                   placeholder="Describe the product or service interest..."
                 ></textarea>

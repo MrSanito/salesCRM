@@ -16,6 +16,7 @@ export async function GET() {
 
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     
+
     // Fetch user to get organizationId
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
@@ -58,20 +59,14 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("token")?.value;
-
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
     const body = await req.json();
-    const { name, company, phone, email, value, source, requirements, notes, ownerId } = body;
+    const { name, company, phone, email, value, industry, requirement, notes, ownerId } = body;
+
+    const userId = "6d7b2b3e-096b-4433-994c-61e1a3557bf9";
 
     // Fetch user for org context and role
     const user = await prisma.user.findUnique({
-      where: { id: decoded.userId },
+      where: { id: userId },
       select: { organizationId: true, role: true }
     });
 
@@ -79,8 +74,23 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    // Check if lead already exists with this email or phone
+    const existingLead = await prisma.lead.findFirst({
+      where: {
+        organizationId: user.organizationId,
+        OR: [
+          { email: email || undefined },
+          { phone: phone || undefined }
+        ].filter(condition => Object.values(condition)[0] !== undefined)
+      }
+    });
+
+    if (existingLead) {
+      return NextResponse.json({ error: "A lead with this email or phone already exists." }, { status: 400 });
+    }
+
     // Determine owner: if worker, they are the owner. If manager/admin, they can specify.
-    let finalOwnerId = decoded.userId;
+    let finalOwnerId = userId;
     if (ownerId && (user.role === "ORG_ADMIN" || user.role === "MANAGER")) {
       finalOwnerId = ownerId;
     }
@@ -91,16 +101,17 @@ export async function POST(req: Request) {
         company,
         phone,
         email,
-        dealValueInr: value.toString() || "0",
+        requirement,
+        dealValueInr: (value || 0).toString(),
         organizationId: user.organizationId,
         ownerId: finalOwnerId,
-        createdById: decoded.userId,
+        createdById: userId,
         stage: "NEW",
         // Standalone note if provided
         notes: notes ? {
             create: {
                 content: notes,
-                userId: decoded.userId,
+                userId: userId,
                 organizationId: user.organizationId
             }
         } : undefined

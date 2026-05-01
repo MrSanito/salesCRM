@@ -34,7 +34,8 @@ export default function EditLeadPage({ params }: { params: Promise<{ id: string 
     stage: "",
     priority: "MEDIUM",
     dealValueInr: "0",
-    ownerId: ""
+    ownerId: "",
+    requirement: ""
   });
 
   const canAssign = user?.role === "ORG_ADMIN" || user?.role === "MANAGER";
@@ -54,7 +55,8 @@ export default function EditLeadPage({ params }: { params: Promise<{ id: string 
             stage: leadData.stage,
             priority: leadData.priority,
             dealValueInr: leadData.dealValueInr || "0",
-            ownerId: leadData.ownerId
+            ownerId: leadData.ownerId,
+            requirement: leadData.requirement || ""
           });
         }
 
@@ -226,6 +228,15 @@ export default function EditLeadPage({ params }: { params: Promise<{ id: string 
                      <div className="space-y-2">
                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Contract Value (INR)</label>
                        <input type="text" value={formData.dealValueInr} onChange={e => setFormData({...formData, dealValueInr: e.target.value})} className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all font-mono" />
+                     </div>
+                     <div className="space-y-2 md:col-span-2">
+                       <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Specific Requirement</label>
+                       <textarea 
+                         value={formData.requirement} 
+                         onChange={e => setFormData({...formData, requirement: e.target.value})} 
+                         className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 focus:bg-white transition-all shadow-inner h-32 resize-none"
+                         placeholder="What is the client's core requirement?"
+                       />
                      </div>
                   </div>
                </div>
