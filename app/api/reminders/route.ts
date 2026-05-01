@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse, NextRequest } from "next/server";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
+import { createAuditLog } from "@/lib/audit";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-me";
 
@@ -13,7 +14,7 @@ async function getAuthUser(req: NextRequest) {
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     return await prisma.user.findUnique({
       where: { id: decoded.userId },
-      select: { id: true, organizationId: true, role: true },
+      select: { id: true, organizationId: true, role: true, name: true },
     });
   } catch { return null; }
 }
@@ -97,6 +98,20 @@ export async function POST(req: NextRequest) {
           title: "Follow-up Scheduled",
           body: `${type} with ${r.lead.contactName} scheduled for ${new Date(scheduledAt).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}`,
         }
+      });
+
+      // Create Audit Log
+      await createAuditLog({
+        organizationId: user.organizationId,
+        leadId: leadId,
+        actorType: "USER",
+        actorId: user.id,
+        actorName: user.name || "Unknown User",
+        action: "SCHEDULE_FOLLOWUP",
+        field: "followUpAt",
+        afterValue: scheduledAt,
+        note: `Scheduled a new ${type.toLowerCase()} follow-up protocol for ${new Date(scheduledAt).toLocaleString("en-IN", { day: "numeric", month: "short" })}.`,
+        source: "UI",
       });
 
       return r;

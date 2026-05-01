@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
+import { createAuditLog } from "@/lib/audit";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-me";
 
@@ -20,7 +21,7 @@ export async function GET() {
     // Fetch user to get organizationId
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
-      select: { organizationId: true, role: true }
+      select: { id: true, organizationId: true, role: true, name: true }
     });
 
     if (!user) {
@@ -59,15 +60,20 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get("token")?.value;
+    if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const userId = decoded.userId;
+
     const body = await req.json();
     const { name, company, phone, email, value, industry, requirement, notes, ownerId } = body;
-
-    const userId = "6d7b2b3e-096b-4433-994c-61e1a3557bf9";
 
     // Fetch user for org context and role
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { organizationId: true, role: true }
+      select: { id: true, organizationId: true, role: true, name: true }
     });
 
     if (!user) {
@@ -116,6 +122,19 @@ export async function POST(req: Request) {
             }
         } : undefined
       },
+    });
+
+    // Create Audit Log
+    await createAuditLog({
+      organizationId: user.organizationId,
+      leadId: lead.id,
+      actorType: "USER",
+      actorId: user.id,
+      actorName: user.name || "Unknown User",
+      action: "CREATE",
+      afterValue: lead,
+      note: `Sales owner ${user.name || "Unknown"} initialized a new lead protocol for ${lead.contactName} from ${lead.company}.`,
+      source: "UI",
     });
 
     return NextResponse.json(lead, { status: 201 });

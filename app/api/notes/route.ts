@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse, NextRequest } from "next/server";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
+import { createAuditLog } from "@/lib/audit";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-me";
 
@@ -15,7 +16,7 @@ export async function GET(req: NextRequest) {
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
-      select: { organizationId: true },
+      select: { id: true, organizationId: true, name: true },
     });
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
@@ -45,7 +46,7 @@ export async function POST(req: NextRequest) {
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
-      select: { organizationId: true },
+      select: { id: true, organizationId: true, name: true },
     });
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
@@ -62,6 +63,20 @@ export async function POST(req: NextRequest) {
         content: content.trim(),
       },
       include: { user: { select: { name: true, initials: true, role: true } } },
+    });
+
+    // Create Audit Log
+    await createAuditLog({
+      organizationId: user.organizationId,
+      leadId: leadId,
+      actorType: "USER",
+      actorId: user.id,
+      actorName: user.name || "Unknown User",
+      action: "CREATE_NOTE",
+      field: "content",
+      afterValue: content,
+      note: `Appended a new intelligence note to the lead dossier: "${content.substring(0, 50)}${content.length > 50 ? '...' : ''}"`,
+      source: "UI",
     });
 
     return NextResponse.json(note, { status: 201 });

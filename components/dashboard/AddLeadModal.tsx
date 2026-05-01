@@ -22,7 +22,8 @@ export default function AddLeadModal({ onClose, onSuccess }: AddLeadModalProps) 
     source: "Direct Referral",
     requirement: "",
     notes: "",
-    ownerId: ""
+    ownerId: "",
+    requirementVerified: false
   });
 
   const canAssign = user?.role === "ORG_ADMIN" || user?.role === "MANAGER";
@@ -188,18 +189,32 @@ export default function AddLeadModal({ onClose, onSuccess }: AddLeadModalProps) 
                 </div>
               )}
             </div>
-            <div className="space-y-2">
-              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Initial Requirement</label>
-              <div className="relative">
-                <MessageSquare size={14} className="absolute left-4 top-3 text-slate-400" />
-                <textarea 
-                  value={formData.requirement}
-                  onChange={e => setFormData({ ...formData, requirement: e.target.value })}
-                  className="w-full border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-sm font-bold text-slate-800 focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 bg-slate-50 outline-none transition-all h-20 resize-none" 
-                  placeholder="Describe the product or service interest..."
-                ></textarea>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Initial Requirement</label>
+                <div className="relative">
+                  <MessageSquare size={14} className="absolute left-4 top-3 text-slate-400" />
+                  <textarea 
+                    value={formData.requirement}
+                    onChange={e => setFormData({ ...formData, requirement: e.target.value })}
+                    className="w-full border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-sm font-bold text-slate-800 focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 bg-slate-50 outline-none transition-all h-20 resize-none" 
+                    placeholder="Describe the product or service interest..."
+                  ></textarea>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 px-1">
+                <input 
+                  type="checkbox" 
+                  id="reqVerified"
+                  checked={formData.requirementVerified}
+                  onChange={e => setFormData({ ...formData, requirementVerified: e.target.checked })}
+                  className="w-5 h-5 rounded-lg border-slate-200 text-blue-600 focus:ring-blue-500/20 transition-all cursor-pointer"
+                />
+                <label htmlFor="reqVerified" className="text-[10px] font-bold text-slate-500 uppercase tracking-widest cursor-pointer select-none">Requirement Verified & Confirmed</label>
               </div>
             </div>
+
             <div className="space-y-2">
               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Internal Notes</label>
               <div className="relative">

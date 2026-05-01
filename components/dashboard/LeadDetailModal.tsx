@@ -9,6 +9,7 @@ import EngagementStream from "./lead-detail/EngagementStream";
 import IntelligenceDossier from "./lead-detail/IntelligenceDossier";
 import GatekeeperProtocol from "./lead-detail/GatekeeperProtocol";
 import ScheduleFollowupModal from "./lead-detail/ScheduleFollowupModal";
+import AuditLogs from "./lead-detail/AuditLogs";
 
 const STAGE_LABEL: Record<string, string> = {
   NEW: "New", CONTACTED: "Contacted", QUALIFIED: "Qualified",
@@ -56,6 +57,7 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
   const [showSchedule, setShowSchedule] = useState(false);
   const [isDossierOpen, setIsDossierOpen] = useState(true);
   const [expandedField, setExpandedField] = useState<string | null>("wholeSummary");
+  const [activeTab, setActiveTab] = useState<"INTEL" | "AUDIT">("INTEL");
   const [context, setContext] = useState({
     wholeSummary: "", requirement: "", useCase: "", scope: "",
     constraints: "", drivers: "", objections: "", commitments: ""
@@ -84,7 +86,6 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
           setContext(prev => ({
             ...prev,
             requirement: leadData.requirement || "",
-            // Populate others if they exist in schema/data, otherwise leave as empty
           }));
         }
 
@@ -110,6 +111,7 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
         stage: overrideStage || stage,
         dealValueInr: parseFloat(dealValue) || 0,
         ownerId: overrideOwner || (ownerId !== lead?.ownerId ? ownerId : undefined),
+        requirement: context.requirement,
       };
 
       const res = await fetch(`/api/leads/${leadId}`, {
@@ -140,7 +142,21 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
     setContext((prev) => ({ ...prev, [field]: val }));
   };
 
-
+  const logInteraction = async (type: "CALL" | "EMAIL" | "WHATSAPP") => {
+    try {
+      await fetch("/api/interactions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leadId, type })
+      });
+      // Optionally refresh audit logs if the tab is active
+      if (activeTab === "AUDIT") {
+        // We could trigger a re-render of AuditLogs by updating a state or using a key
+      }
+    } catch (err) {
+      console.error("Failed to log interaction:", err);
+    }
+  };
 
   if (!lead && !loading && !isLoading) return null;
 
@@ -329,7 +345,11 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
               {/* Action Layer */}
               <div className="space-y-6">
                 <div className="flex flex-wrap items-center gap-4">
-                  <a href={`tel:${lead.phone}`} className="flex-1 bg-white border border-slate-100 rounded-2xl px-6 py-4 flex items-center justify-center gap-3 group hover:border-orange-200 hover:bg-orange-50 transition-all active:scale-[0.98] shadow-sm">
+                  <a 
+                    href={`tel:${lead.phone}`} 
+                    onClick={() => logInteraction("CALL")}
+                    className="flex-1 bg-white border border-slate-100 rounded-2xl px-6 py-4 flex items-center justify-center gap-3 group hover:border-orange-200 hover:bg-orange-50 transition-all active:scale-[0.98] shadow-sm"
+                  >
                     <div className="w-8 h-8 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center border border-orange-100 group-hover:scale-110 transition-transform">
                       <Phone size={14} strokeWidth={2.5} />
                     </div>
@@ -339,7 +359,11 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                     </div>
                   </a>
 
-                  <a href={`mailto:${lead.email}`} className="flex-1 bg-white border border-slate-100 rounded-2xl px-6 py-4 flex items-center justify-center gap-3 group hover:border-blue-200 hover:bg-blue-50 transition-all active:scale-[0.98] shadow-sm">
+                  <a 
+                    href={`mailto:${lead.email}`} 
+                    onClick={() => logInteraction("EMAIL")}
+                    className="flex-1 bg-white border border-slate-100 rounded-2xl px-6 py-4 flex items-center justify-center gap-3 group hover:border-blue-200 hover:bg-blue-50 transition-all active:scale-[0.98] shadow-sm"
+                  >
                     <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 group-hover:scale-110 transition-transform">
                       <Mail size={14} strokeWidth={2.5} />
                     </div>
@@ -353,6 +377,7 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                     href={`https://wa.me/${lead.phone?.replace(/[^0-9]/g, "")}`}
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={() => logInteraction("WHATSAPP")}
                     className="flex-1 bg-white border border-slate-100 rounded-2xl px-6 py-4 flex items-center justify-center gap-3 group hover:border-green-200 hover:bg-green-50 transition-all active:scale-[0.98] shadow-sm"
                   >
                     <div className="w-8 h-8 rounded-xl bg-green-50 text-green-600 flex items-center justify-center border border-green-100 group-hover:scale-110 transition-transform">
@@ -424,18 +449,42 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                 {/* Gatekeeper */}
                 <GatekeeperProtocol checklist={checklist} toggleChecklist={toggleChecklist} />
 
-                {/* Engagement + Intelligence */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-12">
-                  <EngagementStream leadId={lead.id} ownerName={user?.name || "You"} />
-                  <IntelligenceDossier
-                    context={context}
-                    updateContext={updateContext}
-                    isDossierOpen={isDossierOpen}
-                    setIsDossierOpen={setIsDossierOpen}
-                    expandedField={expandedField}
-                    setExpandedField={setExpandedField}
-                    isRequirementEditable={stage === "WON"}
-                  />
+                {/* Tabs */}
+                <div className="flex items-center gap-1 border-b border-slate-100 pb-px">
+                  <button 
+                    onClick={() => setActiveTab("INTEL")}
+                    className={`px-6 py-3 text-[10px] font-black uppercase tracking-widest transition-all border-b-2 ${activeTab === "INTEL" ? "border-slate-900 text-slate-900" : "border-transparent text-slate-400 hover:text-slate-600"}`}
+                  >
+                    Intelligence & Engagement
+                  </button>
+                  <button 
+                    onClick={() => setActiveTab("AUDIT")}
+                    className={`px-6 py-3 text-[10px] font-black uppercase tracking-widest transition-all border-b-2 ${activeTab === "AUDIT" ? "border-slate-900 text-slate-900" : "border-transparent text-slate-400 hover:text-slate-600"}`}
+                  >
+                    Protocol History
+                  </button>
+                </div>
+
+                {/* Tab Content */}
+                <div className="grid grid-cols-1 gap-6 pb-12 min-h-[450px]">
+                  {activeTab === "INTEL" ? (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <EngagementStream leadId={lead.id} ownerName={user?.name || "You"} />
+                      <IntelligenceDossier
+                        context={context}
+                        updateContext={updateContext}
+                        isDossierOpen={isDossierOpen}
+                        setIsDossierOpen={setIsDossierOpen}
+                        expandedField={expandedField}
+                        setExpandedField={setExpandedField}
+                        isRequirementEditable={true}
+                      />
+                    </div>
+                  ) : (
+                    <div className="bg-slate-50 rounded-2xl border border-slate-100 p-6 h-full">
+                      <AuditLogs leadId={lead.id} />
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

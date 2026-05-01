@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse, NextRequest } from "next/server";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
+import { createAuditLog } from "@/lib/audit";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-me";
 
@@ -13,7 +14,7 @@ async function getAuthUser(req: NextRequest) {
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     return await prisma.user.findUnique({
       where: { id: decoded.userId },
-      select: { id: true, organizationId: true, role: true },
+      select: { id: true, organizationId: true, role: true, name: true },
     });
   } catch { return null; }
 }
@@ -52,6 +53,16 @@ export async function DELETE(req: NextRequest) {
         organizationId: user.organizationId,
         userId: user.id,
       },
+    });
+
+    // Create Audit Log
+    await createAuditLog({
+      organizationId: user.organizationId,
+      actorType: "USER",
+      actorId: user.id,
+      action: "CLEAR_ALERTS",
+      note: `Cleared all pending notification alerts from the dashboard.`,
+      source: "UI",
     });
 
     return NextResponse.json({ message: "Alerts cleared" });

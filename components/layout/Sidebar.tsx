@@ -2,7 +2,7 @@
 import {
   AlertTriangle, LayoutDashboard, UserPlus, Phone, CheckCircle2,
   FileText, CalendarCheck, XCircle, BarChart2, Activity, PieChart,
-  Users2, Users, Puzzle, Settings, X
+  Users2, Users, Puzzle, Settings, X, History
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/components/auth/AuthContext";
@@ -31,6 +31,12 @@ const SIDEBAR_ITEMS = [
       { icon: BarChart2, label: "Pipeline", href: "/dashboard/pipeline" },
       { icon: Activity, label: "Performance", href: "/dashboard/performance" },
       { icon: PieChart, label: "Source Report", href: "/dashboard/sources" },
+      { 
+        icon: History, 
+        label: "Audit Protocol", 
+        href: "/dashboard/reports/audit",
+        roles: ["ORG_ADMIN", "MANAGER"]
+      },
     ],
   },
   {
@@ -56,6 +62,16 @@ export default function Sidebar({
   setIsOpen = () => {} 
 }: SidebarProps) {
   const { user } = useAuth();
+
+  // Filter items based on roles
+  const filteredItems = SIDEBAR_ITEMS.map(group => ({
+    ...group,
+    items: group.items.filter(item => {
+      if (!item.roles) return true;
+      return user?.role && item.roles.includes(user.role);
+    })
+  })).filter(group => group.items.length > 0);
+
   return (
     <>
       {/* Mobile backdrop */}
@@ -91,7 +107,7 @@ export default function Sidebar({
 
         {/* Nav Groups */}
         <nav className="flex-1 px-3 py-3 space-y-5">
-          {SIDEBAR_ITEMS.map((group, gi) => (
+          {filteredItems.map((group, gi) => (
             <div key={gi}>
               {group.section && (
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/40 px-2 mb-1">

@@ -17,12 +17,13 @@ model Organization {
   alerts       Alert[]
   interactions Interaction[]
   sources      LeadSource[]
-  leads        Lead[]
+  leads        Lead[]          @relation("LeadOrganization")
   notes        Note[]
   stages       PipelineStage[]
   reminders    Reminder[]
   teams        Team[]
   users        User[]
+  auditLogs    AuditLog[]
 
   @@map("organizations")
 }
@@ -118,8 +119,9 @@ model Lead {
   requirement     String?
   alerts          Alert[]
   interactions    Interaction[]
+  auditLogs       AuditLog[]
   createdBy       User           @relation("LeadCreator", fields: [createdById], references: [id])
-  organization    Organization   @relation(fields: [organizationId], references: [id])
+  organization    Organization   @relation("LeadOrganization", fields: [organizationId], references: [id])
   owner           User           @relation("LeadOwner", fields: [ownerId], references: [id])
   pipelineStage   PipelineStage? @relation(fields: [pipelineStageId], references: [id])
   source          LeadSource?    @relation(fields: [sourceId], references: [id])
@@ -296,4 +298,42 @@ enum AttachmentMimeType {
   PNG
   JPEG
   OTHER
+}
+
+model AuditLog {
+  id             String       @id @default(uuid())
+  organizationId String
+  leadId         String?
+  actorType      ActorType
+  actorId        String?      // null for SYSTEM/AI if needed
+  actorName      String?      // denormalized for fast read
+  action         String       // CREATE, UPDATE, DELETE, etc.
+  field          String?      // "stage", "priority", etc.
+  beforeValue    String?      // store as string/json
+  afterValue     String?
+  note           String?
+  source         SourceType
+  createdAt      DateTime     @default(now())
+
+  // relations
+  lead           Lead?         @relation(fields: [leadId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([leadId])
+  @@index([organizationId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+enum ActorType {
+  USER
+  SYSTEM
+  AI
+}
+
+enum SourceType {
+  UI
+  AUTOMATION
+  API
+  AI
 }
