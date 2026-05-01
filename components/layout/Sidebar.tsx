@@ -7,7 +7,22 @@ import {
 import Link from "next/link";
 import { useAuth } from "@/components/auth/AuthContext";
 
-const SIDEBAR_ITEMS = [
+interface SidebarItem {
+  icon: any;
+  label: string;
+  href: string;
+  badge?: number;
+  badgeColor?: string;
+  active?: boolean;
+  roles?: string[];
+}
+
+interface SidebarGroup {
+  section?: string;
+  items: SidebarItem[];
+}
+
+const SIDEBAR_ITEMS: SidebarGroup[] = [
   {
     items: [
       { icon: AlertTriangle, label: "Alerts", href: "/dashboard/alerts", badge: 5, badgeColor: "bg-red-500" },
