@@ -4,7 +4,9 @@ import PipelineFunnel from "@/components/dashboard/PipelineFunnel";
 import RemindersList from "@/components/dashboard/RemindersList";
 import LeadsTable from "@/components/dashboard/LeadsTable";
 import { useAuth } from "@/components/auth/AuthContext";
-import { UserPlus, UserCircle2, Plus } from "lucide-react";
+import { UserPlus, UserCircle2, Plus, Bell } from "lucide-react";
+import { useState } from "react";
+import FollowUpModal from "@/components/dashboard/FollowupModal";
 
 interface DashboardViewProps {
   onAddLead: () => void;
@@ -16,6 +18,7 @@ interface DashboardViewProps {
 
 export default function DashboardView({ onAddLead, onAddEmployee, onLeadClick, activeNav, refreshKey = 0 }: DashboardViewProps) {
   const { user } = useAuth();
+  const [showFollowup, setShowFollowup] = useState(false);
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
@@ -27,9 +30,18 @@ export default function DashboardView({ onAddLead, onAddEmployee, onLeadClick, a
           </div>
           <div>
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-0.5">Strategic Dashboard</p>
-            <h1 className="text-[17px] text-slate-600 font-medium">
-              Welcome back, <span className="font-bold text-slate-900">{user?.name || "Arjun Mehta"}</span> 👋
-            </h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-[17px] text-slate-600 font-medium">
+                Welcome back, <span className="font-bold text-slate-900">{user?.name || "Arjun Mehta"}</span> 👋
+              </h1>
+              <button 
+                onClick={() => setShowFollowup(true)}
+                className="flex items-center gap-1.5 bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider hover:bg-blue-100 transition-all active:scale-95 border border-blue-100 shadow-sm shadow-blue-100/50"
+              >
+                <Bell size={11} className="animate-bounce" />
+                Reminder
+              </button>
+            </div>
           </div>
         </div>
 
@@ -71,6 +83,13 @@ export default function DashboardView({ onAddLead, onAddEmployee, onLeadClick, a
         onLeadClick={onLeadClick} 
         refreshKey={refreshKey}
       />
+      {/* Follow Up Modal Triggered by Test Button */}
+      {showFollowup && (
+        <FollowUpModal 
+          isOpen={true} 
+          onClose={() => setShowFollowup(false)} 
+        />
+      )}
     </div>
   );
 }
