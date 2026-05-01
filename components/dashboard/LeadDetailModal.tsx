@@ -1,7 +1,7 @@
 "use client"
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { X, ChevronLeft, ChevronRight, Building2, Phone, Mail, CalendarCheck, ChevronDown, MessageCircle, ShieldAlert } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Building2, Phone, Mail, CalendarCheck, ChevronDown, MessageCircle, ShieldAlert, Target } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthContext";
 import toast from "react-hot-toast";
 
@@ -253,16 +253,32 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                 <div className="space-y-4">
                   <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] border-b border-slate-50 pb-2">Contact Protocol</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center flex-shrink-0 border border-orange-100">
-                        <Phone size={16} strokeWidth={2.5} />
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center flex-shrink-0 border border-orange-100">
+                          <Phone size={16} strokeWidth={2.5} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Primary Mobile</p>
+                          <a href={`tel:${lead.phone}`} className="text-[14px] font-bold text-slate-700 tracking-tight hover:text-blue-600 transition-colors block truncate">
+                            {lead.phone || "Not Provided"}
+                          </a>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Primary Mobile</p>
-                        <a href={`tel:${lead.phone}`} className="text-[14px] font-bold text-slate-700 tracking-tight hover:text-blue-600 transition-colors block truncate">
-                          {lead.phone || "Not Provided"}
-                        </a>
-                      </div>
+                      
+                      {lead.requirement && (
+                        <div className="flex items-start gap-3 pl-1">
+                          <div className="w-8 h-8 rounded-lg bg-slate-50 text-slate-400 flex items-center justify-center flex-shrink-0 border border-slate-100">
+                            <Target size={14} />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Key Requirement</p>
+                            <p className="text-[11px] text-slate-600 leading-relaxed line-clamp-3">
+                              {lead.requirement}
+                            </p>
+                          </div>
+                        </div>
+                      )}
                     </div>
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0 border border-blue-100">
