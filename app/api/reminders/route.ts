@@ -64,20 +64,42 @@ export async function POST(req: NextRequest) {
     });
     if (!lead) return NextResponse.json({ error: "Lead not found" }, { status: 404 });
 
-    const reminder = await prisma.reminder.create({
-      data: {
-        leadId,
-        userId: user.id,
-        organizationId: user.organizationId,
-        type,
-        description: description || null,
-        scheduledAt: new Date(scheduledAt),
-        status: "PENDING",
-      },
-      include: {
-        lead: { select: { contactName: true, company: true } },
-        user: { select: { name: true, initials: true } },
-      },
+    const reminder = await prisma.$transaction(async (tx) => {
+      const r = await tx.reminder.create({
+        data: {
+          leadId,
+          userId: user.id,
+          organizationId: user.organizationId,
+          type,
+          description: description || null,
+          scheduledAt: new Date(scheduledAt),
+          status: "PENDING",
+        },
+        include: {
+          lead: { select: { contactName: true, company: true } },
+          user: { select: { name: true, initials: true } },
+        },
+      });
+
+      // Update lead's followUpAt
+      await tx.lead.update({
+        where: { id: leadId },
+        data: { followUpAt: new Date(scheduledAt) }
+      });
+
+      // Create Alert
+      await tx.alert.create({
+        data: {
+          userId: user.id,
+          organizationId: user.organizationId,
+          leadId,
+          type: "FOLLOW_UP_DUE",
+          title: "Follow-up Scheduled",
+          body: `${type} with ${r.lead.contactName} scheduled for ${new Date(scheduledAt).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}`,
+        }
+      });
+
+      return r;
     });
 
     return NextResponse.json(reminder, { status: 201 });
