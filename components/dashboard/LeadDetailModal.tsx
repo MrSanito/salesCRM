@@ -252,8 +252,8 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-10 mb-12">
                 <div className="space-y-4">
                   <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] border-b border-slate-50 pb-2">Contact Protocol</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-6">
+                    <div className="space-y-6">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center flex-shrink-0 border border-orange-100">
                           <Phone size={16} strokeWidth={2.5} />
@@ -273,14 +273,15 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                           </div>
                           <div className="min-w-0">
                             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Key Requirement</p>
-                            <p className="text-[11px] text-slate-600 leading-relaxed line-clamp-3">
+                            <p className="text-[11px] text-slate-600 font-medium leading-relaxed">
                               {lead.requirement}
                             </p>
                           </div>
                         </div>
                       )}
                     </div>
-                    <div className="flex items-center gap-3">
+
+                    <div className="flex items-start gap-3">
                       <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0 border border-blue-100">
                         <Mail size={16} strokeWidth={2.5} />
                       </div>
