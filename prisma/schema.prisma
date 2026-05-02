@@ -117,6 +117,8 @@ model Lead {
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
   requirement     String?
+  industry        String?
+  subStatus       LeadSubStatus  @default(CHATTING)
   alerts          Alert[]
   interactions    Interaction[]
   auditLogs       AuditLog[]
@@ -316,7 +318,7 @@ model AuditLog {
   createdAt      DateTime     @default(now())
 
   // relations
-  lead           Lead?         @relation(fields: [leadId], references: [id])
+  lead           Lead?         @relation(fields: [leadId], references: [id], onDelete: SetNull)
   organization   Organization @relation(fields: [organizationId], references: [id])
 
   @@index([leadId])
@@ -336,4 +338,12 @@ enum SourceType {
   AUTOMATION
   API
   AI
+}
+
+enum LeadSubStatus {
+  CHATTING
+  FOLLOW_UP
+  NOT_ANSWERED
+  MEETING_DONE
+  FIFTY_FIFTY
 }

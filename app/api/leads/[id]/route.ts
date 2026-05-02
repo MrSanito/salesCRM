@@ -85,6 +85,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       ...(data.dealValueInr !== undefined && { dealValueInr: data.dealValueInr.toString() }),
       ...(data.ownerId && { ownerId: data.ownerId }),
       ...(data.requirement !== undefined && { requirement: data.requirement }),
+      ...(data.industry !== undefined && { industry: data.industry }),
+      ...(data.subStatus !== undefined && { subStatus: data.subStatus }),
     };
 
     const updatedLead = await prisma.lead.update({
@@ -118,6 +120,57 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json(updatedLead);
   } catch (error) {
     console.error("Lead PATCH error:", error);
-    return NextResponse.json({ error: "Failed to update lead" }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to update lead" }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get("token")?.value;
+    if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      select: { organizationId: true, role: true, id: true, name: true },
+    });
+    if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
+
+    // Only ORG_ADMIN and MANAGER can delete
+    if (user.role !== "ORG_ADMIN" && user.role !== "MANAGER") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const { id } = await params;
+
+    // Check if lead exists and belongs to org
+    const existingLead = await prisma.lead.findFirst({
+      where: { id, organizationId: user.organizationId }
+    });
+
+    if (!existingLead) return NextResponse.json({ error: "Lead not found" }, { status: 404 });
+
+    // Create Audit Log for deletion
+    await createAuditLog({
+      organizationId: user.organizationId,
+      leadId: id,
+      actorType: "USER",
+      actorId: user.id,
+      actorName: user.name || "Unknown",
+      action: "DELETE",
+      note: `Permanently deleted lead protocol for ${existingLead.contactName} from ${existingLead.company}.`,
+      source: "UI",
+    });
+
+    // Delete lead (cascades should handle related notes/logs if configured, but lead itself is primary)
+    await prisma.lead.delete({
+      where: { id }
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Lead DELETE error:", error);
+    return NextResponse.json({ error: "Failed to delete lead" }, { status: 500 });
   }
 }

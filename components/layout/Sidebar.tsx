@@ -6,6 +6,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/components/auth/AuthContext";
+import { useState } from "react";
+import { useEffect } from "react";
 
 interface SidebarItem {
   icon: any;
@@ -77,11 +79,35 @@ export default function Sidebar({
   setIsOpen = () => {} 
 }: SidebarProps) {
   const { user } = useAuth();
+  const [counts, setCounts] = useState({ alerts: 0, newLeads: 0, followUps: 0 });
 
-  // Filter items based on roles
+  useEffect(() => {
+    fetch("/api/dashboard/stats")
+      .then(r => r.json())
+      .then(data => {
+        if (data.kpis) {
+          setCounts({
+            alerts: data.kpis.alertsCount || 0,
+            newLeads: data.kpis.newLeadsCount || 0,
+            followUps: data.kpis.followUpsTotal || 0
+          });
+        }
+      })
+      .catch(console.error);
+  }, []);
+
+  // Filter items based on roles and update badges with real counts
   const filteredItems = SIDEBAR_ITEMS.map(group => ({
     ...group,
-    items: group.items.filter(item => {
+    items: group.items.map(item => {
+      // Inject real counts into badges
+      let badge = item.badge;
+      if (item.label === "Alerts") badge = counts.alerts;
+      if (item.label === "New Leads") badge = counts.newLeads;
+      if (item.label === "Follow Ups") badge = counts.followUps;
+
+      return { ...item, badge };
+    }).filter(item => {
       if (!item.roles) return true;
       return user?.role && item.roles.includes(user.role);
     })

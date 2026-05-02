@@ -20,6 +20,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     const { id } = await params;
 
+    if (!prisma.auditLog) {
+      console.error("Lead Audit Error: prisma.auditLog is undefined. Models:", Object.keys(prisma).filter(k => !k.startsWith("_")));
+      return NextResponse.json({ error: "Prisma client out of sync" }, { status: 500 });
+    }
+
     const auditLogs = await prisma.auditLog.findMany({
       where: {
         leadId: id,

@@ -21,6 +21,11 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    if (!prisma.auditLog) {
+      console.error("Audit Report Error: prisma.auditLog is undefined. Models:", Object.keys(prisma).filter(k => !k.startsWith("_")));
+      return NextResponse.json({ error: "Prisma client out of sync" }, { status: 500 });
+    }
+
     const auditLogs = await prisma.auditLog.findMany({
       where: {
         organizationId: user.organizationId,

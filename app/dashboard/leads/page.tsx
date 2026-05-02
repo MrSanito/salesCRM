@@ -63,8 +63,8 @@ export default function LeadsPage() {
     <div className="p-4 sm:p-6 space-y-6 max-w-[1600px] mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Leads Pipeline</h1>
-          <p className="text-slate-500 text-sm">Manage and track all your sales opportunities</p>
+          <h1 className="text-2xl font-bold text-slate-800">New Leads Pipeline</h1>
+          <p className="text-slate-500 text-sm">Review and qualify incoming sales opportunities</p>
         </div>
         
         <div className="flex items-center gap-2">

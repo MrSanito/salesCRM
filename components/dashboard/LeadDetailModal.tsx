@@ -26,6 +26,8 @@ export interface DbLead {
   email: string | null;
   phone: string | null;
   stage: string;
+  subStatus: string;
+  industry: string | null;
   priority: string;
   dealValueInr: string;
   requirement: string | null;
@@ -51,6 +53,8 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
   const [lead, setLead] = useState<DbLead | null>(null);
   const [loading, setLoading] = useState(true);
   const [stage, setStage] = useState("");
+  const [subStatus, setSubStatus] = useState("");
+  const [industry, setIndustry] = useState("");
   const [ownerId, setOwnerId] = useState("");
   const [team, setTeam] = useState<any[]>([]);
   const [updating, setUpdating] = useState(false);
@@ -81,6 +85,8 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
         if (leadData.id) {
           setLead(leadData);
           setStage(leadData.stage);
+          setSubStatus(leadData.subStatus || "CHATTING");
+          setIndustry(leadData.industry || "");
           setDealValue(leadData.dealValueInr || "");
           setOwnerId(leadData.ownerId);
           setContext(prev => ({
@@ -109,6 +115,8 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
     try {
       const payload = {
         stage: overrideStage || stage,
+        subStatus: subStatus,
+        industry: industry,
         dealValueInr: parseFloat(dealValue) || 0,
         ownerId: overrideOwner || (ownerId !== lead?.ownerId ? ownerId : undefined),
         requirement: context.requirement,
@@ -126,7 +134,8 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
         setLead(updated);
         onUpdate?.(); // Notify parent to refresh
       } else {
-        toast.error("Protocol Update Failed");
+        const err = await res.json();
+        toast.error(err.error || "Protocol Update Failed");
       }
     } catch (err) {
       toast.error("Network Error");
@@ -218,9 +227,23 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                     </span>
                     <h1 className="text-3xl font-bold text-slate-900 tracking-tight">{lead.contactName}</h1>
                   </div>
-                  <div className="flex items-center gap-2 text-slate-500">
-                    <Building2 size={16} className="text-slate-400" />
-                    <span className="text-base font-semibold">{lead.company}</span>
+                  <div className="flex items-center gap-4 text-slate-500">
+                    <div className="flex items-center gap-2">
+                      <Building2 size={16} className="text-slate-400" />
+                      <span className="text-base font-semibold">{lead.company}</span>
+                    </div>
+                    <div className="h-4 w-[1px] bg-slate-200" />
+                    <div className="flex items-center gap-1.5 bg-slate-50 px-2 py-0.5 rounded text-[11px] text-slate-400 border border-slate-100 italic">
+                      <span className="font-bold uppercase tracking-widest text-[9px]">Industry:</span>
+                      <input 
+                        type="text" 
+                        value={industry}
+                        onChange={e => setIndustry(e.target.value)}
+                        onBlur={() => handleUpdate()}
+                        className="bg-transparent border-none outline-none font-medium w-24"
+                        placeholder="Set Industry"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -268,33 +291,17 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-10 mb-12">
                 <div className="space-y-4">
                   <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] border-b border-slate-50 pb-2">Contact Protocol</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-6">
-                    <div className="space-y-6">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center flex-shrink-0 border border-orange-100">
-                          <Phone size={16} strokeWidth={2.5} />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Primary Mobile</p>
-                          <a href={`tel:${lead.phone}`} className="text-[14px] font-bold text-slate-700 tracking-tight hover:text-blue-600 transition-colors block truncate">
-                            {lead.phone || "Not Provided"}
-                          </a>
-                        </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center flex-shrink-0 border border-orange-100">
+                        <Phone size={16} strokeWidth={2.5} />
                       </div>
-                      
-                      {lead.requirement && (
-                        <div className="flex items-start gap-3 pl-1">
-                          <div className="w-8 h-8 rounded-lg bg-slate-50 text-slate-400 flex items-center justify-center flex-shrink-0 border border-slate-100">
-                            <Target size={14} />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Key Requirement</p>
-                            <p className="text-[11px] text-slate-600 font-medium leading-relaxed">
-                              {lead.requirement}
-                            </p>
-                          </div>
-                        </div>
-                      )}
+                      <div className="min-w-0">
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Primary Mobile</p>
+                        <a href={`tel:${lead.phone}`} className="text-[14px] font-bold text-slate-700 tracking-tight hover:text-blue-600 transition-colors block truncate">
+                          {lead.phone || "Not Provided"}
+                        </a>
+                      </div>
                     </div>
 
                     <div className="flex items-start gap-3">
@@ -308,6 +315,20 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                         </a>
                       </div>
                     </div>
+
+                    {lead.requirement && (
+                      <div className="col-span-1 sm:col-span-2 flex items-start gap-3 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+                        <div className="w-8 h-8 rounded-lg bg-white text-slate-400 flex items-center justify-center flex-shrink-0 border border-slate-200">
+                          <Target size={14} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Lead Requirement Protocol</p>
+                          <p className="text-[12px] text-slate-700 font-bold leading-relaxed">
+                            {lead.requirement}
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -424,6 +445,29 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                       <ChevronDown size={14} className="absolute right-3 top-1 -translate-y-1 text-white pointer-events-none" />
                     </div>
                   </div>
+                  <div className="space-y-1.5 flex-1">
+                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-1 text-center block">Sub Status</label>
+                    <div className="relative">
+                      <select
+                        value={subStatus}
+                        onChange={(e) => {
+                          const newSubStatus = e.target.value;
+                          setSubStatus(newSubStatus);
+                          // We use the same update logic, it will pick up the current subStatus state
+                        }}
+                        className="w-full bg-blue-50 text-blue-700 border border-blue-100 rounded-xl px-4 py-3 text-[10px] font-black uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none cursor-pointer pr-10"
+                      >
+                        <option value="CHATTING">Chatting</option>
+                        <option value="FOLLOW_UP">Follow up</option>
+                        <option value="NOT_ANSWERED">Not Answered</option>
+                        <option value="MEETING_DONE">Meeting Done</option>
+                        <option value="FIFTY_FIFTY">50/50</option>
+                      </select>
+                      <ChevronDown size={14} className="absolute right-3 top-1 -translate-y-1 text-blue-400 pointer-events-none" />
+                    </div>
+                  </div>
+                </div>
+                <div className="pt-2 border-t border-slate-50 grid grid-cols-2 gap-4">
                   <div className="space-y-1.5 flex-1">
                     <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-1 text-center block">Deal Value (₹)</label>
                     <div className="relative">

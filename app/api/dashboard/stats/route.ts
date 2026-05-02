@@ -36,6 +36,9 @@ export async function GET() {
       wonDeals,
       stageCounts,
       totalPipelineValue,
+      newLeadsCount,
+      alertsCount,
+      followUpsTotal,
     ] = await Promise.all([
       prisma.lead.count({ where: baseWhere }),
       prisma.lead.count({ where: { ...baseWhere, createdAt: { gte: startOfWeek } } }),
@@ -45,8 +48,8 @@ export async function GET() {
           ...(user.role === "SALES_REP" ? { userId: user.id } : {}),
           status: "PENDING",
           scheduledAt: {
-            gte: new Date(now.setHours(0, 0, 0, 0)),
-            lte: new Date(now.setHours(23, 59, 59, 999)),
+            gte: new Date(new Date().setHours(0, 0, 0, 0)),
+            lte: new Date(new Date().setHours(23, 59, 59, 999)),
           },
         },
       }),
@@ -59,6 +62,15 @@ export async function GET() {
       prisma.lead.aggregate({
         where: baseWhere,
         _sum: { dealValueInr: true },
+      }),
+      prisma.lead.count({ where: { ...baseWhere, stage: "NEW" } }),
+      prisma.lead.count({ where: { ...baseWhere, priority: "HIGH" } }),
+      prisma.reminder.count({
+        where: {
+          organizationId: user.organizationId,
+          ...(user.role === "SALES_REP" ? { userId: user.id } : {}),
+          status: "PENDING",
+        },
       }),
     ]);
 
@@ -95,6 +107,9 @@ export async function GET() {
         followUpsDueToday,
         wonDeals,
         totalPipelineValue: totalValue,
+        alertsCount,
+        newLeadsCount,
+        followUpsTotal,
       },
       pipeline,
     });

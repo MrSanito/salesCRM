@@ -39,7 +39,7 @@ export default function DashboardView({ onAddLead, onAddEmployee, onLeadClick, a
                 className="flex items-center gap-1.5 bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider hover:bg-blue-100 transition-all active:scale-95 border border-blue-100 shadow-sm shadow-blue-100/50"
               >
                 <Bell size={11} className="animate-bounce" />
-                Reminder
+                Test
               </button>
             </div>
           </div>

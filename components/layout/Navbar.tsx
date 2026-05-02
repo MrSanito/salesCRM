@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Search, Bell, ChevronDown, Menu, CheckCircle2, AlertCircle, Clock } from "lucide-react";
 interface NavbarProps {
@@ -13,7 +13,17 @@ import { useAuth } from "@/components/auth/AuthContext";
 export default function Navbar({ onMenuClick = () => {}, activeNav = "Dashboard" }: NavbarProps) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [alertsCount, setAlertsCount] = useState(0);
   const { user, logout } = useAuth();
+
+  useEffect(() => {
+    fetch("/api/dashboard/stats")
+      .then(r => r.json())
+      .then(data => {
+        if (data.kpis) setAlertsCount(data.kpis.alertsCount || 0);
+      })
+      .catch(console.error);
+  }, []);
 
   return (
     <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-4 sm:px-5 flex-shrink-0">
@@ -52,7 +62,7 @@ export default function Navbar({ onMenuClick = () => {}, activeNav = "Dashboard"
           >
             <Bell size={18} className="sm:w-4 sm:h-4" />
             <span className="absolute top-0 right-0 w-3.5 h-3.5 bg-red-500 rounded-full text-[8px] text-white flex items-center justify-center font-bold border-2 border-white">
-              5
+              {alertsCount}
             </span>
           </button>
           

@@ -2,34 +2,24 @@ import { PrismaClient } from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import pg from 'pg'
 
-const connectionString = process.env.DIRECT_URL || process.env.DATABASE_URL || "";
+const connectionString = process.env.DATABASE_URL || "";
 
-if (process.env.NODE_ENV !== 'production') {
-  console.log(`[Prisma] Connecting to: ${connectionString.split('@')[0]}...`);
-}
-
+// Prisma 7 requires an adapter or accelerateUrl if url is missing from schema
 const pool = new pg.Pool({ 
   connectionString,
-  connectionTimeoutMillis: 60000, 
-  idleTimeoutMillis: 60000,       
-  max: 3,                         
-  ssl: connectionString.includes('sslmode=disable') 
-    ? false 
-    : { rejectUnauthorized: false },
-  statement_timeout: 60000,       
-  keepAlive: true,
+  max: 3,
+  ssl: { rejectUnauthorized: false }
 })
 
 const adapter = new PrismaPg(pool)
 
-const globalForPrisma = global as unknown as { prisma_v2: PrismaClient }
+const globalForPrisma = global as unknown as { prisma_v5: PrismaClient }
 
 export const prisma =
-  globalForPrisma.prisma_v2 ||
+  globalForPrisma.prisma_v5 ||
   new PrismaClient({
     adapter,
-    log: ['query', 'error', 'warn'],
+    log: ['error', 'warn'],
   })
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma_v2 = prisma
-
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma_v5 = prisma

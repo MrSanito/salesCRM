@@ -108,6 +108,8 @@ export async function POST(req: Request) {
         phone,
         email,
         requirement,
+        industry,
+        subStatus: body.subStatus || "CHATTING",
         dealValueInr: (value || 0).toString(),
         organizationId: user.organizationId,
         ownerId: finalOwnerId,
