@@ -351,14 +351,20 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                         {new Date(lead.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                       </p>
                     </div>
-                    <div>
-                      <p className="text-[9px] font-bold text-orange-500 uppercase tracking-wider mb-1">Follow Up</p>
-                      <p className="text-[14px] font-bold text-orange-600">
-                        {lead.followUpAt
-                          ? new Date(lead.followUpAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })
-                          : "Not Set"}
-                      </p>
-                    </div>
+                    {lead.followUpAt && (
+                      <div>
+                        <p className="text-[9px] font-bold text-orange-500 uppercase tracking-wider mb-1">Follow Up</p>
+                        <p className="text-[14px] font-bold text-orange-600">
+                          {new Date(lead.followUpAt).toLocaleDateString("en-IN", { 
+                            day: "numeric", 
+                            month: "short", 
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit"
+                          })}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -462,6 +468,8 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                         <option value="NOT_ANSWERED">Not Answered</option>
                         <option value="MEETING_DONE">Meeting Done</option>
                         <option value="FIFTY_FIFTY">50/50</option>
+                        <option value="NOT_INTERESTED">Not Interested</option>
+                        <option value="WRONG_NUMBER">Wrong Number</option>
                       </select>
                       <ChevronDown size={14} className="absolute right-3 top-1 -translate-y-1 text-blue-400 pointer-events-none" />
                     </div>

@@ -88,6 +88,9 @@ export default function IntelligenceDossier({
                             )}
                           </span>
                         </div>
+                        {!isExpanded && isRequirement && !context.requirement && (
+                          <span className="text-[9px] font-medium text-slate-400 mr-4 italic lowercase">no requirement</span>
+                        )}
                         <ChevronDown 
                           size={14} 
                           className={`transition-transform duration-300 ${isExpanded ? "rotate-180" : "text-slate-300"} ${isExpanded && canEdit ? "text-white" : ""}`} 
@@ -110,7 +113,9 @@ export default function IntelligenceDossier({
                                 ? "text-slate-700 text-[13px] min-h-[100px]" 
                                 : "text-slate-400 text-[11px] min-h-[60px] cursor-not-allowed"
                             }`}
-                            placeholder={canEdit ? `Specify ${field.label.toLowerCase()}...` : `Requirement locked. Unlock to edit.`}
+                            placeholder={canEdit 
+                              ? (field.id === "requirement" ? "No requirement" : `Specify ${field.label.toLowerCase()}...`)
+                              : `Requirement locked. Unlock to edit.`}
                             autoFocus={isExpanded && canEdit}
                           />
                         </div>

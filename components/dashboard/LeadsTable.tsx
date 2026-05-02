@@ -32,6 +32,8 @@ const SUB_STATUS_LABEL: Record<string, string> = {
   NOT_ANSWERED: "Not Answered",
   MEETING_DONE: "Meeting Done",
   FIFTY_FIFTY: "50/50",
+  NOT_INTERESTED: "Not Interested",
+  WRONG_NUMBER: "Wrong Number",
 };
 
 const SUB_STATUS_STYLES: Record<string, string> = {
@@ -40,6 +42,8 @@ const SUB_STATUS_STYLES: Record<string, string> = {
   NOT_ANSWERED: "bg-red-50 text-red-600 border border-red-100",
   MEETING_DONE: "bg-green-50 text-green-600 border border-green-100",
   FIFTY_FIFTY: "bg-purple-50 text-purple-600 border border-purple-100",
+  NOT_INTERESTED: "bg-slate-100 text-slate-500 border border-slate-200",
+  WRONG_NUMBER: "bg-red-50 text-red-500 border border-red-100",
 };
 
 interface DbLead {
@@ -70,7 +74,7 @@ export default function LeadsTable({ onLeadClick, activeNav, refreshKey = 0 }: L
   const [loading, setLoading] = useState(true);
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [activeLeadMenu, setActiveLeadMenu] = useState<string | null>(null);
-  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest" | "value_high" | "value_low" | "name_asc" | "name_desc" | "priority_high">("newest");
   const [filterPriority, setFilterPriority] = useState<string | null>(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
 
@@ -150,8 +154,19 @@ export default function LeadsTable({ onLeadClick, activeNav, refreshKey = 0 }: L
   if (activeNav === "New Leads") displayedLeads = displayedLeads.filter((l) => l.stage === "NEW");
   if (filterPriority) displayedLeads = displayedLeads.filter((l) => l.priority === filterPriority);
   displayedLeads.sort((a, b) => {
-    const diff = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-    return sortOrder === "newest" ? -diff : diff;
+    switch (sortOrder) {
+      case "newest": return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      case "oldest": return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      case "value_high": return (parseFloat(b.dealValueInr) || 0) - (parseFloat(a.dealValueInr) || 0);
+      case "value_low": return (parseFloat(a.dealValueInr) || 0) - (parseFloat(b.dealValueInr) || 0);
+      case "name_asc": return a.contactName.localeCompare(b.contactName);
+      case "name_desc": return b.contactName.localeCompare(a.contactName);
+      case "priority_high": {
+        const order: Record<string, number> = { HIGH: 3, MEDIUM: 2, LOW: 1 };
+        return (order[b.priority] || 0) - (order[a.priority] || 0);
+      }
+      default: return 0;
+    }
   });
 
   function formatFollowUp(dateStr: string | null) {
@@ -226,8 +241,13 @@ export default function LeadsTable({ onLeadClick, activeNav, refreshKey = 0 }: L
                 <div className="px-3 py-2 border-b border-slate-50 bg-slate-50/50">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sort By</p>
                 </div>
-                <button onClick={() => { setSortOrder("newest"); setShowFilterMenu(false); }} className="w-full text-left px-3 py-2 text-[11px] hover:bg-slate-50 transition-colors font-semibold text-slate-700">Newest to Oldest</button>
-                <button onClick={() => { setSortOrder("oldest"); setShowFilterMenu(false); }} className="w-full text-left px-3 py-2 text-[11px] hover:bg-slate-50 transition-colors font-semibold text-slate-700 border-t border-slate-50">Oldest to Newest</button>
+                <button onClick={() => { setSortOrder("newest"); setShowFilterMenu(false); }} className="w-full text-left px-3 py-2 text-[11px] hover:bg-slate-50 transition-colors font-semibold text-slate-700">Newest Created</button>
+                <button onClick={() => { setSortOrder("oldest"); setShowFilterMenu(false); }} className="w-full text-left px-3 py-2 text-[11px] hover:bg-slate-50 transition-colors font-semibold text-slate-700 border-t border-slate-50">Oldest Created</button>
+                <button onClick={() => { setSortOrder("value_high"); setShowFilterMenu(false); }} className="w-full text-left px-3 py-2 text-[11px] hover:bg-slate-50 transition-colors font-semibold text-slate-700 border-t border-slate-50">Value: High to Low</button>
+                <button onClick={() => { setSortOrder("value_low"); setShowFilterMenu(false); }} className="w-full text-left px-3 py-2 text-[11px] hover:bg-slate-50 transition-colors font-semibold text-slate-700 border-t border-slate-50">Value: Low to High</button>
+                <button onClick={() => { setSortOrder("name_asc"); setShowFilterMenu(false); }} className="w-full text-left px-3 py-2 text-[11px] hover:bg-slate-50 transition-colors font-semibold text-slate-700 border-t border-slate-50">Name: A-Z</button>
+                <button onClick={() => { setSortOrder("name_desc"); setShowFilterMenu(false); }} className="w-full text-left px-3 py-2 text-[11px] hover:bg-slate-50 transition-colors font-semibold text-slate-700 border-t border-slate-50">Name: Z-A</button>
+                <button onClick={() => { setSortOrder("priority_high"); setShowFilterMenu(false); }} className="w-full text-left px-3 py-2 text-[11px] hover:bg-slate-50 transition-colors font-semibold text-slate-700 border-t border-slate-50">Priority: High to Low</button>
                 <div className="px-3 py-2 border-t border-slate-50 bg-slate-50/50">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Filter By Priority</p>
                 </div>
@@ -276,21 +296,21 @@ export default function LeadsTable({ onLeadClick, activeNav, refreshKey = 0 }: L
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-[13px]">
+      <div className="w-full">
+        <table className="w-full table-fixed text-[13px]">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-100">
-              <th className="text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-3 sm:px-4 py-2.5">Lead</th>
-              <th className="hidden md:table-cell text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-4 py-2.5">Company</th>
-              <th className="hidden lg:table-cell text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-4 py-2.5">Industry</th>
-              <th className="text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-3 sm:px-4 py-2.5">Stage</th>
-              <th className="text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-3 sm:px-4 py-2.5">Sub Status</th>
-              <th className="hidden sm:table-cell text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-3 sm:px-4 py-2.5">Phone</th>
-              <th className="hidden lg:table-cell text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-4 py-2.5">Owner</th>
-              <th className="hidden sm:table-cell text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-4 py-2.5">Follow Up</th>
-              <th className="hidden xl:table-cell text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-4 py-2.5">Value</th>
-              <th className="hidden xl:table-cell text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-4 py-2.5">Priority</th>
-              <th className="text-right text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-3 sm:px-4 py-2.5"></th>
+              <th className="w-[18%] text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-3 sm:px-4 py-2.5">Lead</th>
+              <th className="hidden md:table-cell w-[15%] text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-4 py-2.5">Company</th>
+              <th className="hidden lg:table-cell w-[10%] text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-2 py-2.5">Industry</th>
+              <th className="w-[10%] text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-2 sm:px-3 py-2.5">Stage</th>
+              <th className="w-[12%] text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-2 sm:px-3 py-2.5">Sub Status</th>
+              <th className="hidden sm:table-cell w-[12%] text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-2 sm:px-3 py-2.5">Phone</th>
+              <th className="hidden lg:table-cell w-[10%] text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-3 py-2.5">Owner</th>
+              <th className="hidden sm:table-cell w-[10%] text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-3 py-2.5">Follow Up</th>
+              <th className="hidden xl:table-cell w-[8%] text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-3 py-2.5">Value</th>
+              <th className="hidden xl:table-cell w-[8%] text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-3 py-2.5">Priority</th>
+              <th className="w-[50px] text-right text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-3 sm:px-4 py-2.5"></th>
             </tr>
           </thead>
           <tbody>
@@ -311,28 +331,28 @@ export default function LeadsTable({ onLeadClick, activeNav, refreshKey = 0 }: L
                     <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-600 flex-shrink-0">
                       {lead.contactName.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
                     </div>
-                    <span className="font-semibold text-slate-700 block truncate max-w-[100px] sm:max-w-none">{lead.contactName}</span>
+                    <span className="font-semibold text-slate-700 block truncate">{lead.contactName}</span>
                   </div>
                 </td>
-                <td className="hidden md:table-cell px-4 py-3 text-slate-500">{lead.company}</td>
-                <td className="hidden lg:table-cell px-4 py-3 text-slate-400 text-[12px] italic">{lead.industry || "—"}</td>
-                <td className="px-3 sm:px-4 py-3">
+                <td className="hidden md:table-cell px-3 py-3 text-slate-500 truncate">{lead.company}</td>
+                <td className="hidden lg:table-cell px-2 py-3 text-slate-400 text-[12px] italic truncate">{lead.industry || "—"}</td>
+                <td className="px-2 sm:px-3 py-3">
                   <span className={`px-2 py-0.5 rounded-md text-[10px] sm:text-[11px] font-medium whitespace-nowrap ${STAGE_STYLES[lead.stage] ?? "bg-slate-100 text-slate-600"}`}>
                     {STAGE_LABEL[lead.stage] || lead.stage}
                   </span>
                 </td>
-                <td className="px-3 sm:px-4 py-3">
+                <td className="px-2 sm:px-3 py-3">
                   <span className={`px-2 py-0.5 rounded-md text-[10px] sm:text-[11px] font-bold whitespace-nowrap ${SUB_STATUS_STYLES[lead.subStatus] ?? "bg-slate-50 text-slate-400 border border-slate-100"}`}>
                     {SUB_STATUS_LABEL[lead.subStatus] || lead.subStatus}
                   </span>
                 </td>
-                <td className="hidden sm:table-cell px-3 sm:px-4 py-3 font-medium text-slate-600 text-[11px] sm:text-[12px] font-mono">{lead.phone || "—"}</td>
-                <td className="hidden lg:table-cell px-4 py-3 text-slate-500">{lead.owner?.name || "—"}</td>
-                <td className={`hidden sm:table-cell px-4 py-3 text-[12px] font-medium ${lead.followUpAt && new Date(lead.followUpAt) < new Date() ? "text-red-500" : "text-slate-400"}`}>
+                <td className="hidden sm:table-cell px-2 sm:px-3 py-3 font-medium text-slate-600 text-[11px] sm:text-[12px] font-mono">{lead.phone || "—"}</td>
+                <td className="hidden lg:table-cell px-3 py-3 text-slate-500">{lead.owner?.name || "—"}</td>
+                <td className={`hidden sm:table-cell px-3 py-3 text-[12px] font-medium ${lead.followUpAt && new Date(lead.followUpAt) < new Date() ? "text-red-500" : "text-slate-400"}`}>
                   {formatFollowUp(lead.followUpAt)}
                 </td>
-                <td className="hidden xl:table-cell px-4 py-3 text-slate-600 font-semibold text-[12px]">{formatValue(lead.dealValueInr)}</td>
-                <td className="hidden xl:table-cell px-4 py-3">
+                <td className="hidden xl:table-cell px-3 py-3 text-slate-600 font-semibold text-[12px]">{formatValue(lead.dealValueInr)}</td>
+                <td className="hidden xl:table-cell px-3 py-3">
                   <span className={`px-2 py-0.5 rounded-md text-[11px] font-medium ${PRIORITY_STYLES[lead.priority] || "bg-slate-100 text-slate-600"}`}>
                     {lead.priority.charAt(0) + lead.priority.slice(1).toLowerCase()}
                   </span>

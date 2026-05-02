@@ -6,8 +6,14 @@
  */
 
 import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import pg from "pg";
+import "dotenv/config";
 
-const prisma = new PrismaClient();
+const connectionString = process.env.DATABASE_URL || "";
+const pool = new pg.Pool({ connectionString, ssl: { rejectUnauthorized: false } });
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter });
 
 // ─── CONFIGURE THESE ──────────────────────────────────────────────────────────
 const YOUR_USER_ID = "6d7b2b3e-096b-4433-994c-61e1a3557bf9";
@@ -138,21 +144,30 @@ async function main() {
     try {
       const phone = lead.phone || null;
 
-      // De-dupe by phone within the org
+      // Upsert by phone within the org
       if (phone) {
         const existing = await prisma.lead.findFirst({
           where: { organizationId: YOUR_ORG_ID, phone },
         });
+
         if (existing) {
-          console.log(`⏭️  Skipped (duplicate phone): ${lead.company}`);
-          skipped++;
+          await prisma.lead.update({
+            where: { id: existing.id },
+            data: {
+              industry: lead.category,
+              subStatus: existing.subStatus || "CHATTING",
+              requirement: existing.requirement || `Company size: ${lead.size}. Address: ${lead.address}`,
+            },
+          });
+          console.log(`🔄 Updated: ${lead.company}`);
+          created++; // Counting updates as processed leads
           continue;
         }
       }
 
       await prisma.lead.create({
         data: {
-          contactName: lead.company,   // no contact name in source data
+          contactName: lead.company,
           company: lead.company,
           phone,
           email: null,
@@ -176,9 +191,9 @@ async function main() {
   }
 
   console.log("\n─────────────────────────────────");
-  console.log(`✅ Created : ${created}`);
-  console.log(`⏭️  Skipped : ${skipped}`);
-  console.log(`❌ Errors  : ${errors.length}`);
+  console.log(`✅ Processed : ${created}`);
+  console.log(`⏭️  Skipped   : ${skipped}`);
+  console.log(`❌ Errors    : ${errors.length}`);
   if (errors.length) console.log("   Failed:", errors.join(", "));
   console.log("─────────────────────────────────");
 }

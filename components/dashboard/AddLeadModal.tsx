@@ -188,6 +188,8 @@ export default function AddLeadModal({ onClose, onSuccess }: AddLeadModalProps) 
                   <option value="NOT_ANSWERED">Not Answered</option>
                   <option value="MEETING_DONE">Meeting Done</option>
                   <option value="FIFTY_FIFTY">50/50</option>
+                  <option value="NOT_INTERESTED">Not Interested</option>
+                  <option value="WRONG_NUMBER">Wrong Number</option>
                 </select>
               </div>
               <div className="space-y-2">
