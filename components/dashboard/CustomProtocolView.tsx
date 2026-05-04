@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { 
   Filter, ChevronDown, Download, Eye, MoreVertical, 
-  ChevronRight, XCircle, Edit, Trash2, Target, Sparkles 
+  ChevronRight, XCircle, Edit, Trash2, Target, Sparkles, Bell
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import BulkUpdateModal from "./BulkUpdateModal";
@@ -272,6 +272,27 @@ export default function CustomProtocolView({ filter, onLeadClick, refreshKey = 0
             <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
               {filter.name}
               <Sparkles size={16} className="text-orange-400" />
+
+              {/* Conditional Reminder at .45 minute */}
+              {(() => {
+                const now = new Date();
+                const is45 = now.getMinutes() === 45;
+                if (!is45) return null;
+
+                const users = ["Rahul", "Priya", "Suresh", "Anita", "Vikram", "Deepa"];
+                const times = ["10:30 AM", "2:45 PM", "11:15 AM", "4:20 PM", "9:00 AM"];
+                const randomUser = users[Math.floor(Math.random() * users.length)];
+                const randomTime = times[Math.floor(Math.random() * times.length)];
+
+                return (
+                  <div className="flex items-center gap-2 bg-orange-50 border border-orange-100 text-orange-600 px-3 py-1 rounded-xl animate-bounce ml-4 shadow-sm">
+                    <Bell size={12} className="fill-orange-500" />
+                    <span className="text-[10px] font-black uppercase tracking-wider">
+                      Protocol Alert: {randomUser} follow-up at {randomTime}
+                    </span>
+                  </div>
+                );
+              })()}
             </h1>
           </div>
           <p className="text-sm text-slate-500 font-medium ml-11">

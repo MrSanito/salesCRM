@@ -36,6 +36,29 @@ export default function DashboardView({ onAddLead, onAddEmployee, onLeadClick, a
               <h1 className="text-[17px] text-slate-600 font-medium">
                 Welcome back, <span className="font-bold text-slate-900">{user?.name || "Arjun Mehta"}</span> 👋
               </h1>
+              
+              {/* Conditional Reminder at .45 minute */}
+              {(() => {
+                const now = new Date();
+                // Adjust to IST if needed, but usually server/browser time is fine for "minute" check
+                const is45 = now.getMinutes() === 45;
+                if (!is45) return null;
+
+                const users = ["Rahul", "Priya", "Suresh", "Anita", "Vikram", "Deepa"];
+                const times = ["10:30 AM", "2:45 PM", "11:15 AM", "4:20 PM", "9:00 AM"];
+                const randomUser = users[Math.floor(Math.random() * users.length)];
+                const randomTime = times[Math.floor(Math.random() * times.length)];
+
+                return (
+                  <div className="flex items-center gap-2 bg-orange-50 border border-orange-100 text-orange-600 px-3 py-1.5 rounded-xl animate-bounce">
+                    <Bell size={12} className="fill-orange-500" />
+                    <span className="text-[10px] font-black uppercase tracking-wider">
+                      Reminder: {randomUser} has a follow-up at {randomTime}
+                    </span>
+                  </div>
+                );
+              })()}
+
               <button 
                 onClick={() => setShowFollowup(true)}
                 className="flex items-center gap-1.5 bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider hover:bg-blue-100 transition-all active:scale-95 border border-blue-100 shadow-sm shadow-blue-100/50"
