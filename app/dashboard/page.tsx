@@ -4,12 +4,16 @@ import DashboardView from "@/components/dashboard/DashboardView";
 import LeadDetailModal from "@/components/dashboard/LeadDetailModal";
 import AddLeadModal from "@/components/dashboard/AddLeadModal";
 import AddEmployeeModal from "@/components/dashboard/AddEmployeeModal";
+import AddLeadChoiceModal from "@/components/dashboard/AddLeadChoiceModal";
+import ImportExcelModal from "@/components/dashboard/ImportExcelModal";
 
 export default function DashboardPage() {
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [isModalLoading, setIsModalLoading] = useState(false);
   const [leadIds, setLeadIds] = useState<string[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isAddChoiceModalOpen, setIsAddChoiceModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isAddEmployeeModalOpen, setIsAddEmployeeModalOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -36,7 +40,7 @@ export default function DashboardPage() {
   return (
     <>
       <DashboardView
-        onAddLead={() => setIsAddModalOpen(true)}
+        onAddLead={() => setIsAddChoiceModalOpen(true)}
         onAddEmployee={() => setIsAddEmployeeModalOpen(true)}
         onLeadClick={(id, allIds) => openLeadModal(id, allIds)}
         activeNav="Dashboard"
@@ -53,8 +57,24 @@ export default function DashboardPage() {
         />
       )}
 
+
+      {isAddChoiceModalOpen && (
+        <AddLeadChoiceModal 
+          onClose={() => setIsAddChoiceModalOpen(false)}
+          onFormChoice={() => setIsAddModalOpen(true)}
+          onExcelChoice={() => setIsImportModalOpen(true)}
+        />
+      )}
+
+      {isImportModalOpen && (
+        <ImportExcelModal 
+          onClose={() => setIsImportModalOpen(false)}
+          onImportSuccess={triggerRefresh}
+        />
+      )}
+
       {isAddModalOpen && (
-        <AddLeadModal onClose={() => setIsAddModalOpen(false)} />
+        <AddLeadModal onClose={() => setIsAddModalOpen(false)} onSuccess={triggerRefresh} />
       )}
 
       {isAddEmployeeModalOpen && (

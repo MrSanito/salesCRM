@@ -153,3 +153,68 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: error.message || "Failed to delete leads" }, { status: 500 });
   }
 }
+
+export async function POST(req: Request) {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get("token")?.value;
+    if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const userId = decoded.userId;
+
+    const body = await req.json();
+    const { action, leads } = body;
+
+    if (action !== "CREATE" || !leads || !Array.isArray(leads)) {
+      return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, organizationId: true, name: true }
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // Prepare leads for database
+    const leadsToCreate = leads.map((l: any) => ({
+      contactName: l.contactName || "Unknown",
+      company: l.company || "Unknown",
+      phone: l.phone || null,
+      email: l.email || null,
+      industry: l.industry || null,
+      dealValueInr: "0",
+      stage: "NEW" as any,
+      subStatus: "BLANK" as any,
+      organizationId: user.organizationId,
+      ownerId: user.id,
+      createdById: user.id,
+    }));
+
+    // Create leads
+    // We use createMany if the database supports it (PostgreSQL does)
+    const created = await prisma.lead.createMany({
+      data: leadsToCreate,
+      skipDuplicates: true,
+    });
+
+    // Log the bulk creation (general log)
+    await createAuditLog({
+      organizationId: user.organizationId,
+      actorType: "USER",
+      actorId: user.id,
+      actorName: user.name || "Unknown User",
+      action: "CREATE",
+      note: `Bulk imported ${created.count} leads from Excel/CSV.`,
+      source: "UI",
+    });
+
+    return NextResponse.json({ message: `Successfully imported ${created.count} leads` });
+  } catch (error: any) {
+    console.error("Error bulk creating leads:", error);
+    return NextResponse.json({ error: error.message || "Failed to import leads" }, { status: 500 });
+  }
+}
