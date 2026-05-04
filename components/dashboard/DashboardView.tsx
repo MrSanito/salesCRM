@@ -25,22 +25,21 @@ export default function DashboardView({ onAddLead, onAddEmployee, onLeadClick, a
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
       {/* Dashboard Header */}
-      <header className="flex items-center justify-between">
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 sm:gap-4">
         <div className="flex items-center gap-4 group cursor-pointer">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-blue-200/50 group-hover:scale-105 transition-all">
-             <UserCircle2 size={24} />
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-blue-200/50 group-hover:scale-105 transition-all">
+             <UserCircle2 className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
-          <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-0.5">Strategic Dashboard</p>
-            <div className="flex items-center gap-3">
-              <h1 className="text-[17px] text-slate-600 font-medium">
-                Welcome back, <span className="font-bold text-slate-900">{user?.name || "Arjun Mehta"}</span> 👋
+          <div className="min-w-0">
+            <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-0.5 truncate">Strategic Dashboard</p>
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              <h1 className="text-[15px] sm:text-[17px] text-slate-600 font-medium">
+                Welcome, <span className="font-bold text-slate-900">{user?.name?.split(" ")[0] || "Arjun"}</span> 👋
               </h1>
               
               {/* Conditional Reminder at .45 minute */}
               {(() => {
                 const now = new Date();
-                // Adjust to IST if needed, but usually server/browser time is fine for "minute" check
                 const is45 = now.getMinutes() === 45;
                 if (!is45) return null;
 
@@ -50,10 +49,10 @@ export default function DashboardView({ onAddLead, onAddEmployee, onLeadClick, a
                 const randomTime = times[Math.floor(Math.random() * times.length)];
 
                 return (
-                  <div className="flex items-center gap-2 bg-orange-50 border border-orange-100 text-orange-600 px-3 py-1.5 rounded-xl animate-bounce">
-                    <Bell size={12} className="fill-orange-500" />
-                    <span className="text-[10px] font-black uppercase tracking-wider">
-                      Reminder: {randomUser} has a follow-up at {randomTime}
+                  <div className="flex items-center gap-1.5 bg-orange-50 border border-orange-100 text-orange-600 px-2 py-1 rounded-lg animate-bounce shadow-sm">
+                    <Bell size={10} className="fill-orange-500 flex-shrink-0" />
+                    <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-wider whitespace-nowrap">
+                      {randomUser}: {randomTime}
                     </span>
                   </div>
                 );
@@ -61,9 +60,9 @@ export default function DashboardView({ onAddLead, onAddEmployee, onLeadClick, a
 
               <button 
                 onClick={() => setShowFollowup(true)}
-                className="flex items-center gap-1.5 bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider hover:bg-blue-100 transition-all active:scale-95 border border-blue-100 shadow-sm shadow-blue-100/50"
+                className="flex items-center gap-1.5 bg-blue-50 text-blue-600 px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider hover:bg-blue-100 transition-all active:scale-95 border border-blue-100 shadow-sm shadow-blue-100/50"
               >
-                <Bell size={11} className="animate-bounce" />
+                <Bell size={10} className="animate-bounce" />
                 Test
               </button>
             </div>

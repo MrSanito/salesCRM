@@ -304,10 +304,14 @@ export default function SettingsView() {
           {user?.role === "ORG_ADMIN" && (
             <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/50 overflow-hidden">
               <div className="p-8 sm:p-10 border-b border-slate-50 bg-slate-50/30">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-3">
-                    <LayoutPanelLeft size={14} className="text-purple-600" /> Sidebar Customization
-                  </h3>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                  <div className="flex items-center gap-3">
+                    <LayoutPanelLeft size={14} className="text-purple-600" />
+                    <div>
+                      <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Sidebar Customization</h3>
+                      <span className="inline-block mt-1 text-[8px] font-black bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded-md uppercase tracking-widest">CEO Protocol</span>
+                    </div>
+                  </div>
                   <button
                     type="button"
                     onClick={() => setShowAddForm(!showAddForm)}

@@ -261,17 +261,17 @@ export default function CustomProtocolView({ filter, onLeadClick, refreshKey = 0
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-500">
       {/* Focused Protocol Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-        <div>
-          <div className="flex items-center gap-3 mb-1">
-            <div className="p-2 bg-orange-50 rounded-xl text-orange-600">
-              <Target size={20} />
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 bg-white p-4 sm:p-6 rounded-2xl border border-slate-100 shadow-sm">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-3 mb-1.5">
+            <div className="p-2 bg-orange-50 rounded-xl text-orange-600 flex-shrink-0">
+              <Target size={18} className="sm:w-5 sm:h-5" />
             </div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2 truncate">
               {filter.name}
-              <Sparkles size={16} className="text-orange-400" />
+              <Sparkles size={14} className="text-orange-400 flex-shrink-0" />
 
               {/* Conditional Reminder at .45 minute */}
               {(() => {
@@ -285,63 +285,66 @@ export default function CustomProtocolView({ filter, onLeadClick, refreshKey = 0
                 const randomTime = times[Math.floor(Math.random() * times.length)];
 
                 return (
-                  <div className="flex items-center gap-2 bg-orange-50 border border-orange-100 text-orange-600 px-3 py-1 rounded-xl animate-bounce ml-4 shadow-sm">
-                    <Bell size={12} className="fill-orange-500" />
-                    <span className="text-[10px] font-black uppercase tracking-wider">
-                      Protocol Alert: {randomUser} follow-up at {randomTime}
+                  <div className="hidden sm:flex items-center gap-2 bg-orange-50 border border-orange-100 text-orange-600 px-2.5 py-1 rounded-xl animate-bounce ml-2 shadow-sm whitespace-nowrap">
+                    <Bell size={10} className="fill-orange-500" />
+                    <span className="text-[9px] font-black uppercase tracking-wider">
+                      {randomUser}: {randomTime}
                     </span>
                   </div>
                 );
               })()}
             </h1>
           </div>
-          <p className="text-sm text-slate-500 font-medium ml-11">
+          <p className="text-xs sm:text-sm text-slate-500 font-medium ml-0 sm:ml-11">
             {loading ? "Syncing protocol..." : `${processedLeads.length} leads detected in this active view`}
           </p>
         </div>
 
-        <div className="flex items-center gap-3 ml-11 md:ml-0">
+        <div className="flex flex-wrap items-center gap-3 ml-0 xl:ml-0">
           {selectedLeads.size > 0 && (
-            <div className="flex items-center gap-2 pr-3 border-r border-slate-100 mr-2 animate-in fade-in slide-in-from-right-2 duration-300">
+            <div className="flex items-center gap-2 pr-3 border-r border-slate-100 mr-2 animate-in fade-in slide-in-from-right-2 duration-300 overflow-x-auto pb-1 sm:pb-0">
               <button 
                 onClick={() => setShowBulkUpdate(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 border border-blue-200 text-[12px] font-bold rounded-lg hover:bg-blue-600 hover:text-white transition-all active:scale-95"
+                className="whitespace-nowrap flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 border border-blue-200 text-[11px] font-bold rounded-lg hover:bg-blue-600 hover:text-white transition-all active:scale-95"
               >
-                <Edit size={12} /> Bulk Update ({selectedLeads.size})
+                <Edit size={11} /> Update ({selectedLeads.size})
               </button>
               <button 
                 onClick={() => setShowBulkDelete(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-600 border border-red-200 text-[12px] font-bold rounded-lg hover:bg-red-600 hover:text-white transition-all active:scale-95"
+                className="whitespace-nowrap flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-600 border border-red-200 text-[11px] font-bold rounded-lg hover:bg-red-600 hover:text-white transition-all active:scale-95"
               >
-                <Trash2 size={12} /> Bulk Delete
+                <Trash2 size={11} /> Delete
               </button>
             </div>
           )}
-          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 mr-2">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Show</span>
-            <input 
-              type="number" 
-              value={pageSize}
-              onChange={(e) => {
-                setPageSize(parseInt(e.target.value) || 20);
-                setCurrentPage(1);
-              }}
-              className="w-10 bg-transparent border-none text-[12px] font-bold text-slate-700 focus:outline-none p-0"
-            />
-          </div>
+          
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Show</span>
+              <input 
+                type="number" 
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(parseInt(e.target.value) || 20);
+                  setCurrentPage(1);
+                }}
+                className="w-8 bg-transparent border-none text-[11px] font-bold text-slate-700 focus:outline-none p-0"
+              />
+            </div>
 
-          <div className="relative">
-            <button
-              onClick={() => setShowExportMenu(!showExportMenu)}
-              className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-50 transition-all"
-            >
-              <Download size={14} /> Export
-            </button>
-            {showExportMenu && (
-              <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                <button onClick={() => { handleExportExcel(processedLeads, filter.name); setShowExportMenu(false); }} className="w-full text-left px-4 py-3 text-[11px] font-bold text-slate-700 hover:bg-slate-50 transition-colors">Excel (.xlsx)</button>
-              </div>
-            )}
+            <div className="relative">
+              <button
+                onClick={() => setShowExportMenu(!showExportMenu)}
+                className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 text-slate-600 text-[11px] font-bold rounded-xl hover:bg-slate-50 transition-all"
+              >
+                <Download size={12} /> Export
+              </button>
+              {showExportMenu && (
+                <div className="absolute right-0 top-full mt-2 w-40 bg-white border border-slate-200 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                  <button onClick={() => { handleExportExcel(processedLeads, filter.name); setShowExportMenu(false); }} className="w-full text-left px-4 py-3 text-[10px] font-bold text-slate-700 hover:bg-slate-50 transition-colors">Excel (.xlsx)</button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

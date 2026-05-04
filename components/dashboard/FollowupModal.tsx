@@ -134,13 +134,13 @@ export default function FollowUpModal({
 
         {/* Quick Actions */}
         <div className="mx-6 mb-6 rounded-2xl border border-gray-100 bg-gray-50/60 overflow-hidden">
-          <div className="grid grid-cols-3 divide-x divide-gray-100">
+          <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
             {/* Go to Lead */}
-            <button className="flex flex-col items-center gap-3 p-5 hover:bg-white transition-colors duration-150 group">
-              <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center group-hover:bg-blue-100 transition-colors">
+            <button className="flex items-center sm:flex-col gap-4 sm:gap-3 p-4 sm:p-5 hover:bg-white transition-colors duration-150 group text-left sm:text-center">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-blue-50 flex items-center justify-center group-hover:bg-blue-100 transition-colors shrink-0">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  className="w-6 h-6 text-blue-500"
+                  className="w-5 h-5 sm:w-6 sm:h-6 text-blue-500"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -153,18 +153,18 @@ export default function FollowUpModal({
                   />
                 </svg>
               </div>
-              <div className="text-center">
-                <p className="text-gray-800 font-semibold text-[13px] leading-tight">Go to Lead</p>
-                <p className="text-gray-400 text-[11px] mt-0.5">View lead details</p>
+              <div>
+                <p className="text-gray-800 font-bold text-[13px] leading-tight">Go to Lead</p>
+                <p className="text-gray-400 text-[10px] mt-0.5">View details</p>
               </div>
             </button>
 
             {/* Reschedule */}
-            <button className="flex flex-col items-center gap-3 p-5 hover:bg-white transition-colors duration-150 group">
-              <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center group-hover:bg-emerald-100 transition-colors">
+            <button className="flex items-center sm:flex-col gap-4 sm:gap-3 p-4 sm:p-5 hover:bg-white transition-colors duration-150 group text-left sm:text-center">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-emerald-50 flex items-center justify-center group-hover:bg-emerald-100 transition-colors shrink-0">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  className="w-6 h-6 text-emerald-500"
+                  className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-500"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -177,18 +177,18 @@ export default function FollowUpModal({
                   />
                 </svg>
               </div>
-              <div className="text-center">
-                <p className="text-gray-800 font-semibold text-[13px] leading-tight">Reschedule</p>
-                <p className="text-gray-400 text-[11px] mt-0.5">Change follow-up time</p>
+              <div>
+                <p className="text-gray-800 font-bold text-[13px] leading-tight">Reschedule</p>
+                <p className="text-gray-400 text-[10px] mt-0.5">Change time</p>
               </div>
             </button>
 
-            {/* Status & Sub Status */}
-            <button className="flex flex-col items-center gap-3 p-5 hover:bg-white transition-colors duration-150 group">
-              <div className="w-12 h-12 rounded-xl bg-violet-50 flex items-center justify-center group-hover:bg-violet-100 transition-colors">
+            {/* Status */}
+            <button className="flex items-center sm:flex-col gap-4 sm:gap-3 p-4 sm:p-5 hover:bg-white transition-colors duration-150 group text-left sm:text-center">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-violet-50 flex items-center justify-center group-hover:bg-violet-100 transition-colors shrink-0">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  className="w-6 h-6 text-violet-500"
+                  className="w-5 h-5 sm:w-6 sm:h-6 text-violet-500"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -199,9 +199,9 @@ export default function FollowUpModal({
                   <circle cx="19" cy="12" r="1.5" fill="currentColor" stroke="none" />
                 </svg>
               </div>
-              <div className="text-center">
-                <p className="text-gray-800 font-semibold text-[13px] leading-tight">Status & Sub Status</p>
-                <p className="text-gray-400 text-[11px] mt-0.5">Update status</p>
+              <div>
+                <p className="text-gray-800 font-bold text-[13px] leading-tight">Status</p>
+                <p className="text-gray-400 text-[10px] mt-0.5">Update stage</p>
               </div>
             </button>
           </div>
