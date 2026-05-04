@@ -2,10 +2,11 @@
 import {
   AlertTriangle, LayoutDashboard, UserPlus, Phone, CheckCircle2,
   FileText, CalendarCheck, XCircle, BarChart2, Activity, PieChart,
-  Users2, Users, Puzzle, Settings, X, History, Filter
+  Users2, Users, Puzzle, Settings, X, History, Filter, Target, Sparkles
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/components/auth/AuthContext";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
 
 interface SidebarItem {
@@ -66,15 +67,15 @@ const SIDEBAR_ITEMS: SidebarGroup[] = [
   },
 ];
 
-const COLOR_MAP: Record<string, string> = {
-  blue: "from-blue-400 to-blue-600",
-  green: "from-green-400 to-green-600",
-  purple: "from-purple-400 to-purple-600",
-  orange: "from-orange-400 to-orange-600",
-  red: "from-red-400 to-red-600",
-  cyan: "from-cyan-400 to-cyan-600",
-  pink: "from-pink-400 to-pink-600",
-  amber: "from-amber-400 to-amber-600",
+const COLOR_TEXT_MAP: Record<string, string> = {
+  blue: "text-blue-500",
+  green: "text-green-500",
+  purple: "text-purple-500",
+  orange: "text-orange-500",
+  red: "text-red-500",
+  cyan: "text-cyan-500",
+  pink: "text-pink-500",
+  amber: "text-amber-500",
 };
 
 const COLOR_BG_MAP: Record<string, string> = {
@@ -111,6 +112,8 @@ export default function Sidebar({
   setIsOpen = () => {} 
 }: SidebarProps) {
   const { user } = useAuth();
+  const searchParams = useSearchParams();
+  const sfId = searchParams.get("sf");
   const [counts, setCounts] = useState({ alerts: 0, newLeads: 0, followUps: 0 });
   const [customFilters, setCustomFilters] = useState<CustomFilter[]>([]);
 
@@ -129,7 +132,6 @@ export default function Sidebar({
       .catch(console.error);
   }, []);
 
-  // Fetch custom sidebar filters for all users
   const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
   useEffect(() => {
     fetch("/api/sidebar-filters")
@@ -138,9 +140,8 @@ export default function Sidebar({
         if (Array.isArray(data)) setCustomFilters(data);
       })
       .catch(console.error);
-  }, [pathname]); // Refetch when navigating to ensure new filters show up
+  }, [pathname]);
 
-  // Build the dynamic sidebar items, injecting custom filters
   const buildSidebarGroups = (): SidebarGroup[] => {
     const base = SIDEBAR_ITEMS.map(group => ({
       ...group,
@@ -156,27 +157,20 @@ export default function Sidebar({
       })
     })).filter(group => group.items.length > 0);
 
-    // Insert custom filters INSIDE the LEADS section
     if (customFilters.length > 0) {
       const customItems = customFilters.map(f => ({
-        icon: Filter,
+        icon: Target,
         label: f.name,
         href: `/dashboard?sf=${f.id}`,
         badge: undefined as number | undefined,
         badgeColor: COLOR_BG_MAP[f.color] || "bg-blue-500",
+        color: f.color
       }));
 
-      const leadsIndex = base.findIndex(g => g.section === "LEADS");
-      if (leadsIndex >= 0) {
-        // Append to the items list in LEADS section
-        base[leadsIndex].items.push(...customItems);
-      } else {
-        // Fallback to separate section if LEADS not found
-        base.splice(1, 0, {
-          section: "QUICK FILTERS",
-          items: customItems,
-        });
-      }
+      base.splice(2, 0, {
+        section: "CUSTOM VIEWS",
+        items: customItems,
+      });
     }
 
     return base;
@@ -186,7 +180,6 @@ export default function Sidebar({
 
   return (
     <>
-      {/* Mobile backdrop */}
       {isOpen && (
         <div 
           className="fixed inset-0 bg-slate-900/60 z-40 md:hidden animate-in fade-in duration-200"
@@ -194,13 +187,11 @@ export default function Sidebar({
         />
       )}
 
-      {/* Sidebar Content */}
       <aside 
         className={`fixed inset-y-0 left-0 z-50 w-56 bg-sidebar flex flex-col flex-shrink-0 overflow-y-auto transition-transform duration-300 md:relative md:translate-x-0 ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        {/* Logo */}
         <div className="flex items-center justify-between px-4 py-4 border-b border-sidebar-border shrink-0">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center">
@@ -208,7 +199,6 @@ export default function Sidebar({
             </div>
             <span className="text-sidebar-foreground font-semibold text-sm tracking-wide">SOLO SALES</span>
           </div>
-          {/* Mobile close button */}
           <button 
             className="md:hidden p-1 text-sidebar-foreground/50 hover:text-sidebar-foreground transition-colors"
             onClick={() => setIsOpen(false)}
@@ -217,19 +207,20 @@ export default function Sidebar({
           </button>
         </div>
 
-        {/* Nav Groups */}
         <nav className="flex-1 px-3 py-3 space-y-5">
           {filteredItems.map((group, gi) => (
             <div key={gi}>
               {group.section && (
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/40 px-2 mb-1">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/40 px-2 mb-1 flex items-center gap-1.5">
                   {group.section}
+                  {group.section === "CUSTOM VIEWS" && <Sparkles size={10} className="text-orange-400" />}
                 </p>
               )}
               <ul className="space-y-0.5">
                 {group.items.map((item) => {
                   const Icon = item.icon;
-                  const isActive = activeNav === item.label;
+                  const itemSfId = item.href.includes("?sf=") ? item.href.split("?sf=")[1] : null;
+                  const isActive = itemSfId ? sfId === itemSfId : activeNav === item.label;
                   return (
                     <li key={item.label}>
                       <Link
@@ -242,7 +233,21 @@ export default function Sidebar({
                         }`}
                       >
                         <div className="flex items-center gap-2.5">
-                          <Icon size={15} className="flex-shrink-0" />
+                          <div className={`p-1 rounded-md transition-all ${
+                              isActive 
+                                ? "bg-white/20" 
+                                : (item as any).color 
+                                  ? `${COLOR_BG_MAP[(item as any).color]}/10` 
+                                  : "bg-transparent"
+                            }`}>
+                            <Icon size={15} className={`flex-shrink-0 ${
+                              isActive 
+                                ? "text-white" 
+                                : (item as any).color 
+                                  ? COLOR_TEXT_MAP[(item as any).color] 
+                                  : ""
+                            }`} />
+                          </div>
                           <span className="text-[13px] font-medium">{item.label}</span>
                         </div>
                         {item.badge ? (

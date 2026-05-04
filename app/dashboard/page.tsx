@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import DashboardView from "@/components/dashboard/DashboardView";
+import CustomProtocolView from "@/components/dashboard/CustomProtocolView";
 import LeadDetailModal from "@/components/dashboard/LeadDetailModal";
 import AddLeadModal from "@/components/dashboard/AddLeadModal";
 import AddEmployeeModal from "@/components/dashboard/AddEmployeeModal";
@@ -69,14 +70,22 @@ export default function DashboardPage() {
 
   return (
     <>
-      <DashboardView
-        onAddLead={() => setIsAddChoiceModalOpen(true)}
-        onAddEmployee={() => setIsAddEmployeeModalOpen(true)}
-        onLeadClick={(id, allIds) => openLeadModal(id, allIds)}
-        activeNav="Dashboard"
-        refreshKey={refreshKey}
-        sidebarFilter={sidebarFilter}
-      />
+      {sidebarFilter ? (
+        <CustomProtocolView 
+          filter={sidebarFilter} 
+          onLeadClick={(id, allIds) => openLeadModal(id, allIds)}
+          refreshKey={refreshKey}
+        />
+      ) : (
+        <DashboardView
+          onAddLead={() => setIsAddChoiceModalOpen(true)}
+          onAddEmployee={() => setIsAddEmployeeModalOpen(true)}
+          onLeadClick={(id, allIds) => openLeadModal(id, allIds)}
+          activeNav="Dashboard"
+          refreshKey={refreshKey}
+          sidebarFilter={sidebarFilter}
+        />
+      )}
 
       {selectedLeadId && (
         <LeadDetailModal
