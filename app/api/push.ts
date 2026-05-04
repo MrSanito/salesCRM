@@ -155,7 +155,7 @@ async function main() {
             where: { id: existing.id },
             data: {
               industry: lead.category,
-              subStatus: existing.subStatus || "CHATTING",
+              subStatus: existing.subStatus || "BLANK",
               requirement: existing.requirement || `Company size: ${lead.size}. Address: ${lead.address}`,
             },
           });
@@ -172,7 +172,7 @@ async function main() {
           phone,
           email: null,
           industry: lead.category,
-          subStatus: "CHATTING",
+          subStatus: "BLANK",
           requirement: `Company size: ${lead.size}. Address: ${lead.address}`,
           dealValueInr: "0",
           organizationId: YOUR_ORG_ID,
