@@ -70,7 +70,7 @@ interface LeadsTableProps {
   onLeadClick: (id: string, allIds?: string[]) => void;
   activeNav: string;
   refreshKey?: number;
-  sidebarFilter?: { status: string | null; subStatus: string | null; dealSizeMin: string | null; dealSizeMax: string | null; name: string } | null;
+  sidebarFilter?: { id: string; status: string | null; subStatus: string | null; dealSizeMin: string | null; dealSizeMax: string | null; name: string } | null;
 }
 
 export default function LeadsTable({ onLeadClick, activeNav, refreshKey = 0, sidebarFilter }: LeadsTableProps) {
@@ -133,6 +133,12 @@ export default function LeadsTable({ onLeadClick, activeNav, refreshKey = 0, sid
     XLSX.utils.book_append_sheet(workbook, worksheet, "Leads");
     XLSX.writeFile(workbook, `${filename}.csv`, { bookType: "csv" });
   };
+
+  // Reset selection and page when filter changes
+  useEffect(() => {
+    setSelectedLeads(new Set());
+    setCurrentPage(1);
+  }, [sidebarFilter?.id, activeNav]);
 
   const handleDeleteLead = async (id: string) => {
     setIsDeleting(true);
@@ -219,9 +225,14 @@ export default function LeadsTable({ onLeadClick, activeNav, refreshKey = 0, sid
       if (sortConfig.key === 'lead') {
         valA = a.contactName.toLowerCase();
         valB = b.contactName.toLowerCase();
+      } else if (sortConfig.key === 'dealValueInr') {
+        valA = parseFloat(a.dealValueInr || "0");
+        valB = parseFloat(b.dealValueInr || "0");
       } else {
         valA = (a as any)[sortConfig.key];
         valB = (b as any)[sortConfig.key];
+        if (typeof valA === 'string') valA = valA.toLowerCase();
+        if (typeof valB === 'string') valB = valB.toLowerCase();
       }
 
       if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
@@ -415,7 +426,7 @@ export default function LeadsTable({ onLeadClick, activeNav, refreshKey = 0, sid
             )}
           </div>
 
-          {selectedLeads.size > 1 && (
+          {selectedLeads.size > 0 && (
             <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-2 duration-300">
               <div className="w-[1px] h-6 bg-slate-200 mx-1" />
               <button
@@ -574,8 +585,22 @@ export default function LeadsTable({ onLeadClick, activeNav, refreshKey = 0, sid
                   )}
                 </div>
               </th>
-              <th className="hidden xl:table-cell w-[6%] text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider px-3 py-2.5">Value</th>
-              <th className="hidden xl:table-cell w-[4%] text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider px-3 py-2.5">Priority</th>
+              <th 
+                className="hidden xl:table-cell w-[6%] text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider px-3 py-2.5 cursor-pointer hover:bg-slate-100 transition-colors group"
+                onClick={() => setSortConfig(prev => ({ key: 'dealValueInr', direction: prev?.key === 'dealValueInr' && prev.direction === 'asc' ? 'desc' : 'asc' }))}
+              >
+                <div className="flex items-center gap-1">
+                  Value {sortConfig?.key === 'dealValueInr' && (sortConfig.direction === 'asc' ? "↑" : "↓")}
+                </div>
+              </th>
+              <th 
+                className="hidden xl:table-cell w-[4%] text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider px-3 py-2.5 cursor-pointer hover:bg-slate-100 transition-colors group"
+                onClick={() => setSortConfig(prev => ({ key: 'priority', direction: prev?.key === 'priority' && prev.direction === 'asc' ? 'desc' : 'asc' }))}
+              >
+                <div className="flex items-center gap-1">
+                  Priority {sortConfig?.key === 'priority' && (sortConfig.direction === 'asc' ? "↑" : "↓")}
+                </div>
+              </th>
               <th className="w-[45px] text-right px-3 sm:px-4 py-2.5"></th>
             </tr>
           </thead>

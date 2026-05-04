@@ -130,6 +130,7 @@ export default function Sidebar({
   }, []);
 
   // Fetch custom sidebar filters for all users
+  const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
   useEffect(() => {
     fetch("/api/sidebar-filters")
       .then(r => r.json())
@@ -137,7 +138,7 @@ export default function Sidebar({
         if (Array.isArray(data)) setCustomFilters(data);
       })
       .catch(console.error);
-  }, []);
+  }, [pathname]); // Refetch when navigating to ensure new filters show up
 
   // Build the dynamic sidebar items, injecting custom filters
   const buildSidebarGroups = (): SidebarGroup[] => {
@@ -155,7 +156,7 @@ export default function Sidebar({
       })
     })).filter(group => group.items.length > 0);
 
-    // Insert custom filters section if any exist
+    // Insert custom filters INSIDE the LEADS section
     if (customFilters.length > 0) {
       const customItems = customFilters.map(f => ({
         icon: Filter,
@@ -165,14 +166,17 @@ export default function Sidebar({
         badgeColor: COLOR_BG_MAP[f.color] || "bg-blue-500",
       }));
 
-      // Insert AFTER the LEADS section (index 1 in the base)
       const leadsIndex = base.findIndex(g => g.section === "LEADS");
-      const insertAt = leadsIndex >= 0 ? leadsIndex + 1 : base.length;
-
-      base.splice(insertAt, 0, {
-        section: "QUICK FILTERS",
-        items: customItems,
-      });
+      if (leadsIndex >= 0) {
+        // Append to the items list in LEADS section
+        base[leadsIndex].items.push(...customItems);
+      } else {
+        // Fallback to separate section if LEADS not found
+        base.splice(1, 0, {
+          section: "QUICK FILTERS",
+          items: customItems,
+        });
+      }
     }
 
     return base;
