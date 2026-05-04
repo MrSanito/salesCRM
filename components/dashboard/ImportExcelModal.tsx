@@ -78,6 +78,17 @@ export default function ImportExcelModal({ onClose, onImportSuccess }: ImportExc
     }
   };
 
+  const handleDownloadTemplate = () => {
+    const templateData = [
+      ["Name", "Company", "Phone", "Email", "Industry"]
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(templateData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Template");
+    XLSX.write(wb, { bookType: 'xlsx', type: 'binary' });
+    XLSX.writeFile(wb, "Lead_Import_Template.xlsx");
+  };
+
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
@@ -87,9 +98,19 @@ export default function ImportExcelModal({ onClose, onImportSuccess }: ImportExc
             <h3 className="text-[16px] font-bold text-slate-900">Import Leads</h3>
             <p className="text-[11px] text-slate-400 font-medium mt-0.5 uppercase tracking-widest">Excel or CSV files</p>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:bg-white hover:text-slate-600 shadow-sm transition-all">
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={handleDownloadTemplate}
+              className="flex items-center gap-1.5 text-[10px] font-bold bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-all active:scale-95 shadow-sm"
+              title="Download Example Template"
+            >
+              <Download size={12} className="text-blue-500" />
+              Template
+            </button>
+            <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:bg-white hover:text-slate-600 shadow-sm transition-all">
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         <div className="p-6">
