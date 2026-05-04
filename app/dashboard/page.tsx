@@ -1,5 +1,6 @@
 "use client"
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import DashboardView from "@/components/dashboard/DashboardView";
 import LeadDetailModal from "@/components/dashboard/LeadDetailModal";
 import AddLeadModal from "@/components/dashboard/AddLeadModal";
@@ -7,7 +8,19 @@ import AddEmployeeModal from "@/components/dashboard/AddEmployeeModal";
 import AddLeadChoiceModal from "@/components/dashboard/AddLeadChoiceModal";
 import ImportExcelModal from "@/components/dashboard/ImportExcelModal";
 
+export interface SidebarFilterConfig {
+  id: string;
+  name: string;
+  status: string | null;
+  subStatus: string | null;
+  dealSizeMin: string | null;
+  dealSizeMax: string | null;
+}
+
 export default function DashboardPage() {
+  const searchParams = useSearchParams();
+  const sfId = searchParams.get("sf");
+  const [sidebarFilter, setSidebarFilter] = useState<SidebarFilterConfig | null>(null);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [isModalLoading, setIsModalLoading] = useState(false);
   const [leadIds, setLeadIds] = useState<string[]>([]);
@@ -37,6 +50,23 @@ export default function DashboardPage() {
 
   const triggerRefresh = () => setRefreshKey(prev => prev + 1);
 
+  // Fetch sidebar filter config when ?sf= is present
+  useEffect(() => {
+    if (sfId) {
+      fetch("/api/sidebar-filters")
+        .then(r => r.json())
+        .then(data => {
+          if (Array.isArray(data)) {
+            const found = data.find((f: any) => f.id === sfId);
+            setSidebarFilter(found || null);
+          }
+        })
+        .catch(console.error);
+    } else {
+      setSidebarFilter(null);
+    }
+  }, [sfId]);
+
   return (
     <>
       <DashboardView
@@ -45,6 +75,7 @@ export default function DashboardPage() {
         onLeadClick={(id, allIds) => openLeadModal(id, allIds)}
         activeNav="Dashboard"
         refreshKey={refreshKey}
+        sidebarFilter={sidebarFilter}
       />
 
       {selectedLeadId && (

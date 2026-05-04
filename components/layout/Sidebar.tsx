@@ -2,12 +2,11 @@
 import {
   AlertTriangle, LayoutDashboard, UserPlus, Phone, CheckCircle2,
   FileText, CalendarCheck, XCircle, BarChart2, Activity, PieChart,
-  Users2, Users, Puzzle, Settings, X, History
+  Users2, Users, Puzzle, Settings, X, History, Filter
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/components/auth/AuthContext";
-import { useState } from "react";
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 
 interface SidebarItem {
   icon: any;
@@ -67,6 +66,39 @@ const SIDEBAR_ITEMS: SidebarGroup[] = [
   },
 ];
 
+const COLOR_MAP: Record<string, string> = {
+  blue: "from-blue-400 to-blue-600",
+  green: "from-green-400 to-green-600",
+  purple: "from-purple-400 to-purple-600",
+  orange: "from-orange-400 to-orange-600",
+  red: "from-red-400 to-red-600",
+  cyan: "from-cyan-400 to-cyan-600",
+  pink: "from-pink-400 to-pink-600",
+  amber: "from-amber-400 to-amber-600",
+};
+
+const COLOR_BG_MAP: Record<string, string> = {
+  blue: "bg-blue-500",
+  green: "bg-green-500",
+  purple: "bg-purple-500",
+  orange: "bg-orange-500",
+  red: "bg-red-500",
+  cyan: "bg-cyan-500",
+  pink: "bg-pink-500",
+  amber: "bg-amber-500",
+};
+
+interface CustomFilter {
+  id: string;
+  name: string;
+  status: string | null;
+  subStatus: string | null;
+  dealSizeMin: string | null;
+  dealSizeMax: string | null;
+  color: string;
+  orderIndex: number;
+}
+
 interface SidebarProps {
   activeNav?: string;
   isOpen?: boolean;
@@ -80,6 +112,7 @@ export default function Sidebar({
 }: SidebarProps) {
   const { user } = useAuth();
   const [counts, setCounts] = useState({ alerts: 0, newLeads: 0, followUps: 0 });
+  const [customFilters, setCustomFilters] = useState<CustomFilter[]>([]);
 
   useEffect(() => {
     fetch("/api/dashboard/stats")
@@ -96,22 +129,56 @@ export default function Sidebar({
       .catch(console.error);
   }, []);
 
-  // Filter items based on roles and update badges with real counts
-  const filteredItems = SIDEBAR_ITEMS.map(group => ({
-    ...group,
-    items: group.items.map(item => {
-      // Inject real counts into badges
-      let badge = item.badge;
-      if (item.label === "Alerts") badge = counts.alerts;
-      if (item.label === "New Leads") badge = counts.newLeads;
-      if (item.label === "Follow Ups") badge = counts.followUps;
+  // Fetch custom sidebar filters for all users
+  useEffect(() => {
+    fetch("/api/sidebar-filters")
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data)) setCustomFilters(data);
+      })
+      .catch(console.error);
+  }, []);
 
-      return { ...item, badge };
-    }).filter(item => {
-      if (!item.roles) return true;
-      return user?.role && item.roles.includes(user.role);
-    })
-  })).filter(group => group.items.length > 0);
+  // Build the dynamic sidebar items, injecting custom filters
+  const buildSidebarGroups = (): SidebarGroup[] => {
+    const base = SIDEBAR_ITEMS.map(group => ({
+      ...group,
+      items: group.items.map(item => {
+        let badge = item.badge;
+        if (item.label === "Alerts") badge = counts.alerts;
+        if (item.label === "New Leads") badge = counts.newLeads;
+        if (item.label === "Follow Ups") badge = counts.followUps;
+        return { ...item, badge };
+      }).filter(item => {
+        if (!item.roles) return true;
+        return user?.role && item.roles.includes(user.role);
+      })
+    })).filter(group => group.items.length > 0);
+
+    // Insert custom filters section if any exist
+    if (customFilters.length > 0) {
+      const customItems = customFilters.map(f => ({
+        icon: Filter,
+        label: f.name,
+        href: `/dashboard?sf=${f.id}`,
+        badge: undefined as number | undefined,
+        badgeColor: COLOR_BG_MAP[f.color] || "bg-blue-500",
+      }));
+
+      // Insert AFTER the LEADS section (index 1 in the base)
+      const leadsIndex = base.findIndex(g => g.section === "LEADS");
+      const insertAt = leadsIndex >= 0 ? leadsIndex + 1 : base.length;
+
+      base.splice(insertAt, 0, {
+        section: "QUICK FILTERS",
+        items: customItems,
+      });
+    }
+
+    return base;
+  };
+
+  const filteredItems = buildSidebarGroups();
 
   return (
     <>
@@ -174,7 +241,7 @@ export default function Sidebar({
                           <Icon size={15} className="flex-shrink-0" />
                           <span className="text-[13px] font-medium">{item.label}</span>
                         </div>
-                        {item.badge && (
+                        {item.badge ? (
                           <span
                             className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full text-sidebar-primary-foreground ${
                               isActive ? "bg-white/30" : item.badgeColor ?? "bg-sidebar-primary"
@@ -182,7 +249,7 @@ export default function Sidebar({
                           >
                             {item.badge}
                           </span>
-                        )}
+                        ) : null}
                       </Link>
                     </li>
                   );

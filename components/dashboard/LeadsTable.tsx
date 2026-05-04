@@ -70,9 +70,10 @@ interface LeadsTableProps {
   onLeadClick: (id: string, allIds?: string[]) => void;
   activeNav: string;
   refreshKey?: number;
+  sidebarFilter?: { status: string | null; subStatus: string | null; dealSizeMin: string | null; dealSizeMax: string | null; name: string } | null;
 }
 
-export default function LeadsTable({ onLeadClick, activeNav, refreshKey = 0 }: LeadsTableProps) {
+export default function LeadsTable({ onLeadClick, activeNav, refreshKey = 0, sidebarFilter }: LeadsTableProps) {
   const router = useRouter();
   const [leads, setLeads] = useState<DbLead[]>([]);
   const [loading, setLoading] = useState(true);
@@ -184,6 +185,24 @@ export default function LeadsTable({ onLeadClick, activeNav, refreshKey = 0 }: L
   // 1. Navigation Filters
   if (activeNav === "Alerts") processedLeads = processedLeads.filter((l) => l.priority === "HIGH");
   if (activeNav === "New Leads") processedLeads = processedLeads.filter((l) => l.stage === "NEW");
+
+  // 1.5 Sidebar Filter (from CEO custom shortcuts)
+  if (sidebarFilter) {
+    if (sidebarFilter.status) {
+      processedLeads = processedLeads.filter((l) => l.stage === sidebarFilter.status);
+    }
+    if (sidebarFilter.subStatus) {
+      processedLeads = processedLeads.filter((l) => l.subStatus === sidebarFilter.subStatus);
+    }
+    if (sidebarFilter.dealSizeMin) {
+      const min = parseFloat(sidebarFilter.dealSizeMin);
+      processedLeads = processedLeads.filter((l) => parseFloat(l.dealValueInr || "0") >= min);
+    }
+    if (sidebarFilter.dealSizeMax) {
+      const max = parseFloat(sidebarFilter.dealSizeMax);
+      processedLeads = processedLeads.filter((l) => parseFloat(l.dealValueInr || "0") <= max);
+    }
+  }
 
   // 2. Column Filters
   Object.keys(columnFilters).forEach(key => {
@@ -303,7 +322,7 @@ export default function LeadsTable({ onLeadClick, activeNav, refreshKey = 0 }: L
       <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 border-b border-slate-100 gap-4">
         <div>
           <h2 className="text-[14px] font-semibold text-slate-800 flex items-center gap-2">
-            {activeNav === "New Leads" ? "New Leads Pipeline" : activeNav === "Alerts" ? "High Priority Alerts" : "All Leads Pipeline"}
+            {sidebarFilter ? `🔍 ${sidebarFilter.name}` : activeNav === "New Leads" ? "New Leads Pipeline" : activeNav === "Alerts" ? "High Priority Alerts" : "All Leads Pipeline"}
             {(selectedLeads.size > 0 || (displayedLeads.length > 0 && displayedLeads.length < leads.length)) && (
               <span className={`flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-black border transition-all ${
                 selectedLeads.size > 0 

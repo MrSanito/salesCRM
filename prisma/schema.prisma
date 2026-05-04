@@ -24,6 +24,7 @@ model Organization {
   teams        Team[]
   users        User[]
   auditLogs    AuditLog[]
+  sidebarFilters SidebarFilter[]
 
   @@map("organizations")
 }
@@ -52,6 +53,7 @@ model User {
   subordinates   User[]        @relation("UserHierarchy")
   organization   Organization  @relation(fields: [organizationId], references: [id])
   team           Team?         @relation("TeamMembers", fields: [teamId], references: [id])
+  sidebarFilters SidebarFilter[] @relation("SidebarFilterCreator")
 
   @@index([organizationId])
   @@map("users")
@@ -348,4 +350,25 @@ enum LeadSubStatus {
   PROPOSAL_SENT
   WARM_LEAD
   BLANK
+}
+
+model SidebarFilter {
+  id             String        @id @default(uuid())
+  name           String
+  status         LeadStage?
+  subStatus      LeadSubStatus?
+  dealSizeMin    Decimal?      @db.Decimal(15, 2)
+  dealSizeMax    Decimal?      @db.Decimal(15, 2)
+  icon           String        @default("filter")
+  color          String        @default("blue")
+  orderIndex     Int           @default(0)
+  organizationId String
+  createdById    String
+  createdAt      DateTime      @default(now())
+
+  organization   Organization  @relation(fields: [organizationId], references: [id])
+  createdBy      User          @relation("SidebarFilterCreator", fields: [createdById], references: [id])
+
+  @@index([organizationId])
+  @@map("sidebar_filters")
 }

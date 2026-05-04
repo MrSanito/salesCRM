@@ -7,6 +7,7 @@ import { useAuth } from "@/components/auth/AuthContext";
 import { UserPlus, UserCircle2, Plus, Bell } from "lucide-react";
 import { useState } from "react";
 import FollowUpModal from "@/components/dashboard/FollowupModal";
+import type { SidebarFilterConfig } from "@/app/dashboard/page";
 
 interface DashboardViewProps {
   onAddLead: () => void;
@@ -14,9 +15,10 @@ interface DashboardViewProps {
   onLeadClick: (id: string, allIds?: string[]) => void;
   activeNav: string;
   refreshKey?: number;
+  sidebarFilter?: SidebarFilterConfig | null;
 }
 
-export default function DashboardView({ onAddLead, onAddEmployee, onLeadClick, activeNav, refreshKey = 0 }: DashboardViewProps) {
+export default function DashboardView({ onAddLead, onAddEmployee, onLeadClick, activeNav, refreshKey = 0, sidebarFilter }: DashboardViewProps) {
   const { user } = useAuth();
   const [showFollowup, setShowFollowup] = useState(false);
 
@@ -82,6 +84,7 @@ export default function DashboardView({ onAddLead, onAddEmployee, onLeadClick, a
         activeNav={activeNav} 
         onLeadClick={onLeadClick} 
         refreshKey={refreshKey}
+        sidebarFilter={sidebarFilter}
       />
       {/* Follow Up Modal Triggered by Test Button */}
       {showFollowup && (
