@@ -211,10 +211,28 @@ export default function Sidebar({
           {filteredItems.map((group, gi) => (
             <div key={gi}>
               {group.section && (
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/40 px-2 mb-1 flex items-center gap-1.5">
-                  {group.section}
-                  {group.section === "CUSTOM VIEWS" && <Sparkles size={10} className="text-orange-400" />}
-                </p>
+                <div className="flex items-center justify-between px-2 mb-1 group/sec">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/40 flex items-center gap-1.5">
+                    {group.section}
+                    {group.section === "CUSTOM VIEWS" && <Sparkles size={10} className="text-orange-400" />}
+                  </p>
+                  {group.section === "CUSTOM VIEWS" && user?.role === "ORG_ADMIN" && (
+                    <div className="relative group/manage">
+                      <button 
+                        onClick={(e) => {
+                          e.preventDefault();
+                          // Toggle logic or link to settings
+                          window.location.href = "/dashboard/settings#sidebar-filters";
+                        }}
+                        className="p-1 hover:bg-sidebar-accent rounded-md transition-all text-sidebar-foreground/40 hover:text-sidebar-foreground flex items-center gap-1"
+                        title="Manage Filters"
+                      >
+                        <Settings size={12} />
+                        <span className="text-[9px] font-black uppercase tracking-tighter">Manage</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
               <ul className="space-y-0.5">
                 {group.items.map((item) => {

@@ -302,28 +302,26 @@ export default function SettingsView() {
 
           {/* ────── Sidebar Customization (CEO Only) ────── */}
           {user?.role === "ORG_ADMIN" && (
-            <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/50 overflow-hidden">
-              <div className="p-8 sm:p-10 border-b border-slate-50 bg-slate-50/30">
+            <div id="sidebar-filters" className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/50 overflow-hidden scroll-mt-6">
+              <div className="p-6 sm:p-10 border-b border-slate-50 bg-slate-50/30">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                  <div className="flex items-center gap-3">
-                    <LayoutPanelLeft size={14} className="text-purple-600" />
-                    <div>
-                      <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Sidebar Customization</h3>
-                      <span className="inline-block mt-1 text-[8px] font-black bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded-md uppercase tracking-widest">CEO Protocol</span>
-                    </div>
+                  <h3 className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-3">
+                    <LayoutPanelLeft size={14} className="text-purple-600" /> Sidebar Protocols
+                  </h3>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setShowAddForm(!showAddForm)}
+                      className={`w-full sm:w-auto flex items-center justify-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-5 py-2.5 rounded-xl transition-all active:scale-95 ${
+                        showAddForm
+                          ? "bg-slate-100 text-slate-600 border border-slate-200"
+                          : "bg-slate-900 text-white shadow-lg shadow-slate-200"
+                      }`}
+                    >
+                      {showAddForm ? <X size={12} /> : <Plus size={12} />}
+                      {showAddForm ? "Cancel" : "Add Filter"}
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setShowAddForm(!showAddForm)}
-                    className={`flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl transition-all active:scale-95 ${
-                      showAddForm
-                        ? "bg-slate-100 text-slate-600 border border-slate-200"
-                        : "bg-slate-900 text-white shadow-lg shadow-slate-200"
-                    }`}
-                  >
-                    {showAddForm ? <X size={12} /> : <Plus size={12} />}
-                    {showAddForm ? "Cancel" : "Add Filter"}
-                  </button>
                 </div>
 
                 <p className="text-[11px] text-slate-500 leading-relaxed mb-6">

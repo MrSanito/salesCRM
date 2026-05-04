@@ -138,20 +138,20 @@ export default function RemindersList({ refreshKey = 0 }: RemindersListProps) {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-0 border-b border-slate-100">
+        <div className="flex gap-0 border-b border-slate-100 overflow-x-auto no-scrollbar scroll-smooth">
           {tabConfig.map(({ key, label, count, dotColor }) => (
             <button
               key={key}
               onClick={() => setTab(key)}
-              className={`flex items-center gap-1.5 px-3 py-2 text-[11px] font-semibold border-b-2 transition-all -mb-px ${
+              className={`flex items-center gap-2 px-4 py-3 text-[11px] font-black uppercase tracking-widest transition-all -mb-px whitespace-nowrap border-b-2 ${
                 tab === key
-                  ? "border-slate-900 text-slate-900"
+                  ? "border-slate-900 text-slate-900 bg-slate-50/50"
                   : "border-transparent text-slate-400 hover:text-slate-600"
               }`}
             >
-              <span className={`w-1.5 h-1.5 rounded-full ${dotColor} opacity-${tab === key ? "100" : "50"}`} />
+              <div className={`w-1.5 h-1.5 rounded-full ${dotColor} ${tab === key ? "animate-pulse" : "opacity-40"}`} />
               {label}
-              <span className={`text-[9px] font-bold rounded-full px-1.5 py-0.5 ${
+              <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-lg ${
                 tab === key ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-500"
               }`}>
                 {count}

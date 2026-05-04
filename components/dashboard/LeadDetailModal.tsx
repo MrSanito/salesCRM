@@ -224,7 +224,7 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
       <div className="relative bg-white w-full max-w-4xl h-[90vh] rounded-2xl shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] overflow-hidden animate-in zoom-in-95 fade-in duration-300 border border-slate-100 flex flex-col">
 
         {/* Header */}
-        <div className="h-16 bg-white border-b border-slate-50 flex items-center justify-between px-8 flex-shrink-0 z-20">
+        <div className="h-16 bg-white border-b border-slate-50 flex items-center justify-between px-4 sm:px-8 flex-shrink-0 z-20">
           <div className="flex items-center gap-4">
             <button onClick={onClose} className="p-2 hover:bg-slate-50 rounded-xl text-slate-400 transition-colors">
               <X size={22} />
@@ -265,7 +265,7 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] animate-pulse">Syncing Intelligence...</p>
             </div>
           ) : lead && (
-            <div className="p-8 sm:p-10 pt-4">
+            <div className="p-5 sm:p-10 pt-4">
               {/* Lead Info */}
               <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-8">
                 <div>
@@ -451,7 +451,7 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
 
               {/* Action Layer */}
               <div className="space-y-6">
-                <div className="flex flex-wrap items-center gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                   <a 
                     href={`tel:${lead.phone}`} 
                     onClick={() => logInteraction("CALL")}

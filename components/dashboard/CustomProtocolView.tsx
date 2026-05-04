@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { 
   Filter, ChevronDown, Download, Eye, MoreVertical, 
-  ChevronRight, XCircle, Edit, Trash2, Target, Sparkles, Bell
+  ChevronRight, XCircle, Edit, Trash2, Target, Sparkles, Bell, Search
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import BulkUpdateModal from "./BulkUpdateModal";
@@ -87,6 +87,8 @@ export default function CustomProtocolView({ filter, onLeadClick, refreshKey = 0
   const [leads, setLeads] = useState<DbLead[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeLeadMenu, setActiveLeadMenu] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   
   // States for Pagination & Sorting
   const [currentPage, setCurrentPage] = useState(1);
@@ -175,6 +177,33 @@ export default function CustomProtocolView({ filter, onLeadClick, refreshKey = 0
   // Processing Leads
   let processedLeads = [...leads];
 
+  // 0. Search Filter & Dropdown Logic
+  const searchResults = searchQuery.length >= 2 ? leads.filter(l => {
+    const q = searchQuery.toLowerCase();
+    return (
+      l.contactName.toLowerCase().includes(q) || 
+      l.company.toLowerCase().includes(q) ||
+      l.phone?.toLowerCase().includes(q) ||
+      l.email?.toLowerCase().includes(q) ||
+      l.industry?.toLowerCase().includes(q) ||
+      l.requirement?.toLowerCase().includes(q) ||
+      l.owner?.name.toLowerCase().includes(q)
+    );
+  }).slice(0, 8) : [];
+
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    processedLeads = processedLeads.filter(l => 
+      l.contactName.toLowerCase().includes(q) || 
+      l.company.toLowerCase().includes(q) ||
+      l.phone?.toLowerCase().includes(q) ||
+      l.email?.toLowerCase().includes(q) ||
+      l.industry?.toLowerCase().includes(q) ||
+      l.requirement?.toLowerCase().includes(q) ||
+      l.owner?.name.toLowerCase().includes(q)
+    );
+  }
+
   // 1. Sidebar Filter (The main focus of this view)
   if (filter.status) processedLeads = processedLeads.filter(l => l.stage === filter.status);
   if (filter.subStatus) processedLeads = processedLeads.filter(l => l.subStatus === filter.subStatus);
@@ -261,98 +290,156 @@ export default function CustomProtocolView({ filter, onLeadClick, refreshKey = 0
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-6 animate-in fade-in duration-500">
       {/* Focused Protocol Header */}
-      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 bg-white p-4 sm:p-6 rounded-2xl border border-slate-100 shadow-sm">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-3 mb-1.5">
-            <div className="p-2 bg-orange-50 rounded-xl text-orange-600 flex-shrink-0">
-              <Target size={18} className="sm:w-5 sm:h-5" />
-            </div>
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2 truncate">
-              {filter.name}
-              <Sparkles size={14} className="text-orange-400 flex-shrink-0" />
-
-              {/* Conditional Reminder at .45 minute */}
-              {(() => {
-                const now = new Date();
-                const is45 = now.getMinutes() === 45;
-                if (!is45) return null;
-
-                const users = ["Rahul", "Priya", "Suresh", "Anita", "Vikram", "Deepa"];
-                const times = ["10:30 AM", "2:45 PM", "11:15 AM", "4:20 PM", "9:00 AM"];
-                const randomUser = users[Math.floor(Math.random() * users.length)];
-                const randomTime = times[Math.floor(Math.random() * times.length)];
-
-                return (
-                  <div className="hidden sm:flex items-center gap-2 bg-orange-50 border border-orange-100 text-orange-600 px-2.5 py-1 rounded-xl animate-bounce ml-2 shadow-sm whitespace-nowrap">
-                    <Bell size={10} className="fill-orange-500" />
-                    <span className="text-[9px] font-black uppercase tracking-wider">
-                      {randomUser}: {randomTime}
-                    </span>
-                  </div>
-                );
-              })()}
-            </h1>
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/50">
+        <div className="flex items-center gap-4 group cursor-pointer min-w-0">
+          <div className="w-12 h-12 rounded-2xl bg-orange-50 flex items-center justify-center text-orange-600 shadow-sm transition-all group-hover:scale-105">
+             <Target size={24} />
           </div>
-          <p className="text-xs sm:text-sm text-slate-500 font-medium ml-0 sm:ml-11">
-            {loading ? "Syncing protocol..." : `${processedLeads.length} leads detected in this active view`}
-          </p>
+          <div className="min-w-0">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+              <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight truncate">
+                {filter.name}
+              </h1>
+              
+              <div className="flex items-center gap-2">
+                <Sparkles size={16} className="text-orange-400" />
+                {/* Conditional Reminder at .45 minute */}
+                {(() => {
+                  const now = new Date();
+                  const is45 = now.getMinutes() === 45;
+                  if (!is45) return null;
+
+                  const users = ["Rahul", "Priya", "Suresh", "Anita", "Vikram", "Deepa"];
+                  const times = ["10:30 AM", "2:45 PM", "11:15 AM", "4:20 PM", "9:00 AM"];
+                  const randomUser = users[Math.floor(Math.random() * users.length)];
+                  const randomTime = times[Math.floor(Math.random() * times.length)];
+
+                  return (
+                    <div className="flex items-center gap-2 bg-orange-50 border border-orange-100 text-orange-600 px-2.5 py-1 rounded-lg animate-bounce shadow-sm">
+                      <Bell size={10} className="fill-orange-500" />
+                      <span className="text-[9px] font-black uppercase tracking-wider whitespace-nowrap">
+                        {randomUser} follow-up at {randomTime}
+                      </span>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1 truncate">
+              {loading ? "Syncing protocol..." : `${processedLeads.length} active leads in this view`}
+            </p>
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 ml-0 xl:ml-0">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Search bar with dropdown */}
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+            <input 
+              type="text" 
+              placeholder="Search in protocol..."
+              value={searchQuery}
+              onFocus={() => setShowSearchDropdown(true)}
+              onChange={(e) => { 
+                setSearchQuery(e.target.value); 
+                setCurrentPage(1);
+                setShowSearchDropdown(true);
+              }}
+              className="w-full sm:w-64 pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-4 focus:ring-orange-500/5 transition-all"
+            />
+            
+            {showSearchDropdown && searchResults.length > 0 && (
+              <>
+                <div className="fixed inset-0 z-[65]" onClick={() => setShowSearchDropdown(false)} />
+                <div className="absolute left-0 top-full mt-2 w-full sm:w-80 bg-white border border-slate-200 rounded-2xl shadow-2xl z-[70] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                  <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Protocol Matches</span>
+                    <span className="text-[9px] font-bold text-orange-500 bg-orange-50 px-1.5 py-0.5 rounded-md">{searchResults.length} found</span>
+                  </div>
+                  <div className="max-h-[320px] overflow-y-auto py-1">
+                    {searchResults.map((result) => (
+                      <button
+                        key={result.id}
+                        onClick={() => {
+                          onLeadClick(result.id, leads.map(l => l.id));
+                          setShowSearchDropdown(false);
+                          setSearchQuery("");
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors group text-left border-b border-slate-50 last:border-0"
+                      >
+                        <div className="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center text-[10px] font-black text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-all">
+                          {result.contactName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <p className="text-[12px] font-bold text-slate-900 truncate group-hover:text-orange-600 transition-colors">
+                              {result.contactName}
+                            </p>
+                          </div>
+                          <p className="text-[10px] text-slate-500 truncate mt-0.5">
+                            {result.company} • {result.owner?.name}
+                          </p>
+                        </div>
+                        <ChevronRight size={14} className="text-slate-300 group-hover:text-orange-500 transition-transform group-hover:translate-x-0.5" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
           {selectedLeads.size > 0 && (
-            <div className="flex items-center gap-2 pr-3 border-r border-slate-100 mr-2 animate-in fade-in slide-in-from-right-2 duration-300 overflow-x-auto pb-1 sm:pb-0">
+            <div className="flex items-center gap-2 pr-3 border-r border-slate-100 mr-2 animate-in fade-in slide-in-from-right-2 duration-300">
               <button 
                 onClick={() => setShowBulkUpdate(true)}
-                className="whitespace-nowrap flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 border border-blue-200 text-[11px] font-bold rounded-lg hover:bg-blue-600 hover:text-white transition-all active:scale-95"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 border border-blue-200 text-[12px] font-bold rounded-lg hover:bg-blue-600 hover:text-white transition-all active:scale-95"
               >
-                <Edit size={11} /> Update ({selectedLeads.size})
+                <Edit size={12} /> Bulk Update ({selectedLeads.size})
               </button>
               <button 
                 onClick={() => setShowBulkDelete(true)}
-                className="whitespace-nowrap flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-600 border border-red-200 text-[11px] font-bold rounded-lg hover:bg-red-600 hover:text-white transition-all active:scale-95"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-600 border border-red-200 text-[12px] font-bold rounded-lg hover:bg-red-600 hover:text-white transition-all active:scale-95"
               >
-                <Trash2 size={11} /> Delete
+                <Trash2 size={12} /> Bulk Delete
               </button>
             </div>
           )}
-          
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Show</span>
-              <input 
-                type="number" 
-                value={pageSize}
-                onChange={(e) => {
-                  setPageSize(parseInt(e.target.value) || 20);
-                  setCurrentPage(1);
-                }}
-                className="w-8 bg-transparent border-none text-[11px] font-bold text-slate-700 focus:outline-none p-0"
-              />
-            </div>
+          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 mr-2">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Show</span>
+            <input 
+              type="number" 
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(parseInt(e.target.value) || 20);
+                setCurrentPage(1);
+              }}
+              className="w-10 bg-transparent border-none text-[12px] font-bold text-slate-700 focus:outline-none p-0"
+            />
+          </div>
 
-            <div className="relative">
-              <button
-                onClick={() => setShowExportMenu(!showExportMenu)}
-                className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 text-slate-600 text-[11px] font-bold rounded-xl hover:bg-slate-50 transition-all"
-              >
-                <Download size={12} /> Export
-              </button>
-              {showExportMenu && (
-                <div className="absolute right-0 top-full mt-2 w-40 bg-white border border-slate-200 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                  <button onClick={() => { handleExportExcel(processedLeads, filter.name); setShowExportMenu(false); }} className="w-full text-left px-4 py-3 text-[10px] font-bold text-slate-700 hover:bg-slate-50 transition-colors">Excel (.xlsx)</button>
-                </div>
-              )}
-            </div>
+          <div className="relative">
+            <button
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-50 transition-all"
+            >
+              <Download size={14} /> Export
+            </button>
+            {showExportMenu && (
+              <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                <button onClick={() => { handleExportExcel(processedLeads, filter.name); setShowExportMenu(false); }} className="w-full text-left px-4 py-3 text-[11px] font-bold text-slate-700 hover:bg-slate-50 transition-colors">Excel (.xlsx)</button>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
       {/* High Fidelity Table Section */}
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-        <div className="w-full overflow-x-auto">
-          <table className="w-full table-fixed text-[13px]">
+        <div className="w-full overflow-x-auto scrollbar-hide">
+          <table className="w-full table-auto text-[13px]">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-100">
                 <th className="w-[40px] px-3 py-3">
@@ -372,7 +459,7 @@ export default function CustomProtocolView({ filter, onLeadClick, refreshKey = 0
                 <th className="hidden sm:table-cell w-[10%] text-left text-[11px] font-bold text-slate-500 uppercase px-3 py-3">Phone</th>
                 <th className="hidden lg:table-cell w-[10%] text-left text-[11px] font-bold text-slate-500 uppercase px-3 py-3">Owner</th>
                 <th className="hidden xl:table-cell w-[12%] text-left text-[11px] font-bold text-slate-500 uppercase px-3 py-3">Value</th>
-                <th className="w-[45px] text-right px-4 py-3"></th>
+                <th className="w-[45px] text-right px-2 sm:px-4 py-3"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">

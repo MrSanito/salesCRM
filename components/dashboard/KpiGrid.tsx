@@ -40,22 +40,23 @@ export default function KpiGrid({ refreshKey = 0 }: KpiGridProps) {
   ];
 
   return (
-    <div className="grid grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
       {cards.map((card) => {
         const Icon = card.icon;
         return (
-          <div key={card.label} className="bg-white rounded-xl border border-slate-200 p-2 sm:p-4 flex flex-col justify-between hover:shadow-sm transition-shadow">
-            <div className="flex items-center justify-between mb-1 sm:mb-2">
-              <div className={`w-6 h-6 sm:w-10 sm:h-10 rounded-lg ${card.iconBg} flex items-center justify-center flex-shrink-0`}>
-                <Icon size={14} className={`sm:w-[18px] sm:h-[18px] ${card.iconColor}`} />
+          <div key={card.label} className="bg-white rounded-2xl border border-slate-200 p-4 flex flex-col justify-between hover:shadow-xl hover:shadow-slate-200/50 transition-all group">
+            <div className="flex items-center justify-between mb-4">
+              <div className={`w-10 h-10 rounded-xl ${card.iconBg} flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform`}>
+                <Icon size={20} className={card.iconColor} />
               </div>
+              <ArrowUpRight size={14} className="text-slate-300 group-hover:text-green-500 transition-colors" />
             </div>
             <div>
-              <p className="text-[9px] sm:text-[11px] font-medium text-slate-500 mb-0.5 sm:mb-1 truncate">{card.label}</p>
-              <p className="text-lg sm:text-2xl font-bold text-slate-800 leading-tight">{card.value}</p>
-              <div className="flex items-center gap-1 mt-1 sm:mt-1.5">
-                <ArrowUpRight size={12} className="text-green-500" />
-                <span className="text-[9px] sm:text-[11px] text-slate-400 truncate">{card.change}</span>
+              <p className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1 truncate">{card.label}</p>
+              <p className="text-xl sm:text-2xl font-black text-slate-900 leading-tight tracking-tight">{card.value}</p>
+              <div className="flex items-center gap-1 mt-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                <span className="text-[10px] font-bold text-slate-500 truncate">{card.change}</span>
               </div>
             </div>
           </div>

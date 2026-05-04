@@ -68,6 +68,14 @@ export default function DashboardPage() {
     }
   }, [sfId]);
 
+  // Handle ?id= to open lead detail automatically (Global Search)
+  useEffect(() => {
+    const leadId = searchParams.get("id");
+    if (leadId) {
+      setSelectedLeadId(leadId);
+    }
+  }, [searchParams]);
+
   return (
     <>
       {sidebarFilter ? (

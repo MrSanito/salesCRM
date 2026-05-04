@@ -1,7 +1,7 @@
 "use client"
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Filter, ChevronDown, Download, Eye, MoreVertical, ChevronRight, XCircle, Edit, Trash2 } from "lucide-react";
+import { Search, Filter, ChevronDown, Download, Eye, MoreVertical, ChevronRight, XCircle, Edit, Trash2 } from "lucide-react";
 import * as XLSX from "xlsx";
 import BulkUpdateModal from "./BulkUpdateModal";
 import BulkDeleteModal from "./BulkDeleteModal";
@@ -79,7 +79,7 @@ export default function LeadsTable({ onLeadClick, activeNav, refreshKey = 0, sid
   const [loading, setLoading] = useState(true);
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [activeLeadMenu, setActiveLeadMenu] = useState<string | null>(null);
-  
+  const [searchQuery, setSearchQuery] = useState("");
   // New States for Pagination & Sorting
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -187,6 +187,34 @@ export default function LeadsTable({ onLeadClick, activeNav, refreshKey = 0, sid
 
   // Processing Leads (Filter -> Sort -> Paginate)
   let processedLeads = [...leads];
+
+  // 0. Search Filter & Dropdown Logic
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+  const searchResults = searchQuery.length >= 2 ? leads.filter(l => {
+    const q = searchQuery.toLowerCase();
+    return (
+      l.contactName.toLowerCase().includes(q) || 
+      l.company.toLowerCase().includes(q) ||
+      l.phone?.toLowerCase().includes(q) ||
+      l.email?.toLowerCase().includes(q) ||
+      l.industry?.toLowerCase().includes(q) ||
+      l.requirement?.toLowerCase().includes(q) ||
+      l.owner?.name.toLowerCase().includes(q)
+    );
+  }).slice(0, 8) : [];
+
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    processedLeads = processedLeads.filter(l => 
+      l.contactName.toLowerCase().includes(q) || 
+      l.company.toLowerCase().includes(q) ||
+      l.phone?.toLowerCase().includes(q) ||
+      l.email?.toLowerCase().includes(q) ||
+      l.industry?.toLowerCase().includes(q) ||
+      l.requirement?.toLowerCase().includes(q) ||
+      l.owner?.name.toLowerCase().includes(q)
+    );
+  }
 
   // 1. Navigation Filters
   if (activeNav === "Alerts") processedLeads = processedLeads.filter((l) => l.priority === "HIGH");
@@ -330,118 +358,148 @@ export default function LeadsTable({ onLeadClick, activeNav, refreshKey = 0, sid
         </div>
       )}
 
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between px-6 py-5 border-b border-slate-100 gap-6 bg-white">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-blue-50 rounded-2xl text-blue-600 shadow-sm">
-              <Filter size={20} />
-            </div>
-            <div className="min-w-0">
-              <h2 className="text-xl font-black text-slate-900 tracking-tight truncate">
-                {sidebarFilter ? sidebarFilter.name : activeNav === "New Leads" ? "New Leads Protocol" : "Lead Repository"}
-              </h2>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">
-                {loading ? "Syncing..." : `${displayedLeads.length} Records Detected`}
-              </p>
-            </div>
-          </div>
-
-          {(selectedLeads.size > 0 || (displayedLeads.length > 0 && displayedLeads.length < leads.length)) && (
-            <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2 duration-300">
-               <span className={`flex items-center justify-center min-w-[24px] h-6 px-2 rounded-xl text-[10px] font-black border transition-all ${
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 border-b border-slate-100 gap-4">
+        <div>
+          <h2 className="text-[14px] font-semibold text-slate-800 flex items-center gap-2">
+            {sidebarFilter ? `🔍 ${sidebarFilter.name}` : activeNav === "New Leads" ? "New Leads Pipeline" : activeNav === "Alerts" ? "High Priority Alerts" : "All Leads Pipeline"}
+            {(selectedLeads.size > 0 || (displayedLeads.length > 0 && displayedLeads.length < leads.length)) && (
+              <span className={`flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-black border transition-all ${
                 selectedLeads.size > 0 
-                  ? "bg-blue-600 text-white border-blue-700 shadow-lg shadow-blue-200" 
+                  ? "bg-blue-600 text-white border-blue-700 shadow-sm" 
                   : "bg-blue-50 text-blue-600 border-blue-100"
               }`}>
-                {selectedLeads.size > 0 ? `${selectedLeads.size} Selected` : `${displayedLeads.length} Visible`}
+                {selectedLeads.size > 0 ? selectedLeads.size : displayedLeads.length}
               </span>
-              {selectedLeads.size > 0 && (
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setShowBulkUpdate(true)}
-                    className="whitespace-nowrap flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest bg-blue-50 text-blue-600 border border-blue-200 px-3 py-1.5 rounded-xl hover:bg-blue-600 hover:text-white transition-all active:scale-95"
-                  >
-                    <Edit size={12} /> Update
-                  </button>
-                  <button
-                    onClick={() => setShowBulkDelete(true)}
-                    className="whitespace-nowrap flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest bg-red-50 text-red-600 border border-red-200 px-3 py-1.5 rounded-xl hover:bg-red-600 hover:text-white transition-all active:scale-95"
-                  >
-                    <Trash2 size={12} /> Delete
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
+            )}
+          </h2>
+          <p className="text-[11px] text-slate-400 mt-0.5">
+            {loading ? "Loading..." : `${displayedLeads.length} lead${displayedLeads.length !== 1 ? "s" : ""} detected in current view`}
+          </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Page Size Selector */}
-          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 shadow-sm">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Show</span>
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <div className="relative flex-1 sm:flex-none">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
             <input 
-              type="number" 
-              value={pageSize}
-              onChange={(e) => {
-                const val = parseInt(e.target.value) || 20;
-                setPageSize(val);
+              type="text" 
+              placeholder="Search leads, company, owner..."
+              value={searchQuery}
+              onFocus={() => setShowSearchDropdown(true)}
+              onChange={(e) => { 
+                setSearchQuery(e.target.value); 
                 setCurrentPage(1);
+                setShowSearchDropdown(true);
               }}
-              className="w-10 bg-transparent border-none text-[11px] font-black text-slate-700 focus:outline-none p-0"
+              className="w-full sm:w-64 pl-10 pr-4 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-4 focus:ring-blue-500/5 transition-all"
             />
-          </div>
-
-          <div className="relative">
-            <button
-              onClick={() => setShowFilterMenu(!showFilterMenu)}
-              className={`flex items-center gap-2 text-[11px] font-black uppercase tracking-widest border px-4 py-2 rounded-xl transition-all active:scale-95 shadow-sm ${showFilterMenu ? "bg-slate-900 border-slate-900 text-white" : "text-slate-600 border-slate-200 bg-white hover:bg-slate-50"}`}
-            >
-              <Filter size={14} /> Sort
-              <ChevronDown size={12} className={`transition-transform ${showFilterMenu ? "rotate-180" : ""}`} />
-            </button>
-            {showFilterMenu && (
-              <div className="absolute right-0 top-full mt-2 w-56 bg-white border border-slate-200 rounded-2xl shadow-2xl z-40 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                <div className="px-4 py-3 border-b border-slate-50 bg-slate-50/50">
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Global Sorting</p>
+            
+            {/* Search Results Dropdown */}
+            {showSearchDropdown && searchResults.length > 0 && (
+              <>
+                <div 
+                  className="fixed inset-0 z-[65]" 
+                  onClick={() => setShowSearchDropdown(false)}
+                />
+                <div className="absolute left-0 top-full mt-2 w-full sm:w-80 bg-white border border-slate-200 rounded-2xl shadow-2xl z-[70] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                  <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Quick Results</span>
+                    <span className="text-[9px] font-bold text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded-md">{searchResults.length} found</span>
+                  </div>
+                  <div className="max-h-[320px] overflow-y-auto py-1">
+                    {searchResults.map((result) => (
+                      <button
+                        key={result.id}
+                        onClick={() => {
+                          onLeadClick(result.id, leads.map(l => l.id));
+                          setShowSearchDropdown(false);
+                          setSearchQuery("");
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors group text-left border-b border-slate-50 last:border-0"
+                      >
+                        <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-[10px] font-black text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all">
+                          {result.contactName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <p className="text-[12px] font-bold text-slate-900 truncate group-hover:text-blue-600 transition-colors">
+                              {result.contactName}
+                            </p>
+                            <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${STAGE_STYLES[result.stage]}`}>
+                              {STAGE_LABEL[result.stage] || result.stage}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-slate-500 truncate mt-0.5">
+                            {result.company} • {result.owner?.name}
+                          </p>
+                        </div>
+                        <ChevronRight size={14} className="text-slate-300 group-hover:text-blue-500 transition-transform group-hover:translate-x-0.5" />
+                      </button>
+                    ))}
+                  </div>
+                  <div className="p-2 bg-slate-50 border-t border-slate-100">
+                    <button 
+                      onClick={() => setShowSearchDropdown(false)}
+                      className="w-full py-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors"
+                    >
+                      Close Results
+                    </button>
+                  </div>
                 </div>
-                <div className="py-1">
-                  <button onClick={() => { setSortConfig(null); setShowFilterMenu(false); }} className="w-full text-left px-4 py-2.5 text-[11px] hover:bg-slate-50 transition-colors font-bold text-slate-700">Newest Created (Default)</button>
-                  <button onClick={() => { setSortConfig({ key: 'createdAt', direction: 'asc' }); setShowFilterMenu(false); }} className="w-full text-left px-4 py-2.5 text-[11px] hover:bg-slate-50 transition-colors font-bold text-slate-700 border-t border-slate-50">Oldest Created</button>
-                  <button onClick={() => { setSortConfig({ key: 'dealValueInr', direction: 'desc' }); setShowFilterMenu(false); }} className="w-full text-left px-4 py-2.5 text-[11px] hover:bg-slate-50 transition-colors font-bold text-slate-700 border-t border-slate-50">Value: High to Low</button>
-                  <button onClick={() => { setSortConfig({ key: 'dealValueInr', direction: 'asc' }); setShowFilterMenu(false); }} className="w-full text-left px-4 py-2.5 text-[11px] hover:bg-slate-50 transition-colors font-bold text-slate-700 border-t border-slate-50">Value: Low to High</button>
-                </div>
-                <div className="px-4 py-3 border-t border-slate-50 bg-slate-50/50">
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Configuration</p>
-                </div>
-                <button onClick={() => { setColumnFilters({}); setSortConfig(null); setShowFilterMenu(false); }} className="w-full text-left px-4 py-3 text-[11px] hover:bg-red-50 text-red-600 transition-colors font-black border-t border-slate-50 uppercase tracking-widest">Clear All Settings</button>
-              </div>
+              </>
             )}
           </div>
 
-          <div className="relative">
-            <button 
-              onClick={() => setShowExportMenu(!showExportMenu)}
-              className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 text-[11px] font-black uppercase tracking-widest rounded-xl hover:bg-slate-50 transition-all active:scale-95 shadow-sm"
-            >
-              <Download size={14} className="text-blue-500" />
-              Export
-            </button>
-            {showExportMenu && (
-              <div className="absolute right-0 top-full mt-2 w-52 bg-white border border-slate-200 rounded-2xl shadow-2xl z-40 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                <div className="px-4 py-2 bg-slate-50 border-b border-slate-100">
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Format Selection</p>
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <button
+                onClick={() => setShowFilterMenu(!showFilterMenu)}
+                className={`flex items-center gap-1.5 text-[11px] font-bold border px-3 py-1.5 rounded-xl transition-all ${showFilterMenu || sortConfig || Object.keys(columnFilters).length > 0 ? "bg-slate-100 border-slate-300 text-slate-900 shadow-sm" : "text-slate-600 border-slate-200 hover:bg-slate-50"}`}
+              >
+                <Filter size={12} /> Filter
+              </button>
+              {showFilterMenu && (
+                <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-2xl z-[60] overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
+                  <div className="px-3 py-2 border-b border-slate-50 bg-slate-50/50">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Global Sorting</p>
+                  </div>
+                  <button onClick={() => { setSortConfig(null); setShowFilterMenu(false); }} className="w-full text-left px-4 py-2 text-[11px] hover:bg-slate-50 transition-colors font-bold text-slate-700">Newest Created</button>
+                  <button onClick={() => { setSortConfig({ key: 'dealValueInr', direction: 'desc' }); setShowFilterMenu(false); }} className="w-full text-left px-4 py-2 text-[11px] hover:bg-slate-50 transition-colors font-bold text-slate-700 border-t border-slate-50">Value: High to Low</button>
+                  <button onClick={() => { setColumnFilters({}); setSortConfig(null); setShowFilterMenu(false); }} className="w-full text-left px-4 py-2 text-[11px] hover:bg-red-50 text-red-600 transition-colors font-bold border-t border-slate-50">Clear All</button>
                 </div>
-                <button 
-                  onClick={() => { handleExportExcel(leads, "All_Leads"); setShowExportMenu(false); }} 
-                  className="w-full text-left px-4 py-3 text-[11px] hover:bg-slate-50 transition-colors font-bold text-slate-700 flex items-center gap-3"
+              )}
+            </div>
+
+            <div className="relative">
+              <button
+                onClick={() => setShowExportMenu(!showExportMenu)}
+                className={`flex items-center gap-1.5 text-[11px] font-bold border px-3 py-1.5 rounded-xl transition-all ${showExportMenu ? "bg-slate-100 border-slate-300 text-slate-900 shadow-sm" : "text-slate-600 border-slate-200 hover:bg-slate-50"}`}
+              >
+                <Download size={12} /> Export
+              </button>
+              {showExportMenu && (
+                <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-2xl z-[60] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                  <button onClick={() => { handleExportExcel(leads, "All_Leads"); setShowExportMenu(false); }} className="w-full text-left px-4 py-2.5 text-[11px] hover:bg-slate-50 transition-colors font-bold text-slate-700">Excel (.xlsx) - All</button>
+                  <button onClick={() => { handleExportExcel(displayedLeads, "Filtered_Leads"); setShowExportMenu(false); }} className="w-full text-left px-4 py-2.5 text-[11px] hover:bg-slate-50 transition-colors font-bold text-slate-700 border-t border-slate-50">Excel (.xlsx) - Filtered</button>
+                </div>
+              )}
+            </div>
+
+            {selectedLeads.size > 0 && (
+              <div className="flex items-center gap-1.5 animate-in fade-in slide-in-from-right-2 duration-300">
+                <div className="w-[1px] h-6 bg-slate-200 mx-1" />
+                <button
+                  onClick={() => setShowBulkUpdate(true)}
+                  className="flex items-center justify-center w-8 h-8 rounded-xl bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                  title="Bulk Update"
                 >
-                  <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div> Excel (.xlsx)
+                  <Edit size={12} />
                 </button>
-                <button 
-                  onClick={() => { handleExportCSV(leads, "All_Leads"); setShowExportMenu(false); }} 
-                  className="w-full text-left px-4 py-3 text-[11px] hover:bg-slate-50 transition-colors font-bold text-slate-700 border-t border-slate-50 flex items-center gap-3"
+                <button
+                  onClick={() => setShowBulkDelete(true)}
+                  className="flex items-center justify-center w-8 h-8 rounded-xl bg-red-50 text-red-600 border border-red-200 hover:bg-red-600 hover:text-white transition-all shadow-sm"
+                  title="Bulk Delete"
                 >
-                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div> CSV (.csv)
+                  <Trash2 size={12} />
                 </button>
               </div>
             )}
@@ -449,8 +507,8 @@ export default function LeadsTable({ onLeadClick, activeNav, refreshKey = 0, sid
         </div>
       </div>
 
-      <div className="w-full overflow-hidden">
-        <table className="w-full table-fixed text-[13px]">
+      <div className="w-full overflow-x-auto scrollbar-hide">
+        <table className="w-full table-auto text-[13px]">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-100">
               <th className="w-[40px] px-3 py-2.5">
@@ -604,7 +662,7 @@ export default function LeadsTable({ onLeadClick, activeNav, refreshKey = 0, sid
                   Priority {sortConfig?.key === 'priority' && (sortConfig.direction === 'asc' ? "↑" : "↓")}
                 </div>
               </th>
-              <th className="w-[45px] text-right px-3 sm:px-4 py-2.5"></th>
+              <th className="w-[45px] text-right px-2 sm:px-4 py-2.5"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">

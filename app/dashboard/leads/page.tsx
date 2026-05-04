@@ -1,5 +1,6 @@
 "use client"
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import LeadsTable from "@/components/dashboard/LeadsTable";
 import LeadDetailModal from "@/components/dashboard/LeadDetailModal";
 import AddLeadModal from "@/components/dashboard/AddLeadModal";
@@ -13,6 +14,12 @@ export default function LeadsPage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [leadIds, setLeadIds] = useState<string[]>([]);
   const { user } = useAuth();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const leadId = searchParams.get("id");
+    if (leadId) setSelectedLeadId(leadId);
+  }, [searchParams]);
 
   const switchLead = (dir: "next" | "prev") => {
     if (!selectedLeadId || leadIds.length === 0) return;
