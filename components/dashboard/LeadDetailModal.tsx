@@ -12,19 +12,33 @@ import ScheduleFollowupModal from "./lead-detail/ScheduleFollowupModal";
 import AuditLogs from "./lead-detail/AuditLogs";
 
 const STAGE_LABEL: Record<string, string> = {
-  NEW: "New", CONTACTED: "Contacted", QUALIFIED: "Qualified",
-  PROPOSAL_SENT: "Proposal Sent", NEGOTIATION: "Negotiation",
-  WON: "Won", CLOSED_LOST: "Closed Lost",
+  NEW: "New", 
+  CONTACTED: "Contacted", 
+  NOT_INTERESTED: "Not Interested",
+  MEETING_SET: "Meeting Set", 
+  NEGOTIATION: "Negotiation",
+  COLD: "Cold Chatting", 
+  CHATTING: "Cold Chatting",
 };
 
-const PIPELINE_STAGES = ["NEW", "CONTACTED", "QUALIFIED", "PROPOSAL_SENT", "NEGOTIATION", "WON", "CLOSED_LOST"];
+const PIPELINE_STAGES = ["NEW", "CONTACTED", "CHATTING", "MEETING_SET", "NEGOTIATION", "NOT_INTERESTED"];
+
+const SUB_STATUS_LABEL: Record<string, string> = {
+  NO_REQUIREMENT: "No Requirement",
+  BUDGET_LOW: "Budget Low",
+  PROPOSAL_SENT: "Proposal Sent",
+  WARM_LEAD: "Warm Lead",
+  BLANK: "Blank",
+};
 
 export interface DbLead {
   id: string;
   contactName: string;
   company: string;
   email: string | null;
+  email2: string | null;
   phone: string | null;
+  phone2: string | null;
   stage: string;
   subStatus: string;
   industry: string | null;
@@ -72,6 +86,9 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
   });
   const [dealValue, setDealValue] = useState("");
   const [isValueEditable, setIsValueEditable] = useState(false);
+  const [notes, setNotes] = useState<any[]>([]);
+  const [noteInput, setNoteInput] = useState("");
+  const [isAddingNote, setIsAddingNote] = useState(false);
 
   // Fetch lead and team
   useEffect(() => {
@@ -80,12 +97,17 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
     
     const fetchData = async () => {
       try {
-        const leadRes = await fetch(`/api/leads/${leadId}`);
+        const [leadRes, teamRes, notesRes] = await Promise.all([
+          fetch(`/api/leads/${leadId}`),
+          canChangeOwner ? fetch("/api/team") : Promise.resolve(null),
+          fetch(`/api/notes?leadId=${leadId}`)
+        ]);
+
         const leadData = await leadRes.json();
         if (leadData.id) {
           setLead(leadData);
           setStage(leadData.stage);
-          setSubStatus(leadData.subStatus || "CHATTING");
+          setSubStatus(leadData.subStatus || "BLANK");
           setIndustry(leadData.industry || "");
           setDealValue(leadData.dealValueInr || "");
           setOwnerId(leadData.ownerId);
@@ -95,10 +117,14 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
           }));
         }
 
-        if (canChangeOwner) {
-          const teamRes = await fetch("/api/team");
+        if (teamRes) {
           const teamData = await teamRes.json();
           if (Array.isArray(teamData)) setTeam(teamData);
+        }
+
+        if (notesRes) {
+          const notesData = await notesRes.json();
+          if (Array.isArray(notesData)) setNotes(notesData);
         }
       } catch (err) {
         console.error(err);
@@ -110,12 +136,34 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
     fetchData();
   }, [leadId, canChangeOwner]);
 
-  const handleUpdate = async (overrideStage?: string, overrideOwner?: string) => {
+  const handleAddNote = async () => {
+    if (!noteInput.trim()) return;
+    setIsAddingNote(true);
+    try {
+      const res = await fetch("/api/notes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leadId, content: noteInput.trim() }),
+      });
+      if (res.ok) {
+        const newNote = await res.json();
+        setNotes([newNote, ...notes]);
+        setNoteInput("");
+        toast.success("Note synchronized with intelligence");
+      }
+    } catch (err) {
+      toast.error("Failed to add note");
+    } finally {
+      setIsAddingNote(false);
+    }
+  };
+
+  const handleUpdate = async (overrideStage?: string, overrideOwner?: string, overrideSubStatus?: string) => {
     setUpdating(true);
     try {
       const payload = {
         stage: overrideStage || stage,
-        subStatus: subStatus,
+        subStatus: overrideSubStatus || subStatus,
         industry: industry,
         dealValueInr: parseFloat(dealValue) || 0,
         ownerId: overrideOwner || (ownerId !== lead?.ownerId ? ownerId : undefined),
@@ -233,14 +281,14 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                       <span className="text-base font-semibold">{lead.company}</span>
                     </div>
                     <div className="h-4 w-[1px] bg-slate-200" />
-                    <div className="flex items-center gap-1.5 bg-slate-50 px-2 py-0.5 rounded text-[11px] text-slate-400 border border-slate-100 italic">
-                      <span className="font-bold uppercase tracking-widest text-[9px]">Industry:</span>
+                    <div className="flex items-center gap-1.5 bg-slate-50 px-3 py-1 rounded-lg text-[11px] text-slate-900 border border-slate-200">
+                      <span className="font-bold uppercase tracking-widest text-[9px] text-slate-500">Industry:</span>
                       <input 
                         type="text" 
                         value={industry}
                         onChange={e => setIndustry(e.target.value)}
                         onBlur={() => handleUpdate()}
-                        className="bg-transparent border-none outline-none font-medium w-24"
+                        className="bg-transparent border-none outline-none font-bold w-32 placeholder:text-slate-300"
                         placeholder="Set Industry"
                       />
                     </div>
@@ -304,15 +352,39 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                       </div>
                     </div>
 
-                    <div className="flex items-start gap-3">
+                    <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0 border border-blue-100">
                         <Mail size={16} strokeWidth={2.5} />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Email ID</p>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Primary Email</p>
                         <a href={`mailto:${lead.email}`} className="text-[14px] font-bold text-slate-700 tracking-tight lowercase truncate hover:text-blue-600 transition-colors block">
-                          {lead.email || "Not Provided"}
+                          {lead.email || "—"}
                         </a>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center flex-shrink-0 border border-orange-100 opacity-70">
+                        <Phone size={16} strokeWidth={2.5} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Secondary Mobile</p>
+                        <span className="text-[14px] font-bold text-slate-700 tracking-tight block truncate">
+                          {lead.phone2 || "-"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0 border border-blue-100 opacity-70">
+                        <Mail size={16} strokeWidth={2.5} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Secondary Email</p>
+                        <span className="text-[14px] font-bold text-slate-700 tracking-tight lowercase truncate block">
+                          {lead.email2 || "-"}
+                        </span>
                       </div>
                     </div>
 
@@ -322,7 +394,7 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                           <Target size={14} />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Lead Requirement Protocol</p>
+                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Lead Requirement </p>
                           <p className="text-[12px] text-slate-700 font-bold leading-relaxed">
                             {lead.requirement}
                           </p>
@@ -340,10 +412,18 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                       <p className="text-[14px] font-bold text-slate-700">{lead.priority.charAt(0) + lead.priority.slice(1).toLowerCase()}</p>
                     </div>
                     <div>
-                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Deal Value</p>
-                      <p className="text-[14px] font-bold text-slate-700">
-                        ₹{parseFloat(lead.dealValueInr).toLocaleString("en-IN")}
-                      </p>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Deal Value (Editable)</p>
+                      <div className="flex items-center gap-1 group/value">
+                        <span className="text-[14px] font-black text-slate-400 group-hover/value:text-blue-500 transition-colors">₹</span>
+                        <input 
+                          type="text"
+                          value={dealValue}
+                          onChange={e => setDealValue(e.target.value)}
+                          onBlur={() => handleUpdate()}
+                          className="text-[14px] font-bold text-slate-700 bg-transparent border-none outline-none w-24 focus:text-blue-600 transition-all"
+                          placeholder="0"
+                        />
+                      </div>
                     </div>
                     <div>
                       <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Created On</p>
@@ -433,7 +513,7 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                 {/* Status Updaters */}
                 <div className="pt-6 border-t border-slate-50 grid grid-cols-2 gap-4">
                   <div className="space-y-1.5 flex-1">
-                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-1 text-center block">Update Stage</label>
+                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-1 text-center block">Update Status</label>
                     <div className="relative">
                       <select
                         value={stage}
@@ -452,24 +532,20 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                     </div>
                   </div>
                   <div className="space-y-1.5 flex-1">
-                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-1 text-center block">Sub Status</label>
+                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-1 text-center block">Sub-status</label>
                     <div className="relative">
                       <select
                         value={subStatus}
                         onChange={(e) => {
                           const newSubStatus = e.target.value;
                           setSubStatus(newSubStatus);
-                          // We use the same update logic, it will pick up the current subStatus state
+                          handleUpdate(undefined, undefined, newSubStatus);
                         }}
                         className="w-full bg-blue-50 text-blue-700 border border-blue-100 rounded-xl px-4 py-3 text-[10px] font-black uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none cursor-pointer pr-10"
                       >
-                        <option value="CHATTING">Chatting</option>
-                        <option value="FOLLOW_UP">Follow up</option>
-                        <option value="NOT_ANSWERED">Not Answered</option>
-                        <option value="MEETING_DONE">Meeting Done</option>
-                        <option value="FIFTY_FIFTY">50/50</option>
-                        <option value="NOT_INTERESTED">Not Interested</option>
-                        <option value="WRONG_NUMBER">Wrong Number</option>
+                        {Object.keys(SUB_STATUS_LABEL).map(s => (
+                          <option key={s} value={s}>{SUB_STATUS_LABEL[s]}</option>
+                        ))}
                       </select>
                       <ChevronDown size={14} className="absolute right-3 top-1 -translate-y-1 text-blue-400 pointer-events-none" />
                     </div>
@@ -483,77 +559,90 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                         type="text"
                         value={dealValue}
                         onChange={(e) => setDealValue(e.target.value)}
-                        readOnly={stage !== "WON" && !isValueEditable}
-                        className={`w-full border rounded-xl px-4 py-3 text-sm font-bold transition-all ${stage === "WON" || isValueEditable ? "bg-white border-slate-300 text-slate-900 focus:ring-2 focus:ring-slate-900 shadow-sm" : "border-slate-100 text-slate-400 cursor-not-allowed bg-slate-50"}`}
+                        onBlur={() => handleUpdate()}
+                        className="w-full border rounded-xl px-4 py-3 text-sm font-bold bg-white border-slate-300 text-slate-900 focus:ring-2 focus:ring-slate-900 shadow-sm"
                         placeholder="e.g. 500000"
                       />
                     </div>
-                    <button
-                      onClick={() => handleUpdate()}
-                      disabled={updating}
-                      className="mt-2 w-full py-2 bg-slate-900 hover:bg-slate-800 text-white text-[9px] font-black uppercase tracking-widest rounded-lg transition-all active:scale-95 shadow-md disabled:opacity-50"
-                    >
-                      {updating ? "Syncing..." : "Process & Submit"}
-                    </button>
                   </div>
                 </div>
 
                 {/* Gatekeeper */}
                 <GatekeeperProtocol checklist={checklist} toggleChecklist={toggleChecklist} />
 
-                {/* Tabs */}
-                <div className="flex items-center gap-1 border-b border-slate-100 pb-px">
-                  <button 
-                    onClick={() => setActiveTab("INTEL")}
-                    className={`px-6 py-3 text-[10px] font-black uppercase tracking-widest transition-all border-b-2 ${activeTab === "INTEL" ? "border-slate-900 text-slate-900" : "border-transparent text-slate-400 hover:text-slate-600"}`}
-                  >
-                    Intelligence & Engagement
-                  </button>
-                  <button 
-                    onClick={() => setActiveTab("AUDIT")}
-                    className={`px-6 py-3 text-[10px] font-black uppercase tracking-widest transition-all border-b-2 ${activeTab === "AUDIT" ? "border-slate-900 text-slate-900" : "border-transparent text-slate-400 hover:text-slate-600"}`}
-                  >
-                    Protocol History
-                  </button>
+                {/* Notes Section */}
+                <div className="pt-8 border-t border-slate-100">
+                  <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-4">Add a Note</h3>
+                  <div className="flex gap-2 mb-6">
+                    <input
+                      type="text"
+                      value={noteInput}
+                      onChange={(e) => setNoteInput(e.target.value)}
+                      placeholder="Append new Information about this lead"
+                      className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
+                      onKeyDown={(e) => e.key === "Enter" && handleAddNote()}
+                    />
+                    <button
+                      onClick={handleAddNote}
+                      disabled={isAddingNote || !noteInput.trim()}
+                      className="bg-slate-900 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 disabled:opacity-50 transition-all active:scale-95"
+                    >
+                      {isAddingNote ? "Adding..." : "Add Note"}
+                    </button>
+                  </div>
+
+                  <div className="space-y-4 mb-10 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                    {notes.length === 0 ? (
+                      <p className="text-center py-4 text-[10px] font-bold text-slate-300 uppercase tracking-widest">No  notes logged</p>
+                    ) : (
+                      notes.map((note) => (
+                        <div key={note.id} className="bg-slate-50 border border-slate-100 p-4 rounded-xl relative group/note">
+                          <div className="flex justify-between items-start mb-2">
+                            <div className="flex items-center gap-2">
+                              <div className="w-6 h-6 rounded-full bg-blue-100 text-[8px] font-black text-blue-600 flex items-center justify-center">
+                                {note.user?.initials}
+                              </div>
+                              <span className="text-[10px] font-bold text-slate-900">{note.user?.name}</span>
+                            </div>
+                            <span className="text-[9px] font-bold text-slate-400 uppercase">
+                              {new Date(note.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                            </span>
+                          </div>
+                          <p className="text-sm text-slate-700 font-medium leading-relaxed">{note.content}</p>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </div>
 
-                {/* Tab Content */}
-                <div className="grid grid-cols-1 gap-6 pb-12 min-h-[450px]">
-                  {activeTab === "INTEL" ? (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      <EngagementStream leadId={lead.id} ownerName={user?.name || "You"} />
-                      <IntelligenceDossier
-                        context={context}
-                        updateContext={updateContext}
-                        isDossierOpen={isDossierOpen}
-                        setIsDossierOpen={setIsDossierOpen}
-                        expandedField={expandedField}
-                        setExpandedField={setExpandedField}
-                        isRequirementEditable={true}
-                      />
-                    </div>
-                  ) : (
-                    <div className="bg-slate-50 rounded-2xl border border-slate-100 p-6 h-full">
-                      <AuditLogs leadId={lead.id} />
-                    </div>
-                  )}
+                {/* Context Summary Section (Restored to original Dossier style) */}
+                <div className="pt-8 border-t border-slate-100 pb-12">
+                  <IntelligenceDossier
+                    context={context}
+                    updateContext={(field, val) => {
+                      updateContext(field, val);
+                    }}
+                    onBlur={() => handleUpdate()}
+                    isDossierOpen={isDossierOpen}
+                    setIsDossierOpen={setIsDossierOpen}
+                    expandedField={expandedField}
+                    setExpandedField={setExpandedField}
+                    isRequirementEditable={true}
+                  />
+                </div>
+
+                {/* Protocol History Section (Always Visible Now) */}
+                <div className="pt-8 border-t border-slate-100 pb-20">
+                  <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-4">Protocol History</h3>
+                  <div className="bg-slate-50 rounded-2xl border border-slate-100 p-6">
+                    <AuditLogs leadId={lead.id} />
+                  </div>
                 </div>
               </div>
             </div>
           )}
         </div>
 
-        {/* Footer */}
-        <div className="bg-white border-t border-slate-50 px-10 py-6 flex items-center justify-between z-10 shrink-0">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => toast.success("Pushed to Production!", { icon: "🚀", style: { borderRadius: "12px", background: "#0f172a", color: "#fff", fontSize: "12px", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "0.1em" } })}
-              className="px-12 py-3.5 rounded-2xl bg-blue-600 text-white font-bold text-sm shadow-xl shadow-blue-100 hover:bg-blue-700 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2"
-            >
-              Push
-            </button>
-          </div>
-        </div>
       </div>
 
       <ScheduleFollowupModal

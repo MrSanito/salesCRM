@@ -20,7 +20,7 @@ export default function AddLeadModal({ onClose, onSuccess }: AddLeadModalProps) 
     email: "",
     value: "",
     industry: "",
-    subStatus: "CHATTING",
+    subStatus: "BLANK",
     source: "Direct Referral",
     requirement: "",
     notes: "",
@@ -177,19 +177,17 @@ export default function AddLeadModal({ onClose, onSuccess }: AddLeadModalProps) 
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Sub Status</label>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Sub-status</label>
                 <select 
                   value={formData.subStatus}
                   onChange={e => setFormData({ ...formData, subStatus: e.target.value })}
                   className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 bg-slate-50 outline-none transition-all appearance-none"
                 >
-                  <option value="CHATTING">Chatting</option>
-                  <option value="FOLLOW_UP">Follow up</option>
-                  <option value="NOT_ANSWERED">Not Answered</option>
-                  <option value="MEETING_DONE">Meeting Done</option>
-                  <option value="FIFTY_FIFTY">50/50</option>
-                  <option value="NOT_INTERESTED">Not Interested</option>
-                  <option value="WRONG_NUMBER">Wrong Number</option>
+                  <option value="BLANK">Blank</option>
+                  <option value="WARM_LEAD">Warm Lead</option>
+                  <option value="PROPOSAL_SENT">Proposal Sent</option>
+                  <option value="BUDGET_LOW">Budget Low</option>
+                  <option value="NO_REQUIREMENT">No Requirement</option>
                 </select>
               </div>
               <div className="space-y-2">

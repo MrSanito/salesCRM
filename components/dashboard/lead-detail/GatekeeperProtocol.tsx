@@ -9,7 +9,7 @@ interface GatekeeperProtocolProps {
 export default function GatekeeperProtocol({ checklist, toggleChecklist }: GatekeeperProtocolProps) {
   const items = [
     { id: "contactVerified", label: "Contact" },
-    { id: "requirementDefined", label: "Requirement" },
+    { id: "requirementDefined", label: "Lead Requirement" },
     { id: "dataReceived", label: "Data" },
     { id: "orderConfirmed", label: "Order" },
     { id: "proposalSigned", label: "Proposal" },

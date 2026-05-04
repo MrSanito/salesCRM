@@ -53,7 +53,7 @@ export async function GET() {
           },
         },
       }),
-      prisma.lead.count({ where: { ...baseWhere, stage: "WON" } }),
+      prisma.lead.count({ where: { ...baseWhere, stage: "NEGOTIATION" } }),
       prisma.lead.groupBy({
         by: ["stage"],
         where: baseWhere,
@@ -75,23 +75,28 @@ export async function GET() {
     ]);
 
     // Stage distribution for pipeline
-    const stageOrder = ["NEW", "CONTACTED", "QUALIFIED", "PROPOSAL_SENT", "NEGOTIATION", "WON", "CLOSED_LOST"];
+    const stageOrder = ["NEW", "CONTACTED", "COLD_CHATTING", "MEETING_SET", "NEGOTIATION", "NOT_INTERESTED"];
     const stageLabelMap: Record<string, string> = {
-      NEW: "New", CONTACTED: "Contacted", QUALIFIED: "Qualified",
-      PROPOSAL_SENT: "Proposal", NEGOTIATION: "Negotiation",
-      WON: "Won", CLOSED_LOST: "Lost",
+      NEW: "New",
+      CONTACTED: "Contacted",
+      COLD_CHATTING: "Cold Chatting",
+      NEGOTIATION: "Negotiation",
+      MEETING_SET: "Meeting Set",
+      NOT_INTERESTED: "Not Interested",
     };
     const stageColorMap: Record<string, string> = {
       NEW: "bg-blue-100 text-blue-700 border-blue-200",
       CONTACTED: "bg-cyan-100 text-cyan-700 border-cyan-200",
-      QUALIFIED: "bg-indigo-100 text-indigo-700 border-indigo-200",
-      PROPOSAL_SENT: "bg-amber-100 text-amber-700 border-amber-200",
-      NEGOTIATION: "bg-orange-100 text-orange-700 border-orange-200",
-      WON: "bg-green-100 text-green-700 border-green-200",
-      CLOSED_LOST: "bg-red-100 text-red-700 border-red-200",
+      COLD_CHATTING: "bg-purple-100 text-purple-700 border-purple-200",
+      NEGOTIATION: "bg-amber-100 text-amber-700 border-amber-200",
+      MEETING_SET: "bg-green-100 text-green-700 border-green-200",
+      NOT_INTERESTED: "bg-red-100 text-red-700 border-red-200",
     };
 
     const countByStage = Object.fromEntries(stageCounts.map((s) => [s.stage, s._count.stage]));
+    // Aggregate Cold and Chatting
+    countByStage["COLD_CHATTING"] = (countByStage["COLD"] || 0) + (countByStage["CHATTING"] || 0);
+
     const pipeline = stageOrder.map((stage) => ({
       label: stageLabelMap[stage] || stage,
       count: countByStage[stage] || 0,

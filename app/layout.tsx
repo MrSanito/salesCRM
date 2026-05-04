@@ -17,8 +17,8 @@ const dmMono = DM_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SalesCRM | Industrial Utilitarian Dashboard",
-  description: "A premium, high-precision Sales CRM dashboard.",
+  title: "Solo Sales | Industrial Utilitarian Dashboard",
+  description: "A premium, high-precision Solo Sales dashboard.",
 };
 
 export default function RootLayout({

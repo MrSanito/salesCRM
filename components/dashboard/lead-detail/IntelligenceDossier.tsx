@@ -9,6 +9,7 @@ interface IntelligenceDossierProps {
   expandedField: string | null;
   setExpandedField: (field: string | null) => void;
   isRequirementEditable: boolean;
+  onBlur?: () => void;
 }
 
 export default function IntelligenceDossier({ 
@@ -18,11 +19,12 @@ export default function IntelligenceDossier({
   setIsDossierOpen,
   expandedField,
   setExpandedField,
-  isRequirementEditable
+  isRequirementEditable,
+  onBlur
 }: IntelligenceDossierProps) {
   
   const fields = [
-    { id: "requirement", label: "Requirement", icon: <Target size={12} /> },
+    { id: "requirement", label: "Lead Requirement", icon: <Target size={12} /> },
     { id: "useCase", label: "Use Case", icon: <Info size={12} /> },
     { id: "scope", label: "Scope", icon: <Briefcase size={12} /> },
     { id: "constraints", label: "Constraints", icon: <Edit size={12} /> },
@@ -108,6 +110,7 @@ export default function IntelligenceDossier({
                             disabled={!canEdit}
                             value={context[field.id as keyof typeof context]}
                             onChange={(e) => updateContext(field.id, e.target.value)}
+                            onBlur={onBlur}
                             className={`w-full bg-transparent font-medium focus:outline-none resize-none leading-relaxed placeholder:text-slate-300 transition-all ${
                               canEdit 
                                 ? "text-slate-700 text-[13px] min-h-[100px]" 

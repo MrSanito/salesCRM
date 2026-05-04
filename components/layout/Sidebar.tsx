@@ -27,15 +27,15 @@ interface SidebarGroup {
 const SIDEBAR_ITEMS: SidebarGroup[] = [
   {
     items: [
-      { icon: AlertTriangle, label: "Alerts", href: "/dashboard/alerts", badge: 5, badgeColor: "bg-red-500" },
+      { icon: AlertTriangle, label: "Alerts", href: "/dashboard/alerts", badgeColor: "bg-red-500" },
       { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard", active: true },
     ],
   },
   {
     section: "LEADS",
     items: [
-      { icon: UserPlus, label: "New Leads", href: "/dashboard/leads", badge: 32, badgeColor: "bg-blue-500" },
-      { icon: Phone, label: "Follow Ups", href: "/dashboard/follow-ups", badge: 18, badgeColor: "bg-orange-500" },
+      { icon: UserPlus, label: "New Leads", href: "/dashboard/leads", badgeColor: "bg-blue-500" },
+      { icon: Phone, label: "Follow Ups", href: "/dashboard/follow-ups", badgeColor: "bg-orange-500" },
       { icon: CheckCircle2, label: "Closed Won", href: "/dashboard/won" },
       { icon: FileText, label: "Proposed", href: "/dashboard/proposed" },
       { icon: CalendarCheck, label: "Meeting Set", href: "/dashboard/meetings" },
@@ -135,7 +135,7 @@ export default function Sidebar({
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center">
               <span className="text-white text-xs font-bold">S</span>
             </div>
-            <span className="text-sidebar-foreground font-semibold text-sm tracking-wide">SALES PORTAL</span>
+            <span className="text-sidebar-foreground font-semibold text-sm tracking-wide">SOLO SALES</span>
           </div>
           {/* Mobile close button */}
           <button 

@@ -10,12 +10,24 @@ import { useAuth } from "@/components/auth/AuthContext";
 import toast from "react-hot-toast";
 
 const STAGE_LABEL: Record<string, string> = {
-  NEW: "New", CONTACTED: "Contacted", QUALIFIED: "Qualified",
-  PROPOSAL_SENT: "Proposal Sent", NEGOTIATION: "Negotiation",
-  WON: "Won", CLOSED_LOST: "Closed Lost",
+  NEW: "New", 
+  CONTACTED: "Contacted", 
+  NOT_INTERESTED: "Not Interested",
+  MEETING_SET: "Meeting Set", 
+  NEGOTIATION: "Negotiation",
+  COLD: "Cold", 
+  CHATTING: "Chatting",
 };
 
-const PIPELINE_STAGES = ["NEW", "CONTACTED", "QUALIFIED", "PROPOSAL_SENT", "NEGOTIATION", "WON", "CLOSED_LOST"];
+const PIPELINE_STAGES = ["NEW", "CONTACTED", "NOT_INTERESTED", "MEETING_SET", "NEGOTIATION", "COLD", "CHATTING"];
+
+const SUB_STATUS_LABEL: Record<string, string> = {
+  NO_REQUIREMENT: "No Requirement",
+  BUDGET_LOW: "Budget Low",
+  PROPOSAL_SENT: "Proposal Sent",
+  WARM_LEAD: "Warm Lead",
+  BLANK: "Blank",
+};
 
 export default function EditLeadPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
@@ -35,7 +47,10 @@ export default function EditLeadPage({ params }: { params: Promise<{ id: string 
     priority: "MEDIUM",
     dealValueInr: "0",
     ownerId: "",
-    requirement: ""
+    requirement: "",
+    industry: "",
+    phone2: "",
+    email2: ""
   });
 
   const canAssign = user?.role === "ORG_ADMIN" || user?.role === "MANAGER";
@@ -56,7 +71,10 @@ export default function EditLeadPage({ params }: { params: Promise<{ id: string 
             priority: leadData.priority,
             dealValueInr: leadData.dealValueInr || "0",
             ownerId: leadData.ownerId,
-            requirement: leadData.requirement || ""
+            requirement: leadData.requirement || "",
+            industry: leadData.industry || "",
+            phone2: leadData.phone2 || "",
+            email2: leadData.email2 || ""
           });
         }
 
@@ -152,6 +170,10 @@ export default function EditLeadPage({ params }: { params: Promise<{ id: string 
                        <input type="text" value={formData.company} onChange={e => setFormData({...formData, company: e.target.value})} className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 focus:bg-white transition-all shadow-inner" />
                      </div>
                      <div className="space-y-2">
+                       <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Industry</label>
+                       <input type="text" value={formData.industry} onChange={e => setFormData({...formData, industry: e.target.value})} className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 focus:bg-white transition-all shadow-inner" placeholder="e.g. Software, Manufacturing" />
+                     </div>
+                     <div className="space-y-2">
                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Lead Owner</label>
                        {canAssign ? (
                           <div className="relative">
@@ -173,14 +195,13 @@ export default function EditLeadPage({ params }: { params: Promise<{ id: string 
                          </div>
                        )}
                      </div>
-                  </div>
-               </div>
+                  </div></div>
 
                <div className="p-8 md:p-10 border-b border-slate-50 bg-slate-50/30">
                   <h2 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-8 flex items-center gap-3">
                      <Phone size={14} className="text-orange-500" /> Contact Protocol
                   </h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                      <div className="space-y-2">
                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Primary Mobile</label>
                        <div className="relative">
@@ -189,10 +210,24 @@ export default function EditLeadPage({ params }: { params: Promise<{ id: string 
                        </div>
                      </div>
                      <div className="space-y-2">
-                       <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Email ID</label>
+                       <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Secondary Mobile</label>
+                       <div className="relative">
+                        <Phone size={14} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-200" />
+                        <input type="text" value={formData.phone2} onChange={e => setFormData({...formData, phone2: e.target.value})} className="w-full pl-12 pr-5 py-4 bg-white border border-slate-100 rounded-2xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-orange-500/5 focus:border-orange-500 transition-all font-mono" />
+                       </div>
+                     </div>
+                     <div className="space-y-2">
+                       <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Primary Email ID</label>
                        <div className="relative">
                         <Mail size={14} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" />
                         <input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full pl-12 pr-5 py-4 bg-white border border-slate-200 rounded-2xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all" />
+                       </div>
+                     </div>
+                     <div className="space-y-2">
+                       <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Secondary Email ID</label>
+                       <div className="relative">
+                        <Mail size={14} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-200" />
+                        <input type="email" value={formData.email2} onChange={e => setFormData({...formData, email2: e.target.value})} className="w-full pl-12 pr-5 py-4 bg-white border border-slate-100 rounded-2xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all" />
                        </div>
                      </div>
                   </div>
@@ -229,8 +264,8 @@ export default function EditLeadPage({ params }: { params: Promise<{ id: string 
                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Contract Value (INR)</label>
                        <input type="text" value={formData.dealValueInr} onChange={e => setFormData({...formData, dealValueInr: e.target.value})} className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all font-mono" />
                      </div>
-                     <div className="space-y-2 md:col-span-2">
-                       <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Specific Requirement</label>
+                      <div className="space-y-2 md:col-span-2">
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Lead Requirement</label>
                        <textarea 
                          value={formData.requirement} 
                          onChange={e => setFormData({...formData, requirement: e.target.value})} 

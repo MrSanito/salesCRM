@@ -103,7 +103,9 @@ model Lead {
   contactName     String
   company         String
   email           String?
+  email2          String?
   phone           String?
+  phone2          String?
   organizationId  String
   stage           LeadStage      @default(NEW)
   dealValueInr    Decimal        @default(0) @db.Decimal(15, 2)
@@ -118,7 +120,7 @@ model Lead {
   updatedAt       DateTime       @updatedAt
   requirement     String?
   industry        String?
-  subStatus       LeadSubStatus  @default(CHATTING)
+  subStatus       LeadSubStatus  @default(BLANK)
   alerts          Alert[]
   interactions    Interaction[]
   auditLogs       AuditLog[]
@@ -255,11 +257,11 @@ enum LeadPriority {
 enum LeadStage {
   NEW
   CONTACTED
-  QUALIFIED
-  PROPOSAL_SENT
+  NOT_INTERESTED
+  MEETING_SET
   NEGOTIATION
-  WON
-  CLOSED_LOST
+  COLD
+  CHATTING
 }
 
 enum InteractionType {
@@ -341,11 +343,9 @@ enum SourceType {
 }
 
 enum LeadSubStatus {
-  CHATTING
-  FOLLOW_UP
-  NOT_ANSWERED
-  MEETING_DONE
-  FIFTY_FIFTY
-  NOT_INTERESTED
-  WRONG_NUMBER
+  NO_REQUIREMENT
+  BUDGET_LOW
+  PROPOSAL_SENT
+  WARM_LEAD
+  BLANK
 }
