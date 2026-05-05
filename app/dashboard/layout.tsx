@@ -16,13 +16,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // Map pathname to activeNav label
   const getActiveNav = () => {
     if (pathname === "/dashboard") return "Dashboard";
-    if (pathname === "/dashboard/team") return "Team";
     if (pathname === "/dashboard/alerts") return "Alerts";
-    if (pathname === "/dashboard/users") return "Users";
     if (pathname === "/dashboard/leads") return "New Leads";
     if (pathname === "/dashboard/follow-ups") return "Follow Ups";
-    if (pathname === "/dashboard/profile") return "Settings";
-    if (pathname === "/dashboard/settings") return "Settings";
+    if (pathname === "/dashboard/won") return "Closed Won";
+    if (pathname === "/dashboard/proposed") return "Proposed";
+    if (pathname === "/dashboard/meetings") return "Meeting Set";
+    if (pathname === "/dashboard/closed") return "Closed";
+    if (pathname === "/dashboard/pipeline") return "Pipeline";
+    if (pathname === "/dashboard/performance") return "Performance";
+    if (pathname === "/dashboard/sources") return "Source Report";
+    if (pathname === "/dashboard/reports/audit") return "Audit Protocol";
+    if (pathname === "/dashboard/users") return "Users";
+    if (pathname === "/dashboard/team") return "Team";
+    if (pathname === "/dashboard/integrations") return "Integrations";
+    if (pathname === "/dashboard/profile" || pathname === "/dashboard/settings") return "Settings";
     return "Dashboard";
   };
 

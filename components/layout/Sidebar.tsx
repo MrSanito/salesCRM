@@ -39,7 +39,7 @@ const SIDEBAR_ITEMS: SidebarGroup[] = [
       { icon: CheckCircle2, label: "Closed Won", href: "/dashboard/won" },
       { icon: FileText, label: "Proposed", href: "/dashboard/proposed" },
       { icon: CalendarCheck, label: "Meeting Set", href: "/dashboard/meetings" },
-      { icon: XCircle, label: "Closed ", href: "/dashboard/closed" },
+      { icon: XCircle, label: "Closed", href: "/dashboard/closed" },
     ],
   },
   {

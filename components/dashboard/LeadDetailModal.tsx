@@ -9,7 +9,6 @@ import EngagementStream from "./lead-detail/EngagementStream";
 import IntelligenceDossier from "./lead-detail/IntelligenceDossier";
 import GatekeeperProtocol from "./lead-detail/GatekeeperProtocol";
 import ScheduleFollowupModal from "./lead-detail/ScheduleFollowupModal";
-import AuditLogs from "./lead-detail/AuditLogs";
 
 const STAGE_LABEL: Record<string, string> = {
   NEW: "New", 
@@ -79,7 +78,6 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
   const [showSchedule, setShowSchedule] = useState(false);
   const [isDossierOpen, setIsDossierOpen] = useState(true);
   const [expandedField, setExpandedField] = useState<string | null>("wholeSummary");
-  const [activeTab, setActiveTab] = useState<"INTEL" | "AUDIT">("INTEL");
   const [context, setContext] = useState({
     wholeSummary: "", requirement: "", useCase: "", scope: "",
     constraints: "", drivers: "", objections: "", commitments: ""
@@ -226,9 +224,7 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
         body: JSON.stringify({ leadId, type })
       });
       // Optionally refresh audit logs if the tab is active
-      if (activeTab === "AUDIT") {
-        // We could trigger a re-render of AuditLogs by updating a state or using a key
-      }
+      // Optionally refresh something if needed
     } catch (err) {
       console.error("Failed to log interaction:", err);
     }
@@ -688,13 +684,6 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                   />
                 </div>
 
-                {/* Protocol History Section (Always Visible Now) */}
-                <div className="pt-8 border-t border-slate-100 pb-20">
-                  <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-4">Protocol History</h3>
-                  <div className="bg-slate-50 rounded-2xl border border-slate-100 p-6">
-                    <AuditLogs leadId={lead.id} />
-                  </div>
-                </div>
               </div>
             </div>
           )}
