@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
+import { createAuditLog } from "@/lib/audit";
 
 export async function POST(req: Request) {
   try {
@@ -51,6 +52,17 @@ export async function POST(req: Request) {
           organizationId: targetOrgId,
           managerId: managerId || null,
         },
+      });
+
+      // Create Audit Log for new user
+      await createAuditLog({
+        organizationId: targetOrgId!,
+        actorType: "USER",
+        actorId: user.id,
+        actorName: user.name,
+        action: "USER_SIGNUP",
+        note: `New account protocol initialized for ${user.name} (${user.role}).`,
+        source: "UI",
       });
 
       return { user };

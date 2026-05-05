@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
+import { createAuditLog } from "@/lib/audit";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-me";
 
@@ -77,6 +78,19 @@ export async function POST(req: Request) {
       },
     });
 
+    // Create Audit Log
+    await createAuditLog({
+      organizationId: user.organizationId,
+      actorType: "USER",
+      actorId: user.id,
+      actorName: user.name || "Unknown",
+      action: "CREATE_FILTER",
+      field: "name",
+      afterValue: name,
+      note: `Configured a new sidebar filter protocol: "${name}".`,
+      source: "UI",
+    });
+
     return NextResponse.json(filter, { status: 201 });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -103,6 +117,19 @@ export async function DELETE(req: Request) {
     if (!filter) return NextResponse.json({ error: "Filter not found" }, { status: 404 });
 
     await prisma.sidebarFilter.delete({ where: { id } });
+
+    // Create Audit Log
+    await createAuditLog({
+      organizationId: user.organizationId,
+      actorType: "USER",
+      actorId: user.id,
+      actorName: user.name || "Unknown",
+      action: "DELETE_FILTER",
+      field: "name",
+      beforeValue: filter.name,
+      note: `Permanently removed sidebar filter protocol: "${filter.name}".`,
+      source: "UI",
+    });
 
     return NextResponse.json({ message: "Filter deleted" });
   } catch (error: any) {

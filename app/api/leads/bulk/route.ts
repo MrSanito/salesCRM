@@ -211,14 +211,29 @@ export async function POST(req: Request) {
       createdLeads.push(lead);
     }
 
-    // Log the bulk creation (general log)
+    // Create Audit Logs for each created lead
+    for (const lead of createdLeads) {
+      await createAuditLog({
+        organizationId: user.organizationId,
+        leadId: lead.id,
+        actorType: "USER",
+        actorId: user.id,
+        actorName: user.name || "Unknown User",
+        action: "CREATE",
+        afterValue: lead,
+        note: `Imported new lead protocol for ${lead.contactName} from ${lead.company} via bulk upload.`,
+        source: "UI",
+      });
+    }
+
+    // General bulk log
     await createAuditLog({
       organizationId: user.organizationId,
       actorType: "USER",
       actorId: user.id,
       actorName: user.name || "Unknown User",
-      action: "CREATE",
-      note: `Bulk imported ${createdLeads.length} leads from Excel/CSV with associated intelligence notes.`,
+      action: "BULK_IMPORT",
+      note: `Successfully executed bulk import protocol for ${createdLeads.length} leads with associated intelligence notes.`,
       source: "UI",
     });
 

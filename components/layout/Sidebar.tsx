@@ -246,7 +246,7 @@ export default function Sidebar({
                         onClick={() => setIsOpen(false)}
                         className={`w-full flex items-center justify-between gap-2.5 px-3 py-2.5 rounded-xl text-left transition-all duration-300 group ${
                           isActive
-                            ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-lg shadow-sidebar-primary/20"
+                            ? "bg-slate-900 text-white shadow-md"
                             : "text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:pl-4"
                         }`}
                       >
@@ -270,8 +270,8 @@ export default function Sidebar({
                         </div>
                         {item.badge ? (
                           <span
-                            className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full text-sidebar-primary-foreground ${
-                              isActive ? "bg-white/30" : item.badgeColor ?? "bg-sidebar-primary"
+                            className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white ${
+                              isActive ? "bg-white/30" : item.badgeColor ?? "bg-slate-900"
                             }`}
                           >
                             {item.badge}
