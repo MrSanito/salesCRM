@@ -51,6 +51,7 @@ export async function GET() {
       },
     });
 
+
     return NextResponse.json(leads);
   } catch (error) {
     console.error("Error fetching leads:", error);
@@ -68,7 +69,7 @@ export async function POST(req: Request) {
     const userId = decoded.userId;
 
     const body = await req.json();
-    const { name, company, phone, email, value, industry, requirement, notes, ownerId } = body;
+    const { name, company, phone, phone2, email, email2, value, industry, requirement, notes, ownerId } = body;
 
     // Fetch user for org context and role
     const user = await prisma.user.findUnique({
@@ -106,7 +107,9 @@ export async function POST(req: Request) {
         contactName: name,
         company,
         phone,
+        phone2,
         email,
+        email2,
         requirement,
         industry,
         subStatus: body.subStatus || "CHATTING",

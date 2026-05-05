@@ -39,6 +39,7 @@ export async function GET(req: NextRequest) {
       take: 20,
     });
 
+
     return NextResponse.json(reminders);
   } catch (error) {
     console.error("Reminders GET error:", error);

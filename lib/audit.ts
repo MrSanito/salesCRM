@@ -12,7 +12,7 @@ interface AuditLogParams {
   beforeValue?: any;
   afterValue?: any;
   note?: string;
-  source: SourceType;
+  source?: SourceType;
 }
 
 export async function createAuditLog(params: AuditLogParams) {
@@ -30,7 +30,7 @@ export async function createAuditLog(params: AuditLogParams) {
         beforeValue: params.beforeValue ? (typeof params.beforeValue === 'object' ? JSON.stringify(params.beforeValue) : String(params.beforeValue)) : null,
         afterValue: params.afterValue ? (typeof params.afterValue === 'object' ? JSON.stringify(params.afterValue) : String(params.afterValue)) : null,
         note: params.note,
-        source: params.source,
+        source: params.source || "UI",
       },
     });
     console.log(`[Audit] Log created successfully: ${log.id}`);

@@ -59,7 +59,9 @@ interface DbLead {
   priority: string;
   dealValueInr: string;
   phone: string | null;
+  phone2: string | null;
   email: string | null;
+  email2: string | null;
   followUpAt: string | null;
   requirement: string | null;
   createdAt: string;
@@ -96,14 +98,17 @@ export default function LeadsTable({ onLeadClick, activeNav, refreshKey = 0, sid
 
   const handleExportExcel = (dataToExport: DbLead[], filename: string) => {
     const worksheetData = dataToExport.map(lead => ({
-      "Contact Name": lead.contactName,
+      "Person Name": lead.contactName,
       "Company": lead.company,
       "Stage": STAGE_LABEL[lead.stage] || lead.stage,
-      "Phone": lead.phone || "",
-      "Email": lead.email || "",
+      "Primary Phone": lead.phone || "",
+      "Secondary Phone": lead.phone2 || "",
+      "Primary Email": lead.email || "",
+      "Secondary Email": lead.email2 || "",
       "Deal Value (INR)": lead.dealValueInr,
       "Priority": lead.priority,
       "Requirement": lead.requirement || "",
+      "Internal Notes": (lead as any).notes || "",
       "Owner": lead.owner?.name || "",
       "Created At": new Date(lead.createdAt).toLocaleDateString("en-IN")
     }));
@@ -116,14 +121,17 @@ export default function LeadsTable({ onLeadClick, activeNav, refreshKey = 0, sid
 
   const handleExportCSV = (dataToExport: DbLead[], filename: string) => {
     const worksheetData = dataToExport.map(lead => ({
-      "Contact Name": lead.contactName,
+      "Person Name": lead.contactName,
       "Company": lead.company,
       "Stage": STAGE_LABEL[lead.stage] || lead.stage,
-      "Phone": lead.phone || "",
-      "Email": lead.email || "",
+      "Primary Phone": lead.phone || "",
+      "Secondary Phone": lead.phone2 || "",
+      "Primary Email": lead.email || "",
+      "Secondary Email": lead.email2 || "",
       "Deal Value (INR)": lead.dealValueInr,
       "Priority": lead.priority,
       "Requirement": lead.requirement || "",
+      "Internal Notes": (lead as any).notes || "",
       "Owner": lead.owner?.name || "",
       "Created At": new Date(lead.createdAt).toLocaleDateString("en-IN")
     }));
@@ -193,6 +201,7 @@ export default function LeadsTable({ onLeadClick, activeNav, refreshKey = 0, sid
   const searchResults = searchQuery.length >= 2 ? leads.filter(l => {
     const q = searchQuery.toLowerCase();
     return (
+      l.id.toLowerCase().includes(q) ||
       l.contactName.toLowerCase().includes(q) || 
       l.company.toLowerCase().includes(q) ||
       l.phone?.toLowerCase().includes(q) ||
@@ -206,6 +215,7 @@ export default function LeadsTable({ onLeadClick, activeNav, refreshKey = 0, sid
   if (searchQuery) {
     const q = searchQuery.toLowerCase();
     processedLeads = processedLeads.filter(l => 
+      l.id.toLowerCase().includes(q) ||
       l.contactName.toLowerCase().includes(q) || 
       l.company.toLowerCase().includes(q) ||
       l.phone?.toLowerCase().includes(q) ||
@@ -378,75 +388,95 @@ export default function LeadsTable({ onLeadClick, activeNav, refreshKey = 0, sid
         </div>
 
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <div className="relative flex-1 sm:flex-none">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-            <input 
-              type="text" 
-              placeholder="Search leads, company, owner..."
-              value={searchQuery}
-              onFocus={() => setShowSearchDropdown(true)}
-              onChange={(e) => { 
-                setSearchQuery(e.target.value); 
-                setCurrentPage(1);
-                setShowSearchDropdown(true);
-              }}
-              className="w-full sm:w-64 pl-10 pr-4 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-4 focus:ring-blue-500/5 transition-all"
-            />
-            
-            {/* Search Results Dropdown */}
-            {showSearchDropdown && searchResults.length > 0 && (
-              <>
-                <div 
-                  className="fixed inset-0 z-[65]" 
-                  onClick={() => setShowSearchDropdown(false)}
-                />
-                <div className="absolute left-0 top-full mt-2 w-full sm:w-80 bg-white border border-slate-200 rounded-2xl shadow-2xl z-[70] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                  <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Quick Results</span>
-                    <span className="text-[9px] font-bold text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded-md">{searchResults.length} found</span>
-                  </div>
-                  <div className="max-h-[320px] overflow-y-auto py-1">
-                    {searchResults.map((result) => (
-                      <button
-                        key={result.id}
-                        onClick={() => {
-                          onLeadClick(result.id, leads.map(l => l.id));
-                          setShowSearchDropdown(false);
-                          setSearchQuery("");
-                        }}
-                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors group text-left border-b border-slate-50 last:border-0"
-                      >
-                        <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-[10px] font-black text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all">
-                          {result.contactName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between">
-                            <p className="text-[12px] font-bold text-slate-900 truncate group-hover:text-blue-600 transition-colors">
-                              {result.contactName}
-                            </p>
-                            <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${STAGE_STYLES[result.stage]}`}>
-                              {STAGE_LABEL[result.stage] || result.stage}
-                            </span>
+          <div className="flex items-center gap-2 flex-1 sm:flex-none">
+            <div className="relative flex-1 sm:flex-none">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+              <input 
+                type="text" 
+                placeholder="Search leads, company..."
+                value={searchQuery}
+                onFocus={() => setShowSearchDropdown(true)}
+                onChange={(e) => { 
+                  setSearchQuery(e.target.value); 
+                  setCurrentPage(1);
+                  setShowSearchDropdown(true);
+                }}
+                className="w-full sm:w-60 pl-10 pr-4 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-4 focus:ring-blue-500/5 transition-all"
+              />
+              
+              {/* Search Results Dropdown */}
+              {showSearchDropdown && searchResults.length > 0 && (
+                <>
+                  <div 
+                    className="fixed inset-0 z-[65]" 
+                    onClick={() => setShowSearchDropdown(false)}
+                  />
+                  <div className="absolute left-0 top-full mt-2 w-full sm:w-80 bg-white border border-slate-200 rounded-2xl shadow-2xl z-[70] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                    <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Quick Results</span>
+                      <span className="text-[9px] font-bold text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded-md">{searchResults.length} found</span>
+                    </div>
+                    <div className="max-h-[320px] overflow-y-auto py-1">
+                      {searchResults.map((result) => (
+                        <button
+                          key={result.id}
+                          onClick={() => {
+                            onLeadClick(result.id, leads.map(l => l.id));
+                            setShowSearchDropdown(false);
+                            setSearchQuery("");
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors group text-left border-b border-slate-50 last:border-0"
+                        >
+                          <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-[10px] font-black text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all">
+                            {result.contactName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
                           </div>
-                          <p className="text-[10px] text-slate-500 truncate mt-0.5">
-                            {result.company} • {result.owner?.name}
-                          </p>
-                        </div>
-                        <ChevronRight size={14} className="text-slate-300 group-hover:text-blue-500 transition-transform group-hover:translate-x-0.5" />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <p className="text-[12px] font-bold text-slate-900 truncate group-hover:text-blue-600 transition-colors">
+                                {result.contactName}
+                              </p>
+                              <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${STAGE_STYLES[result.stage]}`}>
+                                {STAGE_LABEL[result.stage] || result.stage}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-slate-500 truncate mt-0.5">
+                              {result.company} • {result.owner?.name}
+                            </p>
+                          </div>
+                          <ChevronRight size={14} className="text-slate-300 group-hover:text-blue-500 transition-transform group-hover:translate-x-0.5" />
+                        </button>
+                      ))}
+                    </div>
+                    <div className="p-2 bg-slate-50 border-t border-slate-100">
+                      <button 
+                        onClick={() => setShowSearchDropdown(false)}
+                        className="w-full py-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors"
+                      >
+                        Close Results
                       </button>
-                    ))}
+                    </div>
                   </div>
-                  <div className="p-2 bg-slate-50 border-t border-slate-100">
-                    <button 
-                      onClick={() => setShowSearchDropdown(false)}
-                      className="w-full py-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors"
-                    >
-                      Close Results
-                    </button>
-                  </div>
-                </div>
-              </>
-            )}
+                </>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Show</span>
+              <input 
+                type="number" 
+                min="1"
+                max="100"
+                value={pageSize}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value);
+                  if (!isNaN(val) && val > 0) {
+                    setPageSize(val);
+                    setCurrentPage(1);
+                  }
+                }}
+                className="w-8 bg-transparent text-xs font-black text-slate-700 outline-none text-center"
+              />
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
@@ -825,6 +855,7 @@ export default function LeadsTable({ onLeadClick, activeNav, refreshKey = 0, sid
             .then(d => { if (Array.isArray(d)) setLeads(d); });
         }}
       />
+      
     </div>
   );
 }

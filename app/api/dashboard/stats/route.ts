@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
+import { createAuditLog } from "@/lib/audit";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-me";
 
@@ -14,7 +15,7 @@ export async function GET() {
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
-      select: { organizationId: true, role: true, id: true },
+      select: { organizationId: true, role: true, id: true, name: true },
     });
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
@@ -104,6 +105,7 @@ export async function GET() {
     }));
 
     const totalValue = Number(totalPipelineValue._sum.dealValueInr || 0);
+
 
     return NextResponse.json({
       kpis: {

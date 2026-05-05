@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
+import { createAuditLog } from "@/lib/audit";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-me";
 
@@ -17,7 +18,7 @@ export async function GET() {
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     const currentUser = await prisma.user.findUnique({
       where: { id: decoded.userId },
-      select: { organizationId: true }
+      select: { id: true, organizationId: true, name: true }
     });
 
     if (!currentUser) {
@@ -43,6 +44,7 @@ export async function GET() {
         createdAt: 'asc',
       },
     });
+
 
     return NextResponse.json(users);
   } catch (error) {

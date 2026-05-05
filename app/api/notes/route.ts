@@ -29,6 +29,7 @@ export async function GET(req: NextRequest) {
       orderBy: { createdAt: "desc" },
     });
 
+
     return NextResponse.json(notes);
   } catch (error) {
     console.error("Notes GET error:", error);

@@ -179,27 +179,37 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Prepare leads for database
-    const leadsToCreate = leads.map((l: any) => ({
-      contactName: l.contactName || "Unknown",
-      company: l.company || "Unknown",
-      phone: l.phone || null,
-      email: l.email || null,
-      industry: l.industry || null,
-      dealValueInr: "0",
-      stage: "NEW" as any,
-      subStatus: "BLANK" as any,
-      organizationId: user.organizationId,
-      ownerId: user.id,
-      createdById: user.id,
-    }));
-
-    // Create leads
-    // We use createMany if the database supports it (PostgreSQL does)
-    const created = await prisma.lead.createMany({
-      data: leadsToCreate,
-      skipDuplicates: true,
-    });
+    // Create leads sequentially to handle nested notes and ensure proper relation creation
+    const createdLeads = [];
+    for (const l of leads) {
+      const lead = await prisma.lead.create({
+        data: {
+          contactName: l.contactName || "Unknown",
+          company: l.company || "Unknown",
+          phone: l.phone || null,
+          phone2: l.phone2 || null,
+          email: l.email || null,
+          email2: l.email2 || null,
+          requirement: l.requirement || null,
+          industry: l.industry || null,
+          dealValueInr: "0",
+          stage: "NEW" as any,
+          subStatus: "BLANK" as any,
+          organizationId: user.organizationId,
+          ownerId: user.id,
+          createdById: user.id,
+          // Handle nested notes
+          notes: l.notes ? {
+            create: {
+              content: l.notes,
+              userId: user.id,
+              organizationId: user.organizationId
+            }
+          } : undefined
+        },
+      });
+      createdLeads.push(lead);
+    }
 
     // Log the bulk creation (general log)
     await createAuditLog({
@@ -208,11 +218,11 @@ export async function POST(req: Request) {
       actorId: user.id,
       actorName: user.name || "Unknown User",
       action: "CREATE",
-      note: `Bulk imported ${created.count} leads from Excel/CSV.`,
+      note: `Bulk imported ${createdLeads.length} leads from Excel/CSV with associated intelligence notes.`,
       source: "UI",
     });
 
-    return NextResponse.json({ message: `Successfully imported ${created.count} leads` });
+    return NextResponse.json({ message: `Successfully imported ${createdLeads.length} leads` });
   } catch (error: any) {
     console.error("Error bulk creating leads:", error);
     return NextResponse.json({ error: error.message || "Failed to import leads" }, { status: 500 });

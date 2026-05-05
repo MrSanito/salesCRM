@@ -36,6 +36,7 @@ export async function GET(req: NextRequest) {
       take: 50,
     });
 
+
     return NextResponse.json(alerts);
   } catch (error) {
     console.error("Alerts GET error:", error);
@@ -60,6 +61,7 @@ export async function DELETE(req: NextRequest) {
       organizationId: user.organizationId,
       actorType: "USER",
       actorId: user.id,
+      actorName: user.name || "Unknown",
       action: "CLEAR_ALERTS",
       note: `Cleared all pending notification alerts from the dashboard.`,
       source: "UI",

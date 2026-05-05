@@ -1,6 +1,6 @@
 "use client"
 import { useState, useEffect } from "react";
-import { History, Search, Download, Filter, Terminal, Clock, User, ShieldCheck } from "lucide-react";
+import { History, Search, Download, Filter, Terminal, Clock, User, ShieldCheck, Globe, UserCircle, Zap } from "lucide-react";
 import Sidebar from "@/components/layout/Sidebar";
 import Navbar from "@/components/layout/Navbar";
 
@@ -19,10 +19,14 @@ interface AuditLog {
   createdAt: string;
 }
 
+type TabType = "global" | "local" | "integration";
+
 export default function AuditReportPage() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [activeTab, setActiveTab] = useState<TabType>("global");
+  const [selectedActor, setSelectedActor] = useState<string>("all");
 
   useEffect(() => {
     fetch("/api/reports/audit")
@@ -37,12 +41,27 @@ export default function AuditReportPage() {
       });
   }, []);
 
-  const filteredLogs = logs.filter(log => 
-    log.actorName?.toLowerCase().includes(search.toLowerCase()) ||
-    log.action.toLowerCase().includes(search.toLowerCase()) ||
-    log.leadId?.toLowerCase().includes(search.toLowerCase()) ||
-    log.note?.toLowerCase().includes(search.toLowerCase())
-  );
+  const actors = Array.from(new Set(logs.map(l => l.actorName).filter(Boolean))) as string[];
+
+  const filteredLogs = logs.filter(log => {
+    const matchesSearch = 
+      log.actorName?.toLowerCase().includes(search.toLowerCase()) ||
+      log.action.toLowerCase().includes(search.toLowerCase()) ||
+      log.leadId?.toLowerCase().includes(search.toLowerCase()) ||
+      log.note?.toLowerCase().includes(search.toLowerCase());
+    
+    if (!matchesSearch) return false;
+
+    if (activeTab === "local") {
+      if (selectedActor !== "all" && log.actorName !== selectedActor) return false;
+    }
+
+    if (activeTab === "integration") {
+      return log.source === "INTEGRATION"; // Placeholder logic
+    }
+
+    return true;
+  });
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
@@ -56,7 +75,7 @@ export default function AuditReportPage() {
           <div>
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-0.5">Execution Archive</p>
             <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-              Organization Audit Trail
+              Audit Protocol System
             </h1>
           </div>
         </div>
@@ -68,18 +87,62 @@ export default function AuditReportPage() {
         </div>
       </header>
 
+      {/* Tab Switcher */}
+      <div className="flex p-1 bg-slate-100 rounded-2xl w-full max-w-2xl border border-slate-200">
+        <button 
+          onClick={() => setActiveTab("global")}
+          className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+            activeTab === "global" ? "bg-white text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600"
+          }`}
+        >
+          <Globe size={14} /> Global Archive
+        </button>
+        <button 
+          onClick={() => setActiveTab("local")}
+          className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+            activeTab === "local" ? "bg-white text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600"
+          }`}
+        >
+          <UserCircle size={14} /> Local Protocols
+        </button>
+        <button 
+          onClick={() => setActiveTab("integration")}
+          className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+            activeTab === "integration" ? "bg-white text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600"
+          }`}
+        >
+          <Zap size={14} /> Integration Logs
+        </button>
+      </div>
+
       {/* Filter Bar */}
       <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col md:flex-row gap-4 items-center">
         <div className="relative flex-1 w-full">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
           <input 
             type="text" 
-            placeholder="Search by Actor, Lead ID, or Action..."
+            placeholder="Search logs..."
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold text-slate-700 focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all"
           />
         </div>
+        
+        {activeTab === "local" && (
+          <div className="w-full md:w-64">
+            <select 
+              value={selectedActor}
+              onChange={e => setSelectedActor(e.target.value)}
+              className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all cursor-pointer"
+            >
+              <option value="all">All Personnel</option>
+              {actors.map(actor => (
+                <option key={actor} value={actor}>{actor}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
         <button className="bg-slate-900 text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-slate-800 transition-all active:scale-95 shadow-xl shadow-slate-200">
           <Filter size={14} /> Apply Filters
         </button>
@@ -87,107 +150,119 @@ export default function AuditReportPage() {
 
       {/* Report Table */}
       <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-100">
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Timestamp</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Lead ID</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Actor (Type)</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Action</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Field</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Before &gt; After</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Source</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {loading ? (
-                <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Deciphering Protocol...</p>
-                    </div>
-                  </td>
+        {activeTab === "integration" ? (
+          <div className="px-6 py-24 text-center">
+            <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Zap size={32} />
+            </div>
+            <h3 className="text-lg font-bold text-slate-900 mb-2">Integration Gateway Offline</h3>
+            <p className="text-sm text-slate-500 max-w-sm mx-auto">
+              Automated integration synchronization protocols are being calibrated. External data logs will appear here once connected.
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-100">
+                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Timestamp</th>
+                  <th className="hidden sm:table-cell px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Lead ID</th>
+                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Actor (Type)</th>
+                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Action</th>
+                  <th className="hidden lg:table-cell px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Field</th>
+                  <th className="hidden lg:table-cell px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Before &gt; After</th>
+                  <th className="hidden md:table-cell px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Source</th>
                 </tr>
-              ) : filteredLogs.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center">
-                    <History size={32} className="mx-auto text-slate-200 mb-4" />
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No Logs Found in Archive</p>
-                  </td>
-                </tr>
-              ) : (
-                filteredLogs.map((log) => (
-                  <tr key={log.id} className="hover:bg-slate-50/50 transition-colors group">
-                    <td className="px-6 py-4 border-r border-slate-50">
-                      <div className="flex items-center gap-2">
-                        <Clock size={12} className="text-slate-400" />
-                        <span className="text-[11px] font-bold text-slate-600">
-                          {new Date(log.createdAt).toLocaleString("en-IN", { 
-                            day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit'
-                          })}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 border-r border-slate-50">
-                      <span className="text-[10px] font-mono font-black text-slate-400 uppercase">
-                        {log.leadId?.slice(0, 8) || "SYSTEM"}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 border-r border-slate-50">
-                      <div className="flex items-center gap-2">
-                        <div className="w-5 h-5 rounded bg-slate-100 flex items-center justify-center">
-                          <User size={10} className="text-slate-600" />
-                        </div>
-                        <span className="text-[11px] font-black text-slate-900 uppercase">
-                          {log.actorName || "Unknown"} 
-                          <span className="ml-1 text-[9px] text-slate-400 font-bold">({log.actorType})</span>
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 border-r border-slate-50">
-                      <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter ${
-                        log.action === "CREATE" ? "bg-green-100 text-green-700" :
-                        log.action === "DELETE" ? "bg-red-100 text-red-700" :
-                        "bg-blue-100 text-blue-700"
-                      }`}>
-                        {log.action.replace(/_/g, ' ')}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 border-r border-slate-50">
-                      <span className="text-[11px] font-bold text-slate-500 italic">
-                        {log.field || "—"}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 border-r border-slate-50 max-w-[200px]">
-                      <div className="flex items-center gap-2 overflow-hidden">
-                        {log.beforeValue && (
-                          <span className="text-[10px] text-slate-400 line-through truncate">{log.beforeValue}</span>
-                        )}
-                        {log.beforeValue && log.afterValue && (
-                          <span className="text-slate-300">→</span>
-                        )}
-                        {log.afterValue && (
-                          <span className="text-[10px] text-slate-800 font-black truncate">{log.afterValue}</span>
-                        )}
-                        {!log.beforeValue && !log.afterValue && (
-                          <span className="text-slate-300">—</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <Terminal size={10} className="text-slate-400" />
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{log.source}</span>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {loading ? (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-12 text-center">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Deciphering Protocol...</p>
                       </div>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ) : filteredLogs.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-12 text-center">
+                      <History size={32} className="mx-auto text-slate-200 mb-4" />
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No Logs Found in Archive</p>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredLogs.map((log) => (
+                    <tr key={log.id} className="hover:bg-slate-50/50 transition-colors group">
+                      <td className="px-6 py-4 border-r border-slate-50">
+                        <div className="flex items-center gap-2">
+                          <Clock size={12} className="text-slate-400" />
+                          <span className="text-[11px] font-bold text-slate-600">
+                            {new Date(log.createdAt).toLocaleString("en-IN", { 
+                              day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit'
+                            })}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="hidden sm:table-cell px-6 py-4 border-r border-slate-50">
+                        <span className="text-[10px] font-mono font-black text-slate-400 uppercase">
+                          {log.leadId?.slice(0, 8) || "SYSTEM"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 border-r border-slate-50">
+                        <div className="flex items-center gap-2">
+                          <div className="w-5 h-5 rounded bg-slate-100 flex items-center justify-center">
+                            <User size={10} className="text-slate-600" />
+                          </div>
+                          <span className="text-[11px] font-black text-slate-900 uppercase">
+                            {log.actorName || "Unknown"} 
+                            <span className="ml-1 text-[9px] text-slate-400 font-bold">({log.actorType})</span>
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 border-r border-slate-50">
+                        <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter ${
+                          log.action === "CREATE" ? "bg-green-100 text-green-700" :
+                          log.action === "DELETE" ? "bg-red-100 text-red-700" :
+                          "bg-blue-100 text-blue-700"
+                        }`}>
+                          {log.action.replace(/_/g, ' ')}
+                        </span>
+                      </td>
+                      <td className="hidden lg:table-cell px-6 py-4 border-r border-slate-50">
+                        <span className="text-[11px] font-bold text-slate-500 italic">
+                          {log.field || "—"}
+                        </span>
+                      </td>
+                      <td className="hidden lg:table-cell px-6 py-4 border-r border-slate-50 max-w-[200px]">
+                        <div className="flex items-center gap-2 overflow-hidden">
+                          {log.beforeValue && (
+                            <span className="text-[10px] text-slate-400 line-through truncate">{log.beforeValue}</span>
+                          )}
+                          {log.beforeValue && log.afterValue && (
+                            <span className="text-slate-300">→</span>
+                          )}
+                          {log.afterValue && (
+                            <span className="text-[10px] text-slate-800 font-black truncate">{log.afterValue}</span>
+                          )}
+                          {!log.beforeValue && !log.afterValue && (
+                            <span className="text-slate-300">—</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="hidden md:table-cell px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <Terminal size={10} className="text-slate-400" />
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{log.source}</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
         
         {/* Note Preview Overlay on Hover */}
         <div className="bg-slate-50 border-t border-slate-100 p-3">
@@ -196,7 +271,7 @@ export default function AuditReportPage() {
           </p>
           <div className="mt-1 h-8 flex items-center">
             <p className="text-[11px] font-medium text-slate-600 italic">
-              Hover over a row to see detailed execution notes...
+              {activeTab === "integration" ? "Waiting for integration logs..." : "Hover over a row to see detailed execution notes..."}
             </p>
           </div>
         </div>

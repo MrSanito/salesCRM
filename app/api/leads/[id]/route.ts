@@ -15,7 +15,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
-      select: { organizationId: true, role: true, id: true },
+      select: { organizationId: true, role: true, id: true, name: true },
     });
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
@@ -35,6 +35,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     });
 
     if (!lead) return NextResponse.json({ error: "Lead not found" }, { status: 404 });
+
 
     return NextResponse.json(lead);
   } catch (error) {

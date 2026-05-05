@@ -406,7 +406,7 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
 
                 <div className="space-y-4">
                   <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] border-b border-slate-50 pb-2">Engagement Metrics</h3>
-                  <div className="grid grid-cols-2 gap-x-6 gap-y-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
                     <div>
                       <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Priority</p>
                       <p className="text-[14px] font-bold text-slate-700">{lead.priority.charAt(0) + lead.priority.slice(1).toLowerCase()}</p>
@@ -511,7 +511,7 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                 </div>
 
                 {/* Status Updaters */}
-                <div className="pt-6 border-t border-slate-50 grid grid-cols-2 gap-4">
+                <div className="pt-6 border-t border-slate-50 grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5 flex-1">
                     <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-1 text-center block">Update Status</label>
                     <div className="relative">
