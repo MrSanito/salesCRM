@@ -1,7 +1,7 @@
 "use client"
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { X, ChevronLeft, ChevronRight, Building2, Phone, Mail, CalendarCheck, ChevronDown, MessageCircle, ShieldAlert, Target } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Building2, Phone, Mail, CalendarCheck, ChevronDown, MessageCircle, ShieldAlert, Target, CalendarClock } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthContext";
 import toast from "react-hot-toast";
 
@@ -24,6 +24,9 @@ const STAGE_LABEL: Record<string, string> = {
 const PIPELINE_STAGES = ["NEW", "CONTACTED", "CHATTING", "MEETING_SET", "NEGOTIATION", "NOT_INTERESTED"];
 
 const SUB_STATUS_LABEL: Record<string, string> = {
+  CHATTING: "Chatting",
+  NOT_ANSWERED: "Not Answered",
+  WRONG_NO: "Wrong No.",
   NO_REQUIREMENT: "No Requirement",
   BUDGET_LOW: "Budget Low",
   PROPOSAL_SENT: "Proposal Sent",
@@ -49,6 +52,7 @@ export interface DbLead {
   createdAt: string;
   ownerId: string;
   owner: { name: string; initials: string };
+  reminders?: any[];
 }
 
 interface LeadDetailModalProps {
@@ -90,51 +94,66 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
   const [noteInput, setNoteInput] = useState("");
   const [isAddingNote, setIsAddingNote] = useState(false);
 
+  const fetchData = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
+    try {
+      const [leadRes, teamRes, notesRes] = await Promise.all([
+        fetch(`/api/leads/${leadId}`),
+        canChangeOwner ? fetch("/api/team") : Promise.resolve(null),
+        fetch(`/api/notes?leadId=${leadId}`)
+      ]);
+
+      const leadData = await leadRes.json();
+      if (leadData.id) {
+        setLead(leadData);
+        setStage(leadData.stage);
+        setSubStatus(leadData.subStatus || "BLANK");
+        setIndustry(leadData.industry || "");
+        setDealValue(leadData.dealValueInr || "");
+        setOwnerId(leadData.ownerId);
+        setContext(prev => ({
+          ...prev,
+          requirement: leadData.requirement || "",
+        }));
+      }
+
+      if (teamRes) {
+        const teamData = await teamRes.json();
+        if (Array.isArray(teamData)) setTeam(teamData);
+      }
+
+      if (notesRes) {
+        const notesData = await notesRes.json();
+        if (Array.isArray(notesData)) setNotes(notesData);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Fetch lead and team
   useEffect(() => {
     if (!leadId) return;
-    setLoading(true);
-    
-    const fetchData = async () => {
-      try {
-        const [leadRes, teamRes, notesRes] = await Promise.all([
-          fetch(`/api/leads/${leadId}`),
-          canChangeOwner ? fetch("/api/team") : Promise.resolve(null),
-          fetch(`/api/notes?leadId=${leadId}`)
-        ]);
-
-        const leadData = await leadRes.json();
-        if (leadData.id) {
-          setLead(leadData);
-          setStage(leadData.stage);
-          setSubStatus(leadData.subStatus || "BLANK");
-          setIndustry(leadData.industry || "");
-          setDealValue(leadData.dealValueInr || "");
-          setOwnerId(leadData.ownerId);
-          setContext(prev => ({
-            ...prev,
-            requirement: leadData.requirement || "",
-          }));
-        }
-
-        if (teamRes) {
-          const teamData = await teamRes.json();
-          if (Array.isArray(teamData)) setTeam(teamData);
-        }
-
-        if (notesRes) {
-          const notesData = await notesRes.json();
-          if (Array.isArray(notesData)) setNotes(notesData);
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchData();
   }, [leadId, canChangeOwner]);
+
+  const handleCompleteFollowup = async (reminderId: string) => {
+    try {
+      const res = await fetch(`/api/reminders/${reminderId}/complete`, {
+        method: "PATCH",
+      });
+      if (res.ok) {
+        toast.success("Follow-up Completed");
+        fetchData(false); // Refresh data without full loader
+      } else {
+        toast.error("Failed to complete follow-up");
+      }
+    } catch (err) {
+      toast.error("Network error");
+    }
+  };
 
   const handleAddNote = async () => {
     if (!noteInput.trim()) return;
@@ -216,6 +235,8 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
   };
 
   if (!lead && !loading && !isLoading) return null;
+
+  const activeReminder = lead?.reminders?.find(r => r.status === "PENDING");
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -428,7 +449,13 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                     <div>
                       <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Created On</p>
                       <p className="text-[14px] font-bold text-slate-700">
-                        {new Date(lead.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                        {new Date(lead.createdAt).toLocaleString("en-IN", { 
+                          day: "numeric", 
+                          month: "short", 
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit"
+                        })}
                       </p>
                     </div>
                     {lead.followUpAt && (
@@ -497,18 +524,57 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                   </a>
 
                   <button
-                    onClick={() => setShowSchedule(true)}
-                    className="flex-1 bg-white border border-slate-100 rounded-2xl px-6 py-4 flex items-center justify-center gap-3 group hover:border-purple-200 hover:bg-purple-50 transition-all active:scale-[0.98] shadow-sm"
+                    onClick={() => !activeReminder && setShowSchedule(true)}
+                    disabled={!!activeReminder}
+                    className={`flex-1 bg-white border border-slate-100 rounded-2xl px-6 py-4 flex items-center justify-center gap-3 group transition-all active:scale-[0.98] shadow-sm ${
+                      activeReminder 
+                        ? "opacity-60 cursor-not-allowed bg-slate-50" 
+                        : "hover:border-purple-200 hover:bg-purple-50"
+                    }`}
                   >
-                    <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center border border-purple-100 group-hover:scale-110 transition-transform">
+                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center border transition-transform ${
+                      activeReminder 
+                        ? "bg-slate-100 text-slate-400 border-slate-200" 
+                        : "bg-purple-50 text-purple-600 border-purple-100 group-hover:scale-110"
+                    }`}>
                       <CalendarCheck size={14} strokeWidth={2.5} />
                     </div>
                     <div className="text-left">
                       <p className="text-[8px] font-bold text-slate-400 uppercase tracking-[0.2em] leading-none mb-1">Pipeline</p>
-                      <p className="text-[11px] font-black text-slate-700 tracking-tight uppercase">Schedule Followup</p>
+                      <p className={`text-[11px] font-black tracking-tight uppercase ${activeReminder ? "text-slate-400" : "text-slate-700"}`}>
+                        {activeReminder ? "Follow-up Active" : "Schedule Followup"}
+                      </p>
                     </div>
                   </button>
                 </div>
+
+                {/* Active Follow-up Display */}
+                {activeReminder && (
+                  <div className="mt-6 p-4 bg-orange-50 border border-orange-100 rounded-2xl flex items-center justify-between gap-4 animate-in slide-in-from-top-2 duration-300">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-white text-orange-600 flex items-center justify-center border border-orange-100 shadow-sm">
+                        <CalendarClock size={18} />
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-bold text-orange-400 uppercase tracking-[0.2em] leading-none mb-1">Active Follow-up</p>
+                        <p className="text-[12px] font-black text-slate-900">
+                          {activeReminder.type} on {new Date(activeReminder.scheduledAt).toLocaleString("en-IN", { 
+                            day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" 
+                          })}
+                        </p>
+                        {activeReminder.description && (
+                          <p className="text-[10px] text-slate-500 font-medium mt-0.5 italic line-clamp-1">"{activeReminder.description}"</p>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleCompleteFollowup(activeReminder.id)}
+                      className="bg-orange-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-orange-700 transition-all active:scale-95 shadow-lg shadow-orange-100 flex items-center gap-2"
+                    >
+                      <CalendarCheck size={12} /> Complete
+                    </button>
+                  </div>
+                )}
 
                 {/* Status Updaters */}
                 <div className="pt-6 border-t border-slate-50 grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -551,21 +617,6 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                     </div>
                   </div>
                 </div>
-                <div className="pt-2 border-t border-slate-50 grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5 flex-1">
-                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-1 text-center block">Deal Value (₹)</label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={dealValue}
-                        onChange={(e) => setDealValue(e.target.value)}
-                        onBlur={() => handleUpdate()}
-                        className="w-full border rounded-xl px-4 py-3 text-sm font-bold bg-white border-slate-300 text-slate-900 focus:ring-2 focus:ring-slate-900 shadow-sm"
-                        placeholder="e.g. 500000"
-                      />
-                    </div>
-                  </div>
-                </div>
 
                 {/* Gatekeeper */}
                 <GatekeeperProtocol checklist={checklist} toggleChecklist={toggleChecklist} />
@@ -605,7 +656,13 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                               <span className="text-[10px] font-bold text-slate-900">{note.user?.name}</span>
                             </div>
                             <span className="text-[9px] font-bold text-slate-400 uppercase">
-                              {new Date(note.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                              {new Date(note.createdAt).toLocaleString("en-IN", { 
+                                day: "numeric", 
+                                month: "short", 
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit"
+                              })}
                             </span>
                           </div>
                           <p className="text-sm text-slate-700 font-medium leading-relaxed">{note.content}</p>
@@ -650,6 +707,7 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
         onClose={() => setShowSchedule(false)}
         leadId={lead?.id || ""}
         leadName={lead?.contactName}
+        onSaved={() => fetchData(false)}
       />
     </div>
   );

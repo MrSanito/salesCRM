@@ -19,6 +19,9 @@ const STATUS_OPTIONS = [
 const SUB_STATUS_OPTIONS = [
   { value: "", label: "Any Sub-status" },
   { value: "BLANK", label: "Blank" },
+  { value: "CHATTING", label: "Chatting" },
+  { value: "NOT_ANSWERED", label: "Not Answered" },
+  { value: "WRONG_NO", label: "Wrong No." },
   { value: "WARM_LEAD", label: "Warm Lead" },
   { value: "PROPOSAL_SENT", label: "Proposal Sent" },
   { value: "BUDGET_LOW", label: "Budget Low" },

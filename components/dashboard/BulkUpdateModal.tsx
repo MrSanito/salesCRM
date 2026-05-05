@@ -20,6 +20,9 @@ const STAGES = [
 
 const SUB_STATUSES = [
   { id: "BLANK", label: "Blank" },
+  { id: "CHATTING", label: "Chatting" },
+  { id: "NOT_ANSWERED", label: "Not Answered" },
+  { id: "WRONG_NO", label: "Wrong No." },
   { id: "WARM_LEAD", label: "Warm Lead" },
   { id: "PROPOSAL_SENT", label: "Proposal Sent" },
   { id: "BUDGET_LOW", label: "Budget Low" },

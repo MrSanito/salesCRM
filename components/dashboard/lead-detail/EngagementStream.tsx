@@ -61,7 +61,7 @@ export default function EngagementStream({ leadId, ownerName }: EngagementStream
     const diffDays = Math.floor((now.getTime() - d.getTime()) / 86400000);
     if (diffDays === 0) return `Today, ${formatTime(dateStr)}`;
     if (diffDays === 1) return `Yesterday, ${formatTime(dateStr)}`;
-    return d.toLocaleDateString("en-IN", { day: "numeric", month: "short" }) + `, ${formatTime(dateStr)}`;
+    return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) + `, ${formatTime(dateStr)}`;
   }
 
   return (

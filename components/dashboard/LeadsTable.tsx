@@ -34,6 +34,9 @@ const PRIORITY_STYLES: Record<string, string> = {
 };
 
 const SUB_STATUS_LABEL: Record<string, string> = {
+  CHATTING: "Chatting",
+  NOT_ANSWERED: "Not Answered",
+  WRONG_NO: "Wrong No.",
   NO_REQUIREMENT: "No Requirement",
   BUDGET_LOW: "Budget Low",
   PROPOSAL_SENT: "Proposal Sent",
@@ -42,6 +45,9 @@ const SUB_STATUS_LABEL: Record<string, string> = {
 };
 
 const SUB_STATUS_STYLES: Record<string, string> = {
+  CHATTING: "bg-green-50 text-green-700 border border-green-200",
+  NOT_ANSWERED: "bg-amber-50 text-amber-700 border border-amber-200",
+  WRONG_NO: "bg-red-50 text-red-700 border border-red-200",
   NO_REQUIREMENT: "bg-slate-100 text-slate-500 border border-slate-200",
   BUDGET_LOW: "bg-red-50 text-red-600 border border-red-100",
   PROPOSAL_SENT: "bg-blue-50 text-blue-600 border border-blue-100",

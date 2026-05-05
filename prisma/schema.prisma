@@ -345,6 +345,9 @@ enum SourceType {
 }
 
 enum LeadSubStatus {
+  CHATTING
+  NOT_ANSWERED
+  WRONG_NO
   NO_REQUIREMENT
   BUDGET_LOW
   PROPOSAL_SENT

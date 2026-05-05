@@ -24,6 +24,7 @@ export default function AddLeadModal({ onClose, onSuccess }: AddLeadModalProps) 
     requirement: "",
     notes: "",
     ownerId: "",
+    subStatus: "BLANK",
   });
   const [activeTab, setActiveTab] = useState<'manual' | 'import'>('manual');
   const [importPreview, setImportPreview] = useState<{ headers: string[]; missing: string[]; extra: string[] } | null>(null);
@@ -315,6 +316,24 @@ export default function AddLeadModal({ onClose, onSuccess }: AddLeadModalProps) 
                   </select>
                 </div>
               )}
+
+              <div className="space-y-2">
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Sub Status</label>
+                <select 
+                  value={formData.subStatus}
+                  onChange={e => setFormData({ ...formData, subStatus: e.target.value })}
+                  className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 bg-slate-50 outline-none transition-all appearance-none"
+                >
+                  <option value="BLANK">No Substatus</option>
+                  <option value="CHATTING">Chatting</option>
+                  <option value="NOT_ANSWERED">Not Answered</option>
+                  <option value="WRONG_NO">Wrong No.</option>
+                  <option value="NO_REQUIREMENT">No Requirement</option>
+                  <option value="BUDGET_LOW">Budget Low</option>
+                  <option value="PROPOSAL_SENT">Proposal Sent</option>
+                  <option value="WARM_LEAD">Warm Lead</option>
+                </select>
+              </div>
 
               <div className="space-y-4">
                 <div className="space-y-2">

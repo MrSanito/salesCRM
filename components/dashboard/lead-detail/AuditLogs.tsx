@@ -62,7 +62,7 @@ export default function AuditLogs({ leadId }: { leadId: string }) {
               </div>
               <div className="flex items-center gap-1 text-slate-400">
                 <Clock size={10} />
-                <span className="text-[9px] font-bold">{new Date(log.createdAt).toLocaleString("en-IN", { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                <span className="text-[9px] font-bold">{new Date(log.createdAt).toLocaleString("en-IN", { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
               </div>
             </div>
             

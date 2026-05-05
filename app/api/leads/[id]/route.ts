@@ -31,6 +31,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       include: {
         owner: { select: { name: true, initials: true } },
         source: { select: { name: true } },
+        reminders: {
+          orderBy: { scheduledAt: 'desc' }
+        }
       },
     });
 
