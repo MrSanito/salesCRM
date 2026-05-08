@@ -16,6 +16,8 @@ export interface SidebarFilterConfig {
   subStatus: string | null;
   dealSizeMin: string | null;
   dealSizeMax: string | null;
+  industry: string | null;
+  alphabet: string | null;
 }
 
 export default function DashboardPage() {
