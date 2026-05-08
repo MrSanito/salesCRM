@@ -256,7 +256,7 @@ export default function LeadsTable({ onLeadClick, activeNav, refreshKey = 0, sid
       processedLeads = processedLeads.filter((l) => l.industry === sidebarFilter.industry);
     }
     if (sidebarFilter.alphabet) {
-      processedLeads = processedLeads.filter((l) => l.contactName.toUpperCase().startsWith(sidebarFilter.alphabet!.toUpperCase()));
+      processedLeads = processedLeads.filter((l) => l.contactName.toUpperCase().startsWith(sidebarFilter.alphabet?.toUpperCase() || ""));
     }
   }
 

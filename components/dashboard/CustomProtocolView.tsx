@@ -227,7 +227,7 @@ export default function CustomProtocolView({ filter, onLeadClick, refreshKey = 0
     processedLeads = processedLeads.filter(l => l.industry === filter.industry);
   }
   if (filter.alphabet) {
-    processedLeads = processedLeads.filter(l => l.contactName.toUpperCase().startsWith(filter.alphabet!.toUpperCase()));
+    processedLeads = processedLeads.filter(l => l.contactName.toUpperCase().startsWith(filter.alphabet?.toUpperCase() || ""));
   }
 
   // 2. Column Filters
