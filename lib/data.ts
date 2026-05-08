@@ -134,7 +134,7 @@ export const ALL_LEADS = [
 export const PIPELINE_FLOW_STATS = [
   { label: "New", count: 245, value: "₹18,40,000", color: "bg-blue-100 text-blue-700 border-blue-200" },
   { label: "Contacted", count: 310, value: "₹24,60,000", color: "bg-cyan-100 text-cyan-700 border-cyan-200" },
-  { label: "Proposal", count: 128, value: "₹28,20,000", color: "bg-amber-100 text-amber-700 border-amber-200" },
+  { label: "Proposal", count: 0, value: "₹28,20,000", color: "bg-amber-100 text-amber-700 border-amber-200" },
   { label: "Negotiation", count: 62, value: "₹16,80,000", color: "bg-orange-100 text-orange-700 border-orange-200" },
   { label: "Won", count: 32, value: "₹14,50,000", color: "bg-green-100 text-green-700 border-green-200" },
   { label: "Lost", count: 45, value: "₹6,10,000", color: "bg-red-100 text-red-700 border-red-200" },

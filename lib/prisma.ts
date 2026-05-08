@@ -2,7 +2,9 @@ import { PrismaClient } from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import pg from 'pg'
 
-const connectionString = process.env.DATABASE_URL || "";
+const connectionString = process.env.NODE_ENV === "production"
+  ? (process.env.PROD_DATABASE_URL || process.env.DATABASE_URL || "")
+  : (process.env.DATABASE_URL || "");
 
 // Prisma 7 requires an adapter or accelerateUrl if url is missing from schema
 const pool = new pg.Pool({ 

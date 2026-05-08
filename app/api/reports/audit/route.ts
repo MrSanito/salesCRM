@@ -29,6 +29,9 @@ export async function GET(req: NextRequest) {
     const auditLogs = await prisma.auditLog.findMany({
       where: {
         organizationId: user.organizationId,
+        NOT: {
+          action: "CHAT"
+        }
       },
       orderBy: {
         createdAt: "desc",
