@@ -66,8 +66,8 @@ export async function POST(req: Request) {
     const filter = await prisma.sidebarFilter.create({
       data: {
         name,
-        status: status || null,
-        subStatus: subStatus || null,
+        status: (status as any) || null,
+        subStatus: (subStatus as any) || null,
         dealSizeMin: dealSizeMin ? parseFloat(dealSizeMin) : null,
         dealSizeMax: dealSizeMax ? parseFloat(dealSizeMax) : null,
         industry: industry || null,
