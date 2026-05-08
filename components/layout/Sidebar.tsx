@@ -96,6 +96,8 @@ interface CustomFilter {
   subStatus: string | null;
   dealSizeMin: string | null;
   dealSizeMax: string | null;
+  industry: string | null;
+  alphabet: string | null;
   color: string;
   orderIndex: number;
 }

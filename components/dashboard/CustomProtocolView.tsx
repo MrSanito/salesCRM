@@ -83,6 +83,8 @@ interface CustomProtocolViewProps {
     subStatus: string | null;
     dealSizeMin: string | null;
     dealSizeMax: string | null;
+    industry: string | null;
+    alphabet: string | null;
   };
   onLeadClick: (id: string, allIds?: string[]) => void;
   refreshKey?: number;
@@ -220,6 +222,12 @@ export default function CustomProtocolView({ filter, onLeadClick, refreshKey = 0
   if (filter.dealSizeMax) {
     const max = parseFloat(filter.dealSizeMax);
     processedLeads = processedLeads.filter(l => parseFloat(l.dealValueInr || "0") <= max);
+  }
+  if (filter.industry) {
+    processedLeads = processedLeads.filter(l => l.industry === filter.industry);
+  }
+  if (filter.alphabet) {
+    processedLeads = processedLeads.filter(l => l.contactName.toUpperCase().startsWith(filter.alphabet!.toUpperCase()));
   }
 
   // 2. Column Filters

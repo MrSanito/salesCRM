@@ -49,7 +49,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { name, status, subStatus, dealSizeMin, dealSizeMax, icon, color } = body;
+    const { name, status, subStatus, dealSizeMin, dealSizeMax, industry, alphabet, icon, color } = body;
 
     if (!name) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
@@ -70,6 +70,8 @@ export async function POST(req: Request) {
         subStatus: subStatus || null,
         dealSizeMin: dealSizeMin ? parseFloat(dealSizeMin) : null,
         dealSizeMax: dealSizeMax ? parseFloat(dealSizeMax) : null,
+        industry: industry || null,
+        alphabet: alphabet || null,
         icon: icon || "filter",
         color: color || "blue",
         orderIndex: nextOrder,

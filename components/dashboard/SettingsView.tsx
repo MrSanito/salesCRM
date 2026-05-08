@@ -55,6 +55,8 @@ interface SidebarFilterItem {
   subStatus: string | null;
   dealSizeMin: string | null;
   dealSizeMax: string | null;
+  industry: string | null;
+  alphabet: string | null;
   icon: string;
   color: string;
   orderIndex: number;
@@ -77,8 +79,11 @@ export default function SettingsView() {
     status: "",
     subStatus: "",
     dealSize: "",
+    industry: "",
+    alphabet: "",
     color: "blue",
   });
+  const [industries, setIndustries] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -99,6 +104,14 @@ export default function SettingsView() {
         })
         .catch(console.error)
         .finally(() => setFiltersLoading(false));
+
+      // Fetch unique industries
+      fetch("/api/leads/industries")
+        .then(r => r.json())
+        .then(data => {
+          if (Array.isArray(data)) setIndustries(data);
+        })
+        .catch(console.error);
     }
   }, [user]);
 
@@ -153,6 +166,8 @@ export default function SettingsView() {
           subStatus: newFilter.subStatus || null,
           dealSizeMin,
           dealSizeMax,
+          industry: newFilter.industry || null,
+          alphabet: newFilter.alphabet || null,
           color: newFilter.color,
         }),
       });
@@ -160,7 +175,7 @@ export default function SettingsView() {
       if (res.ok) {
         const created = await res.json();
         setSidebarFilters((prev) => [...prev, created]);
-        setNewFilter({ name: "", status: "", subStatus: "", dealSize: "", color: "blue" });
+        setNewFilter({ name: "", status: "", subStatus: "", dealSize: "", industry: "", alphabet: "", color: "blue" });
         setShowAddForm(false);
         toast.success(`"${created.name}" added to sidebar`);
       } else {
@@ -390,6 +405,53 @@ export default function SettingsView() {
                         </select>
                       </div>
 
+                      {/* Industry */}
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Industry</label>
+                        <select
+                          value={newFilter.industry}
+                          onChange={(e) => setNewFilter({ ...newFilter, industry: e.target.value })}
+                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:outline-none focus:ring-4 focus:ring-purple-500/10 focus:border-purple-500 transition-all appearance-none cursor-pointer"
+                        >
+                          <option value="">Any Industry</option>
+                          {industries.map((ind) => (
+                            <option key={ind} value={ind}>{ind}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Alphabet Filter */}
+                      <div className="sm:col-span-2 space-y-1.5">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Alphabetical (Contact Name)</label>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          <button
+                            type="button"
+                            onClick={() => setNewFilter({ ...newFilter, alphabet: "" })}
+                            className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${
+                              newFilter.alphabet === ""
+                                ? "bg-slate-900 text-white border-slate-900"
+                                : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
+                            }`}
+                          >
+                            ANY
+                          </button>
+                          {Array.from("ABCDEFGHIJKLMNOPQRSTUVWXYZ").map(char => (
+                            <button
+                              key={char}
+                              type="button"
+                              onClick={() => setNewFilter({ ...newFilter, alphabet: newFilter.alphabet === char ? "" : char })}
+                              className={`w-7 h-7 flex items-center justify-center rounded-lg text-[10px] font-bold border transition-all ${
+                                newFilter.alphabet === char
+                                  ? "bg-purple-600 text-white border-purple-600 shadow-md shadow-purple-100"
+                                  : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
+                              }`}
+                            >
+                              {char}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
                       {/* Color Picker */}
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Accent Color</label>
@@ -464,7 +526,17 @@ export default function SettingsView() {
                                   {getDealSizeLabel(f.dealSizeMin, f.dealSizeMax)}
                                 </span>
                               )}
-                              {!f.status && !f.subStatus && !f.dealSizeMin && !f.dealSizeMax && (
+                              {f.industry && (
+                                <span className="text-[9px] font-bold bg-amber-50 text-amber-600 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                  {f.industry}
+                                </span>
+                              )}
+                              {f.alphabet && (
+                                <span className="text-[9px] font-bold bg-rose-50 text-rose-600 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                  Starts with: {f.alphabet}
+                                </span>
+                              )}
+                              {!f.status && !f.subStatus && !f.dealSizeMin && !f.dealSizeMax && !f.industry && !f.alphabet && (
                                 <span className="text-[9px] font-bold bg-slate-50 text-slate-400 px-2 py-0.5 rounded-full uppercase tracking-wider">
                                   All Leads
                                 </span>

@@ -78,7 +78,7 @@ interface LeadsTableProps {
   onLeadClick: (id: string, allIds?: string[]) => void;
   activeNav: string;
   refreshKey?: number;
-  sidebarFilter?: { id: string; status: string | null; subStatus: string | null; dealSizeMin: string | null; dealSizeMax: string | null; name: string } | null;
+  sidebarFilter?: { id: string; status: string | null; subStatus: string | null; dealSizeMin: string | null; dealSizeMax: string | null; industry: string | null; alphabet: string | null; name: string } | null;
 }
 
 export default function LeadsTable({ onLeadClick, activeNav, refreshKey = 0, sidebarFilter }: LeadsTableProps) {
@@ -251,6 +251,12 @@ export default function LeadsTable({ onLeadClick, activeNav, refreshKey = 0, sid
     if (sidebarFilter.dealSizeMax) {
       const max = parseFloat(sidebarFilter.dealSizeMax);
       processedLeads = processedLeads.filter((l) => parseFloat(l.dealValueInr || "0") <= max);
+    }
+    if (sidebarFilter.industry) {
+      processedLeads = processedLeads.filter((l) => l.industry === sidebarFilter.industry);
+    }
+    if (sidebarFilter.alphabet) {
+      processedLeads = processedLeads.filter((l) => l.contactName.toUpperCase().startsWith(sidebarFilter.alphabet!.toUpperCase()));
     }
   }
 
