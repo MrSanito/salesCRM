@@ -43,6 +43,7 @@ export default function LeadsPage() {
       const worksheetData = leads.map((lead: any) => ({
         "Contact Name": lead.contactName,
         "Company": lead.company,
+        "Industry": lead.industry || "",
         "Stage": lead.stage,
         "Phone": lead.phone || "",
         "Email": lead.email || "",

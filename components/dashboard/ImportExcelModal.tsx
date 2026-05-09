@@ -53,6 +53,7 @@ export default function ImportExcelModal({ onClose, onImportSuccess }: ImportExc
             leads: data.map((l: any) => ({
               contactName: l["Person Name"] || l.contactName || "Unknown",
               company: l["Company Name"] || l.company || "Unknown",
+              industry: l["Industry"] || l.industry || null,
               phone: String(l["Primary Phone"] || l.phone || ""),
               phone2: String(l["Secondary Phone"] || l.phone2 || ""),
               email: l["Primary Email"] || l.email || null,
@@ -83,7 +84,7 @@ export default function ImportExcelModal({ onClose, onImportSuccess }: ImportExc
 
   const handleDownloadTemplate = () => {
     const templateData = [
-      ["Person Name", "Company Name", "Primary Phone", "Secondary Phone", "Primary Email", "Secondary Email", "Requirement", "Internal Notes"]
+      ["Person Name", "Company Name", "Industry", "Primary Phone", "Secondary Phone", "Primary Email", "Secondary Email", "Requirement", "Internal Notes"]
     ];
     const ws = XLSX.utils.aoa_to_sheet(templateData);
     const wb = XLSX.utils.book_new();
@@ -169,7 +170,7 @@ export default function ImportExcelModal({ onClose, onImportSuccess }: ImportExc
               <div className="flex items-start gap-3 p-4 rounded-2xl bg-amber-50 border border-amber-100">
                 <AlertCircle size={18} className="text-amber-500 mt-0.5 flex-shrink-0" />
                 <p className="text-[11px] text-amber-700 leading-relaxed font-medium">
-                  Ensure headers match: <span className="font-bold underline">Person Name</span>, <span className="font-bold underline">Company Name</span>, <span className="font-bold underline">Primary Phone</span>, <span className="font-bold underline">Secondary Phone</span>, <span className="font-bold underline">Primary Email</span>, <span className="font-bold underline">Secondary Email</span>, <span className="font-bold underline">Requirement</span>, <span className="font-bold underline">Internal Notes</span>.
+                  Ensure headers match: <span className="font-bold underline">Person Name</span>, <span className="font-bold underline">Company Name</span>, <span className="font-bold underline">Industry</span>, <span className="font-bold underline">Primary Phone</span>, <span className="font-bold underline">Secondary Phone</span>, <span className="font-bold underline">Primary Email</span>, <span className="font-bold underline">Secondary Email</span>, <span className="font-bold underline">Requirement</span>, <span className="font-bold underline">Internal Notes</span>.
                 </p>
               </div>
             </div>

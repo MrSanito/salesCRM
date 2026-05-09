@@ -106,6 +106,7 @@ export default function LeadsTable({ onLeadClick, activeNav, refreshKey = 0, sid
     const worksheetData = dataToExport.map(lead => ({
       "Person Name": lead.contactName,
       "Company": lead.company,
+      "Industry": lead.industry || "",
       "Stage": STAGE_LABEL[lead.stage] || lead.stage,
       "Primary Phone": lead.phone || "",
       "Secondary Phone": lead.phone2 || "",
@@ -129,6 +130,7 @@ export default function LeadsTable({ onLeadClick, activeNav, refreshKey = 0, sid
     const worksheetData = dataToExport.map(lead => ({
       "Person Name": lead.contactName,
       "Company": lead.company,
+      "Industry": lead.industry || "",
       "Stage": STAGE_LABEL[lead.stage] || lead.stage,
       "Primary Phone": lead.phone || "",
       "Secondary Phone": lead.phone2 || "",
