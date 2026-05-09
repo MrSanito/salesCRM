@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { X, User, Building, Phone, Mail, MessageSquare, Info, Download, FileText, CheckCircle, AlertCircle, Layout, Globe } from "lucide-react";
 import * as XLSX from 'xlsx';
+import axios from "axios";
 import { useAuth } from "@/components/auth/AuthContext";
 import toast from "react-hot-toast";
 
@@ -30,6 +31,7 @@ export default function AddLeadModal({ onClose, onSuccess }: AddLeadModalProps) 
   const [activeTab, setActiveTab] = useState<'manual' | 'import'>('manual');
   const [importPreview, setImportPreview] = useState<{ headers: string[]; missing: string[]; extra: string[] } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
 
   const REQUIRED_HEADERS = [
     "Person Name", "Company Name", "Industry", "Primary Phone", "Secondary Phone", 
@@ -37,71 +39,67 @@ export default function AddLeadModal({ onClose, onSuccess }: AddLeadModalProps) 
   ];
 
   const handleCommenceImport = async () => {
-    if (!importPreview) return;
+    if (!importPreview || !file) return;
     setLoading(true);
     
     try {
-      // Re-read file data for full processing
-      // Since we already parsed headers, we'll just use the XLSX utility again
-      // In a real app we might store the rows in state, but let's keep it simple
-      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
-      const file = fileInput?.files?.[0];
       if (!file) {
         toast.error("File lost. Please re-upload.");
         setImportPreview(null);
+        setLoading(false);
         return;
       }
 
-      const reader = new FileReader();
-      reader.onload = async (evt) => {
-        const bstr = evt.target?.result;
-        const wb = XLSX.read(bstr, { type: 'binary' });
-        const wsname = wb.SheetNames[0];
-        const ws = wb.Sheets[wsname];
-        const data = XLSX.utils.sheet_to_json(ws);
+      const data = await new Promise<any[]>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          try {
+            const bstr = evt.target?.result;
+            const wb = XLSX.read(bstr, { type: 'binary' });
+            const wsname = wb.SheetNames[0];
+            const ws = wb.Sheets[wsname];
+            resolve(XLSX.utils.sheet_to_json(ws));
+          } catch (e) {
+            reject(e);
+          }
+        };
+        reader.onerror = reject;
+        reader.readAsBinaryString(file);
+      });
 
-        const response = await fetch("/api/leads/bulk", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ 
-            action: "CREATE", 
-            leads: data.map((l: any) => ({
-              contactName: l["Person Name"] || "Unknown",
-              company: l["Company Name"] || "Unknown",
-              industry: l["Industry"] || null,
-              phone: String(l["Primary Phone"] || ""),
-              phone2: String(l["Secondary Phone"] || ""),
-              email: l["Primary Email"] || null,
-              email2: l["Secondary Email"] || null,
-              requirement: l["Requirement"] || null,
-              notes: l["Internal Notes"] || null,
-            }))
-          })
-        });
+      const response = await axios.post("/api/leads/bulk", { 
+        action: "CREATE", 
+        leads: data.map((l: any) => ({
+          contactName: l["Person Name"] || "Unknown",
+          company: l["Company Name"] || "Unknown",
+          industry: l["Industry"] || null,
+          phone: String(l["Primary Phone"] || ""),
+          phone2: String(l["Secondary Phone"] || ""),
+          email: l["Primary Email"] || null,
+          email2: l["Secondary Email"] || null,
+          requirement: l["Requirement"] || null,
+          notes: l["Internal Notes"] || null,
+        }))
+      });
 
-        if (response.ok) {
-          const res = await response.json();
-          toast.success(res.message || "Import successful!");
-          onSuccess?.();
-          onClose();
-        } else {
-          toast.error("Failed to import leads.");
-        }
-        setLoading(false);
-      };
-      reader.readAsBinaryString(file);
-    } catch (error) {
+      toast.success(response.data.message || "Import successful!");
+      onSuccess?.();
+      onClose();
+    } catch (error: any) {
       console.error(error);
-      toast.error("An error occurred.");
+      const errorMessage = error.response?.data?.error || "Failed to import leads.";
+      toast.error(errorMessage);
+    } finally {
       setLoading(false);
     }
   };
 
-  const handleFileUpload = (file: File) => {
-    if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls') && !file.name.endsWith('.csv')) {
+  const handleFileUpload = (f: File) => {
+    if (!f.name.endsWith('.xlsx') && !f.name.endsWith('.xls') && !f.name.endsWith('.csv')) {
       toast.error("Please provide an Excel or CSV file.");
       return;
     }
+    setFile(f);
 
     const reader = new FileReader();
     reader.onload = (evt) => {
@@ -118,49 +116,46 @@ export default function AddLeadModal({ onClose, onSuccess }: AddLeadModalProps) 
         setImportPreview({ headers: fileHeaders, missing, extra });
       }
     };
-    reader.readAsBinaryString(file);
+    reader.readAsBinaryString(f);
   };
 
   const canAssign = user?.role === "ORG_ADMIN" || user?.role === "MANAGER";
 
   useEffect(() => {
     if (canAssign) {
-      fetch("/api/team")
-        .then(r => r.json())
-        .then(d => {
+      axios.get("/api/team")
+        .then(res => {
+          const d = res.data;
           if (Array.isArray(d)) {
             setTeam(d);
             // Default to current user
             setFormData(prev => ({ ...prev, ownerId: user?.id || "" }));
           }
+        })
+        .catch(err => {
+          console.error("Failed to fetch team:", err);
         });
     }
   }, [canAssign, user?.id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     setLoading(true);
 
     try {
-      const res = await fetch("/api/leads", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...formData,
-          organizationId: user?.organizationId
-        }),
+      const response = await axios.post("/api/leads", {
+        ...formData,
+        organizationId: user?.organizationId
       });
 
-      if (res.ok) {
-        toast.success("Lead Created Successfully!");
-        onSuccess?.();
-        onClose();
-      } else {
-        const error = await res.json();
-        toast.error(error.error || "Failed to create lead");
-      }
-    } catch (err) {
-      toast.error("Connection error");
+      toast.success("Lead Created Successfully!");
+      onSuccess?.();
+      onClose();
+    } catch (error: any) {
+      console.error(error);
+      const errorMessage = error.response?.data?.error || "Failed to create lead";
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -320,34 +315,46 @@ export default function AddLeadModal({ onClose, onSuccess }: AddLeadModalProps) 
               {canAssign && (
                 <div className="space-y-2">
                   <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Assign To</label>
-                  <select 
-                    value={formData.ownerId}
-                    onChange={e => setFormData({ ...formData, ownerId: e.target.value })}
-                    className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 bg-slate-50 outline-none transition-all appearance-none"
-                  >
-                    {team.map(m => (
-                      <option key={m.id} value={m.id}>{m.name}</option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <User size={14} className="absolute left-4 top-3.5 text-slate-400 pointer-events-none" />
+                    <select 
+                      value={formData.ownerId}
+                      onChange={e => setFormData({ ...formData, ownerId: e.target.value })}
+                      className="w-full border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-sm font-bold text-slate-800 focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 bg-slate-50 outline-none transition-all appearance-none"
+                    >
+                      {team.map(m => (
+                        <option key={m.id} value={m.id}>{m.name}</option>
+                      ))}
+                    </select>
+                    <div className="absolute right-4 top-3.5 text-slate-400 pointer-events-none">
+                      <Layout size={12} />
+                    </div>
+                  </div>
                 </div>
               )}
 
               <div className="space-y-2">
                 <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Sub Status</label>
-                <select 
-                  value={formData.subStatus}
-                  onChange={e => setFormData({ ...formData, subStatus: e.target.value })}
-                  className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 bg-slate-50 outline-none transition-all appearance-none"
-                >
-                  <option value="BLANK">No Substatus</option>
-                  <option value="CHATTING">Chatting</option>
-                  <option value="NOT_ANSWERED">Not Answered</option>
-                  <option value="WRONG_NO">Wrong No.</option>
-                  <option value="NO_REQUIREMENT">No Requirement</option>
-                  <option value="BUDGET_LOW">Budget Low</option>
-                  <option value="PROPOSAL_SENT">Proposal Sent</option>
-                  <option value="WARM_LEAD">Warm Lead</option>
-                </select>
+                <div className="relative">
+                  <AlertCircle size={14} className="absolute left-4 top-3.5 text-slate-400 pointer-events-none" />
+                  <select 
+                    value={formData.subStatus}
+                    onChange={e => setFormData({ ...formData, subStatus: e.target.value })}
+                    className="w-full border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-sm font-bold text-slate-800 focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 bg-slate-50 outline-none transition-all appearance-none"
+                  >
+                    <option value="BLANK">No Substatus</option>
+                    <option value="CHATTING">Chatting</option>
+                    <option value="NOT_ANSWERED">Not Answered</option>
+                    <option value="WRONG_NO">Wrong No.</option>
+                    <option value="NO_REQUIREMENT">No Requirement</option>
+                    <option value="BUDGET_LOW">Budget Low</option>
+                    <option value="PROPOSAL_SENT">Proposal Sent</option>
+                    <option value="WARM_LEAD">Warm Lead</option>
+                  </select>
+                  <div className="absolute right-4 top-3.5 text-slate-400 pointer-events-none">
+                    <Layout size={12} />
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-4">
@@ -358,7 +365,13 @@ export default function AddLeadModal({ onClose, onSuccess }: AddLeadModalProps) 
                     <textarea 
                       value={formData.requirement}
                       onChange={e => setFormData({ ...formData, requirement: e.target.value })}
-                      className="w-full border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-sm font-bold text-slate-800 focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 bg-slate-50 outline-none transition-all h-24 resize-none" 
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          e.stopPropagation();
+                        }
+                      }}
+                      rows={8}
+                      className="w-full border border-slate-200 rounded-xl pl-10 pr-4 py-4 text-sm font-bold text-slate-800 focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 bg-slate-50 outline-none transition-all min-h-[200px] resize-y" 
                       placeholder="Describe the lead's requirement..."
                     ></textarea>
                   </div>
@@ -372,7 +385,13 @@ export default function AddLeadModal({ onClose, onSuccess }: AddLeadModalProps) 
                   <textarea 
                     value={formData.notes}
                     onChange={e => setFormData({ ...formData, notes: e.target.value })}
-                    className="w-full border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-sm font-bold text-slate-800 focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 bg-slate-50 outline-none transition-all h-24 resize-none" 
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        e.stopPropagation();
+                      }
+                    }}
+                    rows={8}
+                    className="w-full border border-slate-200 rounded-xl pl-10 pr-4 py-4 text-sm font-bold text-slate-800 focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 bg-slate-50 outline-none transition-all min-h-[200px] resize-y" 
                     placeholder="Private internal insights..." 
                   ></textarea>
                 </div>

@@ -8,6 +8,7 @@ import Navbar from "@/components/layout/Navbar";
 import Sidebar from "@/components/layout/Sidebar";
 import { useAuth } from "@/components/auth/AuthContext";
 import toast from "react-hot-toast";
+import axios from "axios";
 
 const STAGE_LABEL: Record<string, string> = {
   NEW: "New", 
@@ -48,6 +49,7 @@ export default function EditLeadPage({ params }: { params: Promise<{ id: string 
     dealValueInr: "0",
     ownerId: "",
     requirement: "",
+    notes: "",
     industry: "",
     phone2: "",
     email2: ""
@@ -58,9 +60,12 @@ export default function EditLeadPage({ params }: { params: Promise<{ id: string 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const leadRes = await fetch(`/api/leads/${leadId}`);
-        const leadData = await leadRes.json();
+        const [leadRes, teamRes] = await Promise.all([
+          axios.get(`/api/leads/${leadId}`),
+          axios.get("/api/team")
+        ]);
         
+        const leadData = leadRes.data;
         if (leadData.id) {
           setFormData({
             contactName: leadData.contactName,
@@ -72,15 +77,14 @@ export default function EditLeadPage({ params }: { params: Promise<{ id: string 
             dealValueInr: leadData.dealValueInr || "0",
             ownerId: leadData.ownerId,
             requirement: leadData.requirement || "",
+            notes: leadData.notes || "",
             industry: leadData.industry || "",
             phone2: leadData.phone2 || "",
             email2: leadData.email2 || ""
           });
         }
 
-        const teamRes = await fetch("/api/team");
-        const teamData = await teamRes.json();
-        if (Array.isArray(teamData)) setTeam(teamData);
+        if (Array.isArray(teamRes.data)) setTeam(teamRes.data);
 
       } catch (err) {
         toast.error("Failed to load data");
@@ -95,20 +99,11 @@ export default function EditLeadPage({ params }: { params: Promise<{ id: string 
   const handleSave = async () => {
     setSaving(true);
     try {
-      const res = await fetch(`/api/leads/${leadId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-
-      if (res.ok) {
-        toast.success("Intelligence Synchronized");
-        router.push("/dashboard/leads");
-      } else {
-        toast.error("Protocol Update Failed");
-      }
-    } catch (err) {
-      toast.error("Network Error");
+      await axios.patch(`/api/leads/${leadId}`, formData);
+      toast.success("Intelligence Synchronized");
+      router.push("/dashboard/leads");
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Protocol Update Failed");
     } finally {
       setSaving(false);
     }
@@ -266,13 +261,26 @@ export default function EditLeadPage({ params }: { params: Promise<{ id: string 
                      </div>
                       <div className="space-y-2 md:col-span-2">
                         <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Lead Requirement</label>
-                       <textarea 
-                         value={formData.requirement} 
-                         onChange={e => setFormData({...formData, requirement: e.target.value})} 
-                         className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 focus:bg-white transition-all shadow-inner h-32 resize-none"
-                         placeholder="What is the client's core requirement?"
-                       />
-                     </div>
+                        <textarea 
+                          value={formData.requirement} 
+                          onChange={e => setFormData({...formData, requirement: e.target.value})} 
+                          onKeyDown={e => { if (e.key === 'Enter') e.stopPropagation(); }}
+                          rows={8}
+                          className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 focus:bg-white transition-all shadow-inner min-h-[200px] resize-y"
+                          placeholder="What is the client's core requirement?"
+                        />
+                      </div>
+                      <div className="space-y-2 md:col-span-2">
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Internal Notes</label>
+                        <textarea 
+                          value={formData.notes} 
+                          onChange={e => setFormData({...formData, notes: e.target.value})} 
+                          onKeyDown={e => { if (e.key === 'Enter') e.stopPropagation(); }}
+                          rows={8}
+                          className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 focus:bg-white transition-all shadow-inner min-h-[200px] resize-y"
+                          placeholder="Private internal insights..."
+                        />
+                      </div>
                   </div>
                </div>
             </div>
@@ -281,5 +289,5 @@ export default function EditLeadPage({ params }: { params: Promise<{ id: string 
         </main>
       </div>
     </div>
-  )
+  );
 }

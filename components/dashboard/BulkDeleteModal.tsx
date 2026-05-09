@@ -1,6 +1,8 @@
 "use client"
 import { useState } from "react";
 import { X, Trash2, AlertCircle, ChevronRight } from "lucide-react";
+import toast from "react-hot-toast";
+import axios from "axios";
 
 interface BulkDeleteModalProps {
   isOpen: boolean;
@@ -18,21 +20,13 @@ export default function BulkDeleteModal({ isOpen, onClose, selectedIds, onSucces
     
     setLoading(true);
     try {
-      const res = await fetch("/api/leads/bulk", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: selectedIds })
-      });
+      const res = await axios.delete("/api/leads/bulk", { data: { ids: selectedIds } });
 
-      if (res.ok) {
-        onSuccess();
-        onClose();
-      } else {
-        const err = await res.json();
-        alert(err.error || "Failed to delete leads");
-      }
-    } catch (e) {
-      alert("An error occurred");
+      toast.success(`Successfully deleted ${selectedIds.length} leads`);
+      onSuccess();
+      onClose();
+    } catch (e: any) {
+      toast.error(e.response?.data?.error || "Failed to delete leads");
     } finally {
       setLoading(false);
     }

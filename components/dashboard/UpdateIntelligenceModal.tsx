@@ -46,7 +46,7 @@ export default function UpdateIntelligenceModal({ onClose }: UpdateIntelligenceM
           </div>
           <div>
              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-3">Internal Notes</label>
-             <textarea className="w-full border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 bg-slate-50 h-32 resize-none transition-all" placeholder="Enter latest updates, insights, or tasks..."></textarea>
+             <textarea className="w-full border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 bg-slate-50 h-32 resize-y transition-all" placeholder="Enter latest updates, insights, or tasks..."></textarea>
           </div>
         </div>
         <div className="p-8 pt-0 flex gap-4">

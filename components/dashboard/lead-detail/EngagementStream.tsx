@@ -75,7 +75,7 @@ export default function EngagementStream({ leadId, ownerName }: EngagementStream
           <textarea
             value={noteText}
             onChange={(e) => setNoteText(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-4 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-900 transition-all resize-none min-h-[120px] shadow-inner"
+            className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-4 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-900 transition-all resize-y min-h-[120px] shadow-inner"
             placeholder="Type a private note here..."
           />
           <button

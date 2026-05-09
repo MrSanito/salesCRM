@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { X, Upload, FileSpreadsheet, Download, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import * as XLSX from "xlsx";
+import axios from "axios";
 import toast from "react-hot-toast";
 
 interface ImportExcelModalProps {
@@ -32,51 +33,52 @@ export default function ImportExcelModal({ onClose, onImportSuccess }: ImportExc
   };
 
   const handleImport = async () => {
-    if (!file) return;
+    if (!file || loading) return;
     setLoading(true);
     
     try {
-      const reader = new FileReader();
-      reader.onload = async (evt) => {
-        const bstr = evt.target?.result;
-        const wb = XLSX.read(bstr, { type: 'binary' });
-        const wsname = wb.SheetNames[0];
-        const ws = wb.Sheets[wsname];
-        const data = XLSX.utils.sheet_to_json(ws);
+      const data = await new Promise<any[]>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          try {
+            const bstr = evt.target?.result;
+            const wb = XLSX.read(bstr, { type: 'binary' });
+            const wsname = wb.SheetNames[0];
+            const ws = wb.Sheets[wsname];
+            resolve(XLSX.utils.sheet_to_json(ws));
+          } catch (e) {
+            reject(e);
+          }
+        };
+        reader.onerror = reject;
+        reader.readAsBinaryString(file);
+      });
 
-        // Send to bulk API
-        const response = await fetch("/api/leads/bulk", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ 
-            action: "CREATE", 
-            leads: data.map((l: any) => ({
-              contactName: l["Person Name"] || l.contactName || "Unknown",
-              company: l["Company Name"] || l.company || "Unknown",
-              industry: l["Industry"] || l.industry || null,
-              phone: String(l["Primary Phone"] || l.phone || ""),
-              phone2: String(l["Secondary Phone"] || l.phone2 || ""),
-              email: l["Primary Email"] || l.email || null,
-              email2: l["Secondary Email"] || l.email2 || null,
-              requirement: l["Requirement"] || l.requirement || null,
-              notes: l["Internal Notes"] || l.notes || null,
-              stage: "NEW",
-              subStatus: "BLANK"
-            }))
-          })
-        });
+      // Send to bulk API using axios
+      const response = await axios.post("/api/leads/bulk", { 
+        action: "CREATE", 
+        leads: data.map((l: any) => ({
+          contactName: l["Person Name"] || l.contactName || "Unknown",
+          company: l["Company Name"] || l.company || "Unknown",
+          industry: l["Industry"] || l.industry || null,
+          phone: String(l["Primary Phone"] || l.phone || ""),
+          phone2: String(l["Secondary Phone"] || l.phone2 || ""),
+          email: l["Primary Email"] || l.email || null,
+          email2: l["Secondary Email"] || l.email2 || null,
+          requirement: l["Requirement"] || l.requirement || null,
+          notes: l["Internal Notes"] || l.notes || null,
+          stage: "NEW",
+          subStatus: "BLANK"
+        }))
+      });
 
-        if (response.ok) {
-          toast.success(`Successfully imported ${data.length} leads!`);
-          onImportSuccess();
-          onClose();
-        } else {
-          toast.error("Failed to import leads. Please check file format.");
-        }
-      };
-      reader.readAsBinaryString(file);
-    } catch (error) {
-      toast.error("An error occurred during import.");
+      toast.success(`Successfully imported ${data.length} leads!`);
+      onImportSuccess();
+      onClose();
+    } catch (error: any) {
+      console.error("Import error:", error);
+      const errorMessage = error.response?.data?.error || "Failed to import leads. Please check file format.";
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

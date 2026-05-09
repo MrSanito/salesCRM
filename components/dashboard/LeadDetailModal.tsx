@@ -620,19 +620,18 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                 {/* Notes Section */}
                 <div className="pt-8 border-t border-slate-100">
                   <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-4">Add a Note</h3>
-                  <div className="flex gap-2 mb-6">
-                    <input
-                      type="text"
+                  <div className="flex flex-col gap-3 mb-6">
+                    <textarea
                       value={noteInput}
                       onChange={(e) => setNoteInput(e.target.value)}
                       placeholder="Append new Information about this lead"
-                      className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
-                      onKeyDown={(e) => e.key === "Enter" && handleAddNote()}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium resize-y min-h-[100px]"
+                      rows={4}
                     />
                     <button
                       onClick={handleAddNote}
                       disabled={isAddingNote || !noteInput.trim()}
-                      className="bg-slate-900 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 disabled:opacity-50 transition-all active:scale-95"
+                      className="bg-slate-900 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 disabled:opacity-50 transition-all active:scale-95 w-full md:w-auto self-end"
                     >
                       {isAddingNote ? "Adding..." : "Add Note"}
                     </button>

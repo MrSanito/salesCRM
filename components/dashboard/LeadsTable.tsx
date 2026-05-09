@@ -55,6 +55,8 @@ const SUB_STATUS_STYLES: Record<string, string> = {
   BLANK: "bg-slate-50 text-slate-400 border border-slate-100",
 };
 
+import toast from "react-hot-toast";
+
 interface DbLead {
   id: string;
   contactName: string;
@@ -161,15 +163,16 @@ export default function LeadsTable({ onLeadClick, activeNav, refreshKey = 0, sid
     try {
       const res = await fetch(`/api/leads/${id}`, { method: "DELETE" });
       if (res.ok) {
+        toast.success("Lead deleted successfully");
         setLeads(prev => prev.filter(l => l.id !== id));
         setShowDeleteConfirm(null);
         setActiveLeadMenu(null);
       } else {
         const err = await res.json();
-        alert(err.error || "Failed to delete lead");
+        toast.error(err.error || "Failed to delete lead");
       }
     } catch (e) {
-      alert("An error occurred while deleting the lead");
+      toast.error("An error occurred while deleting the lead");
     } finally {
       setIsDeleting(false);
     }

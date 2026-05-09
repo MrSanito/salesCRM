@@ -1,6 +1,8 @@
 "use client"
 import { useState, useEffect } from "react";
 import { X, CheckCircle2, User, ChevronRight, Layout, BarChart3, AlertTriangle } from "lucide-react";
+import toast from "react-hot-toast";
+import axios from "axios";
 
 interface BulkUpdateModalProps {
   isOpen: boolean;
@@ -47,9 +49,8 @@ export default function BulkUpdateModal({ isOpen, onClose, selectedIds, onSucces
 
   useEffect(() => {
     if (isOpen) {
-      fetch("/api/team")
-        .then(r => r.json())
-        .then(d => { if (Array.isArray(d)) setUsers(d); })
+      axios.get("/api/team")
+        .then(res => { if (Array.isArray(res.data)) setUsers(res.data); })
         .catch(console.error);
     }
   }, [isOpen]);
@@ -63,27 +64,19 @@ export default function BulkUpdateModal({ isOpen, onClose, selectedIds, onSucces
     if (updateData.ownerId) data.ownerId = updateData.ownerId;
 
     if (Object.keys(data).length === 0) {
-      alert("Please select at least one field to update");
+      toast.error("Please select at least one field to update");
       return;
     }
 
     setLoading(true);
     try {
-      const res = await fetch("/api/leads/bulk", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: selectedIds, data })
-      });
+      const res = await axios.patch("/api/leads/bulk", { ids: selectedIds, data });
 
-      if (res.ok) {
-        onSuccess();
-        onClose();
-      } else {
-        const err = await res.json();
-        alert(err.error || "Failed to update leads");
-      }
-    } catch (e) {
-      alert("An error occurred");
+      toast.success(`Successfully updated ${selectedIds.length} leads`);
+      onSuccess();
+      onClose();
+    } catch (e: any) {
+      toast.error(e.response?.data?.error || "Failed to update leads");
     } finally {
       setLoading(false);
     }
