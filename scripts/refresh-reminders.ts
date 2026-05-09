@@ -11,7 +11,7 @@ const adapter = new PrismaPg(pool)
 import { PrismaClient, ReminderType } from '@prisma/client'
 const prisma = new PrismaClient({ adapter } as any)
 
-async function main() {
+async function main() {   
   console.log('🔄 Refreshing reminders...')
 
   // Get org and users
