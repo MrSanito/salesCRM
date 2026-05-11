@@ -1,6 +1,6 @@
 "use client"
 import { useState, useEffect } from "react";
-import { Puzzle, Calendar, CheckCircle2, AlertCircle, Loader2, Link2, ExternalLink } from "lucide-react";
+import { Puzzle, Calendar, CheckCircle2, AlertCircle, Loader2, Link2, ExternalLink, XCircle } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function IntegrationsView() {
@@ -63,6 +63,25 @@ export default function IntegrationsView() {
     }
   };
 
+  const handleDisconnect = async () => {
+    if (!confirm("Are you sure you want to disconnect your Google Calendar?")) return;
+    
+    setConnecting(true);
+    try {
+      const res = await fetch("/api/integrations/google/disconnect", { method: "POST" });
+      if (res.ok) {
+        setIsConnected(false);
+        toast.success("Google Calendar disconnected");
+      } else {
+        toast.error("Failed to disconnect");
+      }
+    } catch (error) {
+      toast.error("Connection error");
+    } finally {
+      setConnecting(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full animate-in fade-in duration-500">
       <div className="flex items-center gap-4 mb-8">
@@ -89,22 +108,22 @@ export default function IntegrationsView() {
             <p className="px-4 mb-2 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Link Google Calendars</p>
             
             <button 
-              onClick={handleConnect}
-              disabled={isConnected || connecting}
+              onClick={isConnected ? handleDisconnect : handleConnect}
+              disabled={connecting}
               className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all group ${
                 isConnected 
-                  ? "text-green-600 bg-green-50/50" 
+                  ? "text-red-600 bg-red-50/50 hover:bg-red-50" 
                   : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
               }`}
             >
               <div className="flex items-center gap-3">
                 <Calendar size={16} />
                 <span className="font-bold text-xs uppercase tracking-widest">
-                  {isConnected ? "Linked" : "Link with Google"}
+                  {isConnected ? "Disconnect" : "Link with Google"}
                 </span>
               </div>
               {isConnected ? (
-                <CheckCircle2 size={14} className="text-green-500" />
+                <XCircle size={14} className="text-red-500" />
               ) : connecting ? (
                 <Loader2 size={14} className="animate-spin" />
               ) : (
@@ -140,21 +159,25 @@ export default function IntegrationsView() {
                   <h2 className="text-xl font-black text-slate-900 tracking-tight">Google Calendar Sync</h2>
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md bg-blue-100 text-blue-700">Official</span>
-                    <span className="text-[10px] font-bold text-slate-400">v2.0.4</span>
+                    {isConnected && (
+                      <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md bg-green-100 text-green-700">Connected</span>
+                    )}
                   </div>
                 </div>
               </div>
               
-              {!isConnected && (
-                <button 
-                  onClick={handleConnect}
-                  disabled={connecting}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-blue-100 flex items-center gap-2 disabled:opacity-50"
-                >
-                  {connecting ? <Loader2 size={14} className="animate-spin" /> : <Link2 size={14} />}
-                  Connect Account
-                </button>
-              )}
+              <button 
+                onClick={isConnected ? handleDisconnect : handleConnect}
+                disabled={connecting}
+                className={`px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg flex items-center gap-2 disabled:opacity-50 ${
+                  isConnected
+                    ? "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 shadow-slate-100"
+                    : "bg-blue-600 text-white hover:bg-blue-700 shadow-blue-100"
+                }`}
+              >
+                {connecting ? <Loader2 size={14} className="animate-spin" /> : isConnected ? <XCircle size={14} /> : <Link2 size={14} />}
+                {isConnected ? "Disconnect Account" : "Connect Account"}
+              </button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
