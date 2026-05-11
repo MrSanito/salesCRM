@@ -26,16 +26,39 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "leadId and type are required" }, { status: 400 });
     }
 
-    // Create Interaction
-    const interaction = await prisma.interaction.create({
-      data: {
-        leadId,
-        userId: user.id,
-        organizationId: user.organizationId,
-        type: type as InteractionType,
-        summary: summary || null,
-      },
+    console.log(`[Interaction API] Request received for Lead: ${leadId}, Type: ${type}`);
+
+    // Verify lead existence and ownership
+    const existingLead = await prisma.lead.findFirst({
+      where: { 
+        id: leadId,
+        organizationId: user.organizationId
+      }
     });
+
+    if (!existingLead) {
+      console.error(`[Interaction API] Lead not found or unauthorized: ${leadId}`);
+      return NextResponse.json({ error: "Lead not found" }, { status: 404 });
+    }
+
+    // Update lead and create interaction in a transaction
+    const [interaction, updatedLead] = await prisma.$transaction([
+      prisma.interaction.create({
+        data: {
+          leadId,
+          userId: user.id,
+          organizationId: user.organizationId,
+          type: type as InteractionType,
+          summary: summary || null,
+        },
+      }),
+      prisma.lead.update({
+        where: { id: leadId },
+        data: { lastCommunicatedAt: new Date() }
+      })
+    ]);
+
+    console.log(`[Interaction API] Success! New lastCommunicatedAt: ${updatedLead.lastCommunicatedAt}`);
 
     // Create Audit Log
     let note = "";
@@ -64,9 +87,12 @@ export async function POST(req: NextRequest) {
       source: "UI",
     });
 
-    return NextResponse.json(interaction, { status: 201 });
+    return NextResponse.json({ interaction, updatedLead }, { status: 201 });
   } catch (error) {
     console.error("Interaction POST error:", error);
-    return NextResponse.json({ error: "Failed to log interaction" }, { status: 500 });
+    return NextResponse.json({ 
+      error: "Failed to log interaction", 
+      details: error instanceof Error ? error.message : "Unknown error" 
+    }, { status: 500 });
   }
 }

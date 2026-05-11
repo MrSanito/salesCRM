@@ -53,6 +53,7 @@ export interface DbLead {
   owner: { name: string; initials: string };
   source: { name: string } | null;
   reminders?: any[];
+  lastCommunicatedAt?: string | null;
 }
 
 interface LeadDetailModalProps {
@@ -97,12 +98,13 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
     if (showLoading) setLoading(true);
     try {
       const [leadRes, teamRes, notesRes] = await Promise.all([
-        fetch(`/api/leads/${leadId}`),
-        canChangeOwner ? fetch("/api/team") : Promise.resolve(null),
-        fetch(`/api/notes?leadId=${leadId}`)
+        fetch(`/api/leads/${leadId}?t=${Date.now()}`),
+        canChangeOwner ? fetch(`/api/team?t=${Date.now()}`) : Promise.resolve(null),
+        fetch(`/api/notes?leadId=${leadId}&t=${Date.now()}`)
       ]);
 
       const leadData = await leadRes.json();
+      console.log(`[LeadDetailModal] Fetched Lead: ${leadData.id}, lastCommunicatedAt: ${leadData.lastCommunicatedAt}`);
       if (leadData.id) {
         setLead(leadData);
         setStage(leadData.stage);
@@ -219,17 +221,27 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
 
   const logInteraction = async (type: "CALL" | "EMAIL" | "WHATSAPP") => {
     try {
-      await fetch("/api/interactions", {
+      const res = await fetch("/api/interactions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ leadId, type })
       });
-      // Optionally refresh audit logs if the tab is active
-      // Optionally refresh something if needed
+      if (res.ok) {
+        const data = await res.json();
+        console.log(`[LeadDetailModal] Interaction Logged Success:`, data);
+        toast.success(`${type} Protocol Logged`);
+        await fetchData(false); // Refresh lead data to show updated lastCommunicatedAt
+        onUpdate?.(); // Refresh parent table
+      } else {
+        const err = await res.json();
+        console.error(`[LeadDetailModal] Interaction Logged Error:`, err);
+        toast.error(err.error || "Logging Failed");
+      }
     } catch (err) {
       console.error("Failed to log interaction:", err);
     }
   };
+
 
   if (!lead && !loading && !isLoading) return null;
 
@@ -364,7 +376,11 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                       </div>
                       <div className="min-w-0">
                         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Primary Mobile</p>
-                        <a href={`tel:${lead.phone}`} className="text-[14px] font-bold text-slate-700 tracking-tight hover:text-blue-600 transition-colors block truncate">
+                        <a 
+                          href={`tel:${lead.phone}`} 
+                          onClick={() => logInteraction("CALL")}
+                          className="text-[14px] font-bold text-slate-700 tracking-tight hover:text-blue-600 transition-colors block truncate"
+                        >
                           {lead.phone || "Not Provided"}
                         </a>
                       </div>
@@ -376,7 +392,11 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                       </div>
                       <div className="min-w-0">
                         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Primary Email</p>
-                        <a href={`mailto:${lead.email}`} className="text-[14px] font-bold text-slate-700 tracking-tight lowercase truncate hover:text-blue-600 transition-colors block">
+                        <a 
+                          href={`mailto:${lead.email}`} 
+                          onClick={() => logInteraction("EMAIL")}
+                          className="text-[14px] font-bold text-slate-700 tracking-tight lowercase truncate hover:text-blue-600 transition-colors block"
+                        >
                           {lead.email || "—"}
                         </a>
                       </div>
@@ -414,6 +434,23 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Source</p>
                         <span className="text-[14px] font-bold text-slate-700 tracking-tight block truncate">
                           {lead.source?.name || "Not Specified"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0 border border-emerald-100">
+                        <CalendarClock size={16} strokeWidth={2.5} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Last Communication</p>
+                        <span className="text-[14px] font-bold text-slate-700 tracking-tight block truncate">
+                          {lead.lastCommunicatedAt ? new Date(lead.lastCommunicatedAt).toLocaleString("en-IN", { 
+                            day: "numeric", 
+                            month: "short", 
+                            hour: "2-digit", 
+                            minute: "2-digit" 
+                          }) : "Never"}
                         </span>
                       </div>
                     </div>

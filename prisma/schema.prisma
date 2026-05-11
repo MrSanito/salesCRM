@@ -134,6 +134,7 @@ model Lead {
   industry             String?
   project              String?
   subStatus            LeadSubStatus         @default(BLANK)
+  lastCommunicatedAt   DateTime?
   alerts               Alert[]
   auditLogs            AuditLog[]
   chat_threads         chat_threads?
@@ -297,8 +298,8 @@ model SidebarFilter {
   createdById    String
   createdAt      DateTime       @default(now())
   industry       String?
-  source         String?
   alphabet       String?
+  source         String?
   createdBy      User           @relation("SidebarFilterCreator", fields: [createdById], references: [id])
   organization   Organization   @relation(fields: [organizationId], references: [id])
 

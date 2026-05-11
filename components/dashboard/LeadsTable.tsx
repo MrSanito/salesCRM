@@ -75,6 +75,7 @@ interface DbLead {
   requirement: string | null;
   createdAt: string;
   owner: { name: string; initials: string };
+  lastCommunicatedAt?: string | null;
 }
 
 interface LeadsTableProps {
@@ -715,6 +716,7 @@ export default function LeadsTable({ onLeadClick, activeNav, refreshKey = 0, sid
 
               <th className="hidden sm:table-cell w-[10%] text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider px-2 sm:px-3 py-2.5">Phone</th>
               <th className="hidden lg:table-cell w-[10%] text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider px-3 py-2.5">Owner</th>
+              <th className="hidden xl:table-cell w-[10%] text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider px-3 py-2.5">Last Comm</th>
               <th className="hidden sm:table-cell w-[12%] text-left px-3 py-2.5">
                 <div className="relative inline-block">
                   <button 
@@ -787,8 +789,8 @@ export default function LeadsTable({ onLeadClick, activeNav, refreshKey = 0, sid
                   </div>
                 </td>
                 <td className="hidden md:table-cell px-3 py-3 text-slate-600 font-medium truncate">{lead.company}</td>
-                <td className="hidden lg:table-cell px-2 py-3 text-slate-400 text-[11px] font-semibold tracking-tight truncate">{lead.industry || "—"}</td>
-                <td className="hidden lg:table-cell px-2 py-3 text-slate-500 text-[11px] font-semibold tracking-tight truncate">{lead.source?.name || "—"}</td>
+                <td className="hidden lg:table-cell px-2 py-3 text-slate-950 text-[11px] font-black tracking-tight truncate uppercase">{lead.industry || "—"}</td>
+                <td className="hidden lg:table-cell px-2 py-3 text-slate-950 text-[11px] font-black tracking-tight truncate uppercase">{lead.source?.name || "—"}</td>
                 <td className="px-2 sm:px-3 py-3">
                   <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-tighter ${STAGE_STYLES[lead.stage] ?? "bg-slate-100 text-slate-600"}`}>
                     {STAGE_LABEL[lead.stage] || lead.stage}
@@ -801,6 +803,11 @@ export default function LeadsTable({ onLeadClick, activeNav, refreshKey = 0, sid
                 </td>
                 <td className="hidden sm:table-cell px-2 sm:px-3 py-3 font-bold text-slate-600 text-[11px] sm:text-[12px] font-mono">{lead.phone || "—"}</td>
                 <td className="hidden lg:table-cell px-3 py-3 text-slate-500 font-medium truncate">{lead.owner?.name.split(" ")[0] || "—"}</td>
+                <td className="hidden xl:table-cell px-3 py-3">
+                  <span className="text-slate-500 text-[11px] font-medium whitespace-nowrap">
+                    {lead.lastCommunicatedAt ? new Date(lead.lastCommunicatedAt).toLocaleDateString("en-IN", { day: 'numeric', month: 'short' }) : "—"}
+                  </span>
+                </td>
                 <td className={`hidden sm:table-cell px-3 py-3 text-[12px] font-bold whitespace-nowrap ${lead.followUpAt && new Date(lead.followUpAt) < new Date() ? "text-red-500" : "text-slate-400"}`}>
                   {formatFollowUp(lead.followUpAt)}
                 </td>

@@ -59,11 +59,11 @@ export default function AuthPage() {
       <div className="w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-slate-100 relative z-10">
         <div className="p-10">
           <div className="text-center mb-10">
-            <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-blue-200 rotate-3">
-              <LogIn className="text-white" size={32} />
+            <div className="mb-8 flex justify-center">
+              <img src="/logo.png" alt="SoloBuild Logo" className="h-20 w-auto object-contain" />
             </div>
-            <h1 className="text-4xl font-black text-slate-900 tracking-tighter uppercase">
-              Sales<span className="text-blue-600">CRM</span>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tighter uppercase">
+              Sales <span className="text-blue-600">CRM</span>
             </h1>
             <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.3em] mt-3">
               {isLogin ? "Strategic Access Portal" : "Enterprise Onboarding"}
