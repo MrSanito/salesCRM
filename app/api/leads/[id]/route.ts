@@ -93,6 +93,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       ...(data.requirement !== undefined && { requirement: data.requirement }),
       ...(data.industry !== undefined && { industry: data.industry }),
       ...(data.subStatus !== undefined && { subStatus: data.subStatus }),
+      ...(data.project !== undefined && { project: data.project }),
+      ...(data.followUpAt !== undefined && { followUpAt: data.followUpAt ? new Date(data.followUpAt) : null }),
+      ...(data.closedAt !== undefined && { closedAt: data.closedAt ? new Date(data.closedAt) : null }),
     };
 
     if (data.source) {

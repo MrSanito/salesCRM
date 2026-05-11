@@ -23,12 +23,17 @@ const STAGE_LABEL: Record<string, string> = {
 const PIPELINE_STAGES = ["NEW", "CONTACTED", "NOT_INTERESTED", "MEETING_SET", "NEGOTIATION", "COLD", "CHATTING"];
 
 const SUB_STATUS_LABEL: Record<string, string> = {
+  CHATTING: "Chatting",
+  NOT_ANSWERED: "Not Answered",
+  WRONG_NO: "Wrong Number",
   NO_REQUIREMENT: "No Requirement",
   BUDGET_LOW: "Budget Low",
   PROPOSAL_SENT: "Proposal Sent",
   WARM_LEAD: "Warm Lead",
   BLANK: "Blank",
 };
+
+const SUB_STATUS_OPTIONS = ["BLANK", "CHATTING", "NOT_ANSWERED", "WRONG_NO", "NO_REQUIREMENT", "BUDGET_LOW", "PROPOSAL_SENT", "WARM_LEAD"];
 
 export default function EditLeadPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
@@ -53,6 +58,10 @@ export default function EditLeadPage({ params }: { params: Promise<{ id: string 
     industry: "",
     phone2: "",
     email2: "",
+    subStatus: "BLANK",
+    project: "",
+    followUpAt: "",
+    closedAt: "",
     source: ""
   });
 
@@ -82,6 +91,10 @@ export default function EditLeadPage({ params }: { params: Promise<{ id: string 
             industry: leadData.industry || "",
             phone2: leadData.phone2 || "",
             email2: leadData.email2 || "",
+            subStatus: leadData.subStatus || "BLANK",
+            project: leadData.project || "",
+            followUpAt: leadData.followUpAt ? new Date(leadData.followUpAt).toISOString().split('T')[0] : "",
+            closedAt: leadData.closedAt ? new Date(leadData.closedAt).toISOString().split('T')[0] : "",
             source: leadData.source?.name || ""
           });
         }
@@ -171,6 +184,10 @@ export default function EditLeadPage({ params }: { params: Promise<{ id: string 
                        <input type="text" value={formData.industry} onChange={e => setFormData({...formData, industry: e.target.value})} className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 focus:bg-white transition-all shadow-inner" placeholder="e.g. Software, Manufacturing" />
                      </div>
                      <div className="space-y-2">
+                       <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Project Name</label>
+                       <input type="text" value={formData.project} onChange={e => setFormData({...formData, project: e.target.value})} className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 focus:bg-white transition-all shadow-inner" placeholder="e.g. CRM Development, Website Redesign" />
+                     </div>
+                     <div className="space-y-2">
                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Lead Owner</label>
                        {canAssign ? (
                           <div className="relative">
@@ -247,6 +264,17 @@ export default function EditLeadPage({ params }: { params: Promise<{ id: string 
                        </div>
                      </div>
                      <div className="space-y-2">
+                       <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Detailed Status</label>
+                       <div className="relative">
+                         <select value={formData.subStatus} onChange={e => setFormData({...formData, subStatus: e.target.value})} className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl text-[10px] font-black uppercase tracking-widest focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all appearance-none cursor-pointer pr-12 shadow-sm">
+                           {SUB_STATUS_OPTIONS.map(s => (
+                             <option key={s} value={s}>{SUB_STATUS_LABEL[s]}</option>
+                           ))}
+                         </select>
+                         <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                       </div>
+                     </div>
+                     <div className="space-y-2">
                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Lead Priority</label>
                        <div className="relative">
                          <select value={formData.priority} onChange={e => setFormData({...formData, priority: e.target.value})} className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all appearance-none cursor-pointer pr-12">
@@ -284,6 +312,23 @@ export default function EditLeadPage({ params }: { params: Promise<{ id: string 
                         />
                       </div>
                    </div>
+                </div>
+
+                <div className="p-8 md:p-10 border-t border-slate-50 bg-slate-50/20">
+                   <h2 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-8 flex items-center gap-3">
+                      <Save size={14} className="text-purple-500" /> Timeline Protocol
+                   </h2>
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div className="space-y-2">
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Next Follow-up Date</label>
+                        <input type="date" value={formData.followUpAt} onChange={e => setFormData({...formData, followUpAt: e.target.value})} className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-purple-500/5 focus:border-purple-500 transition-all" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Closing Target / Date</label>
+                        <input type="date" value={formData.closedAt} onChange={e => setFormData({...formData, closedAt: e.target.value})} className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-emerald-500/5 focus:border-emerald-500 transition-all" />
+                      </div>
+                   </div>
+
                    <div className="grid grid-cols-1 mt-8">
                      <div className="space-y-2">
                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Source</label>
