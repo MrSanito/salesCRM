@@ -31,6 +31,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       include: {
         owner: { select: { name: true, initials: true } },
         source: { select: { name: true } },
+        notes: {
+          orderBy: { createdAt: 'asc' },
+          take: 1
+        },
         reminders: {
           orderBy: { scheduledAt: 'desc' }
         }
@@ -80,39 +84,66 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
 
     const updateData: any = {
-      ...(data.contactName && { contactName: data.contactName }),
-      ...(data.company && { company: data.company }),
-      ...(data.email && { email: data.email }),
-      ...(data.email2 !== undefined && { email2: data.email2 }),
-      ...(data.phone && { phone: data.phone }),
-      ...(data.phone2 !== undefined && { phone2: data.phone2 }),
-      ...(data.stage && { stage: data.stage }),
-      ...(data.priority && { priority: data.priority }),
-      ...(data.dealValueInr !== undefined && { dealValueInr: data.dealValueInr.toString() }),
-      ...(data.ownerId && { ownerId: data.ownerId }),
-      ...(data.requirement !== undefined && { requirement: data.requirement }),
-      ...(data.industry !== undefined && { industry: data.industry }),
+      ...(data.contactName !== undefined && { contactName: data.contactName }),
+      ...(data.company !== undefined && { company: data.company }),
+      ...(data.email !== undefined && { email: data.email || null }),
+      ...(data.email2 !== undefined && { email2: data.email2 || null }),
+      ...(data.phone !== undefined && { phone: data.phone || null }),
+      ...(data.phone2 !== undefined && { phone2: data.phone2 || null }),
+      ...(data.stage !== undefined && { stage: data.stage }),
+      ...(data.priority !== undefined && { priority: data.priority }),
+      ...(data.dealValueInr !== undefined && { dealValueInr: data.dealValueInr ? data.dealValueInr.toString().replace(/[^0-9.]/g, '') : "0" }),
+      ...(data.ownerId !== undefined && { ownerId: data.ownerId }),
+      ...(data.requirement !== undefined && { requirement: data.requirement || null }),
+      ...(data.industry !== undefined && { industry: data.industry || null }),
       ...(data.subStatus !== undefined && { subStatus: data.subStatus }),
-      ...(data.project !== undefined && { project: data.project }),
+      ...(data.project !== undefined && { project: data.project || null }),
       ...(data.followUpAt !== undefined && { followUpAt: data.followUpAt ? new Date(data.followUpAt) : null }),
       ...(data.closedAt !== undefined && { closedAt: data.closedAt ? new Date(data.closedAt) : null }),
     };
 
-    if (data.source) {
-      const leadSource = await prisma.leadSource.upsert({
-        where: {
-          name_organizationId: {
+    if (data.source !== undefined) {
+      if (!data.source) {
+        updateData.sourceId = null;
+      } else {
+        const leadSource = await prisma.leadSource.upsert({
+          where: {
+            name_organizationId: {
+              name: data.source,
+              organizationId: user.organizationId
+            }
+          },
+          update: {},
+          create: {
             name: data.source,
             organizationId: user.organizationId
           }
-        },
-        update: {},
-        create: {
-          name: data.source,
-          organizationId: user.organizationId
-        }
+        });
+        updateData.sourceId = leadSource.id;
+      }
+    }
+
+    if (data.notes !== undefined) {
+      const firstNote = await prisma.note.findFirst({
+        where: { leadId: id },
+        orderBy: { createdAt: 'asc' }
       });
-      updateData.sourceId = leadSource.id;
+      
+      if (firstNote) {
+        await prisma.note.update({
+          where: { id: firstNote.id },
+          data: { content: data.notes || "" }
+        });
+      } else if (data.notes) {
+        await prisma.note.create({
+          data: {
+            content: data.notes,
+            leadId: id,
+            userId: user.id,
+            organizationId: user.organizationId
+          }
+        });
+      }
     }
 
     const updatedLead = await prisma.lead.update({

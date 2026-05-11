@@ -628,7 +628,7 @@ export default function LeadsTable({ onLeadClick, activeNav, refreshKey = 0, sid
                 <div className="relative inline-block">
                   <button 
                     onClick={() => setActiveColumnFilter(activeColumnFilter === 'source' ? null : 'source')}
-                    className={`text-[11px] font-bold uppercase tracking-wider flex items-center gap-1 hover:text-slate-900 transition-colors ${columnFilters['source']?.size ? "text-blue-600" : "text-slate-50"}`}
+                    className={`text-[11px] font-bold uppercase tracking-wider flex items-center gap-1 hover:text-slate-900 transition-colors ${columnFilters['source']?.size ? "text-blue-600" : "text-slate-500"}`}
                   >
                     Source <Filter size={10} />
                   </button>
@@ -788,7 +788,7 @@ export default function LeadsTable({ onLeadClick, activeNav, refreshKey = 0, sid
                 </td>
                 <td className="hidden md:table-cell px-3 py-3 text-slate-600 font-medium truncate">{lead.company}</td>
                 <td className="hidden lg:table-cell px-2 py-3 text-slate-400 text-[11px] font-semibold tracking-tight truncate">{lead.industry || "—"}</td>
-                <td className="hidden lg:table-cell px-2 py-3 text-slate-400 text-[11px] font-semibold tracking-tight truncate">{lead.source?.name || "—"}</td>
+                <td className="hidden lg:table-cell px-2 py-3 text-slate-500 text-[11px] font-semibold tracking-tight truncate">{lead.source?.name || "—"}</td>
                 <td className="px-2 sm:px-3 py-3">
                   <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-tighter ${STAGE_STYLES[lead.stage] ?? "bg-slate-100 text-slate-600"}`}>
                     {STAGE_LABEL[lead.stage] || lead.stage}
