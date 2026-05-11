@@ -52,7 +52,8 @@ export default function EditLeadPage({ params }: { params: Promise<{ id: string 
     notes: "",
     industry: "",
     phone2: "",
-    email2: ""
+    email2: "",
+    source: ""
   });
 
   const canAssign = user?.role === "ORG_ADMIN" || user?.role === "MANAGER";
@@ -80,7 +81,8 @@ export default function EditLeadPage({ params }: { params: Promise<{ id: string 
             notes: leadData.notes || "",
             industry: leadData.industry || "",
             phone2: leadData.phone2 || "",
-            email2: leadData.email2 || ""
+            email2: leadData.email2 || "",
+            source: leadData.source?.name || ""
           });
         }
 
@@ -281,8 +283,14 @@ export default function EditLeadPage({ params }: { params: Promise<{ id: string 
                           placeholder="Private internal insights..."
                         />
                       </div>
-                  </div>
-               </div>
+                   </div>
+                   <div className="grid grid-cols-1 mt-8">
+                     <div className="space-y-2">
+                       <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Source</label>
+                       <input type="text" value={formData.source} onChange={e => setFormData({...formData, source: e.target.value})} className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all" placeholder="e.g. Website, LinkedIn, Referral" />
+                     </div>
+                   </div>
+                </div>
             </div>
 
           </div>

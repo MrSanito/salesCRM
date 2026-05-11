@@ -27,6 +27,7 @@ export default function AddLeadModal({ onClose, onSuccess }: AddLeadModalProps) 
     notes: "",
     ownerId: "",
     subStatus: "BLANK",
+    source: "",
   });
   const [activeTab, setActiveTab] = useState<'manual' | 'import'>('manual');
   const [importPreview, setImportPreview] = useState<{ headers: string[]; missing: string[]; extra: string[] } | null>(null);
@@ -35,7 +36,7 @@ export default function AddLeadModal({ onClose, onSuccess }: AddLeadModalProps) 
 
   const REQUIRED_HEADERS = [
     "Person Name", "Company Name", "Industry", "Primary Phone", "Secondary Phone", 
-    "Primary Email", "Secondary Email", "Requirement", "Internal Notes"
+    "Primary Email", "Secondary Email", "Requirement", "Internal Notes", "Source"
   ];
 
   const handleCommenceImport = async () => {
@@ -79,6 +80,7 @@ export default function AddLeadModal({ onClose, onSuccess }: AddLeadModalProps) 
           email2: l["Secondary Email"] || null,
           requirement: l["Requirement"] || null,
           notes: l["Internal Notes"] || null,
+          source: l["Source"] || null,
         }))
       });
 
@@ -265,6 +267,20 @@ export default function AddLeadModal({ onClose, onSuccess }: AddLeadModalProps) 
                       placeholder="+91 XXXX XXXX" 
                     />
                   </div>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Source</label>
+                <div className="relative">
+                  <Info size={14} className="absolute left-4 top-3.5 text-slate-400" />
+                  <input 
+                    type="text" 
+                    value={formData.source}
+                    onChange={e => setFormData({ ...formData, source: e.target.value })}
+                    className="w-full border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-sm font-bold text-slate-800 focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 bg-slate-50 outline-none transition-all" 
+                    placeholder="e.g. Website, LinkedIn, Referral" 
+                  />
                 </div>
               </div>
 

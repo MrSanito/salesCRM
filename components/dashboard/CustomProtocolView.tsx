@@ -73,6 +73,7 @@ interface DbLead {
   requirement: string | null;
   createdAt: string;
   owner: { name: string; initials: string };
+  source: { name: string } | null;
 }
 
 interface CustomProtocolViewProps {
@@ -84,6 +85,7 @@ interface CustomProtocolViewProps {
     dealSizeMin: string | null;
     dealSizeMax: string | null;
     industry: string | null;
+    source: string | null;
     alphabet: string | null;
   };
   onLeadClick: (id: string, allIds?: string[]) => void;
@@ -139,6 +141,7 @@ export default function CustomProtocolView({ filter, onLeadClick, refreshKey = 0
       "Email": lead.email || "",
       "Deal Value (INR)": lead.dealValueInr,
       "Priority": lead.priority,
+      "Source": lead.source?.name || "",
       "Requirement": lead.requirement || "",
       "Owner": lead.owner?.name || "",
       "Created At": new Date(lead.createdAt).toLocaleDateString("en-IN")
@@ -194,6 +197,7 @@ export default function CustomProtocolView({ filter, onLeadClick, refreshKey = 0
       l.phone?.toLowerCase().includes(q) ||
       l.email?.toLowerCase().includes(q) ||
       l.industry?.toLowerCase().includes(q) ||
+      l.source?.name.toLowerCase().includes(q) ||
       l.requirement?.toLowerCase().includes(q) ||
       l.owner?.name.toLowerCase().includes(q)
     );
@@ -207,6 +211,7 @@ export default function CustomProtocolView({ filter, onLeadClick, refreshKey = 0
       l.phone?.toLowerCase().includes(q) ||
       l.email?.toLowerCase().includes(q) ||
       l.industry?.toLowerCase().includes(q) ||
+      l.source?.name.toLowerCase().includes(q) ||
       l.requirement?.toLowerCase().includes(q) ||
       l.owner?.name.toLowerCase().includes(q)
     );
@@ -228,6 +233,9 @@ export default function CustomProtocolView({ filter, onLeadClick, refreshKey = 0
   }
   if (filter.alphabet) {
     processedLeads = processedLeads.filter(l => l.contactName.toUpperCase().startsWith(filter.alphabet?.toUpperCase() || ""));
+  }
+  if (filter.source) {
+    processedLeads = processedLeads.filter(l => l.source?.name === filter.source);
   }
 
   // 2. Column Filters
@@ -470,9 +478,10 @@ export default function CustomProtocolView({ filter, onLeadClick, refreshKey = 0
                 <th className="hidden md:table-cell w-[12%] text-left text-[11px] font-bold text-slate-500 uppercase px-4 py-3">Company</th>
                 <th className="w-[10%] text-left text-[11px] font-bold text-slate-500 uppercase px-3 py-3">Status</th>
                 <th className="w-[10%] text-left text-[11px] font-bold text-slate-500 uppercase px-3 py-3">Sub-status</th>
-                <th className="hidden sm:table-cell w-[10%] text-left text-[11px] font-bold text-slate-500 uppercase px-3 py-3">Phone</th>
-                <th className="hidden lg:table-cell w-[10%] text-left text-[11px] font-bold text-slate-500 uppercase px-3 py-3">Owner</th>
-                <th className="hidden xl:table-cell w-[12%] text-left text-[11px] font-bold text-slate-500 uppercase px-3 py-3">Value</th>
+                <th className="hidden sm:table-cell w-[10%] text-left text-[11px] font-bold text-sidebar-foreground/40 uppercase px-3 py-3">Phone</th>
+                <th className="hidden lg:table-cell w-[10%] text-left text-[11px] font-bold text-sidebar-foreground/40 uppercase px-3 py-3">Source</th>
+                <th className="hidden lg:table-cell w-[10%] text-left text-[11px] font-bold text-sidebar-foreground/40 uppercase px-3 py-3">Owner</th>
+                <th className="hidden xl:table-cell w-[12%] text-left text-[11px] font-bold text-sidebar-foreground/40 uppercase px-3 py-3">Value</th>
                 <th className="w-[45px] text-right px-2 sm:px-4 py-3"></th>
               </tr>
             </thead>
@@ -511,6 +520,11 @@ export default function CustomProtocolView({ filter, onLeadClick, refreshKey = 0
                       </span>
                     </td>
                     <td className="hidden sm:table-cell px-3 py-3 text-slate-600 text-[11px] font-mono">{lead.phone || "—"}</td>
+                    <td className="hidden lg:table-cell px-3 py-3">
+                      <span className="text-[11px] font-bold text-slate-600 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">
+                        {lead.source?.name || "—"}
+                      </span>
+                    </td>
                     <td className="hidden lg:table-cell px-3 py-3 text-slate-500 font-medium truncate">{lead.owner?.name.split(" ")[0] || "—"}</td>
                     <td className="hidden xl:table-cell px-3 py-3 text-slate-900 font-black text-[12px]">{formatValue(lead.dealValueInr)}</td>
                     <td className="px-4 py-3 text-right">

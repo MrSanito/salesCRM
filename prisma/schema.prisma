@@ -8,52 +8,62 @@ datasource db {
 }
 
 model Organization {
-  id           String          @id @default(uuid())
-  name         String
-  slug         String          @unique
-  logoUrl      String?
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
-  alerts       Alert[]
-  interactions Interaction[]
-  sources      LeadSource[]
-  leads        Lead[]          @relation("LeadOrganization")
-  notes        Note[]
-  stages       PipelineStage[]
-  reminders    Reminder[]
-  teams        Team[]
-  users        User[]
-  auditLogs    AuditLog[]
+  id             String          @id @default(uuid())
+  name           String
+  slug           String          @unique
+  logoUrl        String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  alerts         Alert[]
+  auditLogs      AuditLog[]
+  chat_threads   chat_threads[]
+  custom_roles   custom_roles[]
+  drive_files    drive_files[]
+  interactions   Interaction[]
+  sources        LeadSource[]
+  leads          Lead[]          @relation("LeadOrganization")
+  notes          Note[]
+  stages         PipelineStage[]
+  reminders      Reminder[]
+  security_ews   security_ews[]
   sidebarFilters SidebarFilter[]
+  teams          Team[]
+  users          User[]
 
   @@map("organizations")
 }
 
 model User {
-  id             String        @id @default(uuid())
+  id             String          @id @default(uuid())
   name           String
-  email          String        @unique
+  email          String          @unique
   password       String
-  initials       String        @db.VarChar(4)
-  role           Role          @default(SALES_REP)
+  initials       String          @db.VarChar(4)
+  role           Role            @default(SALES_REP)
   avatarUrl      String?
+  department     String?
+  jobTitle       String?
   organizationId String
   managerId      String?
   teamId         String?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  customRoleId   String?
   alerts         Alert[]
+  drive_files    drive_files[]
   interactions   Interaction[]
-  createdLeads   Lead[]        @relation("LeadCreator")
-  ownedLeads     Lead[]        @relation("LeadOwner")
+  createdLeads   Lead[]          @relation("LeadCreator")
+  ownedLeads     Lead[]          @relation("LeadOwner")
   notes          Note[]
   reminders      Reminder[]
-  managedTeam    Team?         @relation("TeamManager")
-  manager        User?         @relation("UserHierarchy", fields: [managerId], references: [id])
-  subordinates   User[]        @relation("UserHierarchy")
-  organization   Organization  @relation(fields: [organizationId], references: [id])
-  team           Team?         @relation("TeamMembers", fields: [teamId], references: [id])
+  security_ews   security_ews[]
   sidebarFilters SidebarFilter[] @relation("SidebarFilterCreator")
+  managedTeam    Team?           @relation("TeamManager")
+  custom_roles   custom_roles?   @relation(fields: [customRoleId], references: [id])
+  manager        User?           @relation("UserHierarchy", fields: [managerId], references: [id])
+  subordinates   User[]          @relation("UserHierarchy")
+  organization   Organization    @relation(fields: [organizationId], references: [id])
+  team           Team?           @relation("TeamMembers", fields: [teamId], references: [id])
 
   @@index([organizationId])
   @@map("users")
@@ -101,38 +111,42 @@ model PipelineStage {
 }
 
 model Lead {
-  id              String         @id @default(uuid())
-  contactName     String
-  company         String
-  email           String?
-  email2          String?
-  phone           String?
-  phone2          String?
-  organizationId  String
-  stage           LeadStage      @default(NEW)
-  dealValueInr    Decimal        @default(0) @db.Decimal(15, 2)
-  priority        LeadPriority   @default(MEDIUM)
-  pipelineStageId String?
-  sourceId        String?
-  ownerId         String
-  createdById     String
-  followUpAt      DateTime?
-  closedAt        DateTime?
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  requirement     String?
-  industry        String?
-  subStatus       LeadSubStatus  @default(BLANK)
-  alerts          Alert[]
-  interactions    Interaction[]
-  auditLogs       AuditLog[]
-  createdBy       User           @relation("LeadCreator", fields: [createdById], references: [id])
-  organization    Organization   @relation("LeadOrganization", fields: [organizationId], references: [id])
-  owner           User           @relation("LeadOwner", fields: [ownerId], references: [id])
-  pipelineStage   PipelineStage? @relation(fields: [pipelineStageId], references: [id])
-  source          LeadSource?    @relation(fields: [sourceId], references: [id])
-  notes           Note[]
-  reminders       Reminder[]
+  id                   String                @id @default(uuid())
+  contactName          String
+  company              String
+  email                String?
+  email2               String?
+  phone                String?
+  phone2               String?
+  organizationId       String
+  stage                LeadStage             @default(NEW)
+  dealValueInr         Decimal               @default(0) @db.Decimal(15, 2)
+  priority             LeadPriority          @default(MEDIUM)
+  pipelineStageId      String?
+  sourceId             String?
+  ownerId              String
+  createdById          String
+  followUpAt           DateTime?
+  closedAt             DateTime?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  requirement          String?
+  industry             String?
+  project              String?
+  subStatus            LeadSubStatus         @default(BLANK)
+  alerts               Alert[]
+  auditLogs            AuditLog[]
+  chat_threads         chat_threads?
+  interactions         Interaction[]
+  lead_portal_accounts lead_portal_accounts?
+  createdBy            User                  @relation("LeadCreator", fields: [createdById], references: [id])
+  organization         Organization          @relation("LeadOrganization", fields: [organizationId], references: [id])
+  owner                User                  @relation("LeadOwner", fields: [ownerId], references: [id])
+  pipelineStage        PipelineStage?        @relation(fields: [pipelineStageId], references: [id])
+  source               LeadSource?           @relation(fields: [sourceId], references: [id])
+  notes                Note[]
+  reminders            Reminder[]
+  security_ews         security_ews[]
 
   @@index([organizationId])
   @@index([ownerId])
@@ -195,6 +209,8 @@ model NoteAttachment {
   fileSizeBytes Int
   mimeType      AttachmentMimeType @default(PDF)
   pageCount     Int?
+  isRestricted  Boolean            @default(true)
+  accessKey     String?
   uploadedAt    DateTime           @default(now())
   note          Note               @relation(fields: [noteId], references: [id], onDelete: Cascade)
 
@@ -244,10 +260,191 @@ model Alert {
   @@map("alerts")
 }
 
+model AuditLog {
+  id             String       @id @default(uuid())
+  organizationId String
+  leadId         String?
+  actorType      ActorType
+  actorId        String?
+  actorName      String?
+  action         String
+  field          String?
+  beforeValue    String?
+  afterValue     String?
+  note           String?
+  source         SourceType
+  createdAt      DateTime     @default(now())
+  lead           Lead?        @relation(fields: [leadId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([leadId])
+  @@index([organizationId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model SidebarFilter {
+  id             String         @id @default(uuid())
+  name           String
+  status         LeadStage?
+  subStatus      LeadSubStatus?
+  dealSizeMin    Decimal?       @db.Decimal(15, 2)
+  dealSizeMax    Decimal?       @db.Decimal(15, 2)
+  icon           String         @default("filter")
+  color          String         @default("blue")
+  orderIndex     Int            @default(0)
+  organizationId String
+  createdById    String
+  createdAt      DateTime       @default(now())
+  industry       String?
+  source         String?
+  alphabet       String?
+  createdBy      User           @relation("SidebarFilterCreator", fields: [createdById], references: [id])
+  organization   Organization   @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+  @@map("sidebar_filters")
+}
+
+model chat_message_attachments {
+  id            String        @id
+  messageId     String
+  fileName      String
+  fileUrl       String
+  fileType      String
+  fileSize      Int
+  isRestricted  Boolean       @default(true)
+  accessKey     String?
+  createdAt     DateTime      @default(now())
+  chat_messages chat_messages @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
+}
+
+model chat_messages {
+  id                       String                     @id
+  threadId                 String
+  senderId                 String?
+  senderType               SenderType
+  receiverId               String?
+  content                  String
+  createdAt                DateTime                   @default(now())
+  chat_message_attachments chat_message_attachments[]
+  chat_threads             chat_threads               @relation(fields: [threadId], references: [id], onDelete: Cascade)
+}
+
+model chat_threads {
+  id             String          @id
+  leadId         String          @unique
+  organizationId String
+  channel        String          @default("WhatsApp")
+  status         String          @default("Active")
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime
+  chat_messages  chat_messages[]
+  leads          Lead            @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  organizations  Organization    @relation(fields: [organizationId], references: [id])
+}
+
+model custom_roles {
+  id                 String              @id
+  organizationId     String
+  name               String
+  description        String?
+  icon               String              @default("user")
+  color              String              @default("gray")
+  orderIndex         Int                 @default(0)
+  isSystem           Boolean             @default(false)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime
+  organizations      Organization        @relation(fields: [organizationId], references: [id])
+  data_access_scopes data_access_scopes?
+  role_permissions   role_permissions[]
+  users              User[]
+
+  @@unique([name, organizationId])
+  @@index([organizationId])
+}
+
+model data_access_scopes {
+  id           String        @id
+  roleId       String        @unique
+  scopeType    DataScopeType @default(ALL)
+  teamId       String?
+  custom_roles custom_roles  @relation(fields: [roleId], references: [id], onDelete: Cascade)
+}
+
+model drive_files {
+  id             String       @id
+  name           String
+  fileName       String
+  fileUrl        String
+  fileType       String
+  fileSize       Int
+  organizationId String
+  uploadedById   String
+  isRestricted   Boolean      @default(true)
+  accessKey      String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime
+  organizations  Organization @relation(fields: [organizationId], references: [id])
+  users          User         @relation(fields: [uploadedById], references: [id])
+
+  @@index([organizationId])
+  @@index([uploadedById])
+}
+
+model lead_portal_accounts {
+  id           String    @id
+  leadId       String    @unique
+  username     String    @unique
+  passwordHash String
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime
+  leads        Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+}
+
+model role_permissions {
+  id           String        @id
+  roleId       String
+  permission   PermissionKey
+  allowed      Boolean       @default(false)
+  custom_roles custom_roles  @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permission])
+}
+
+model security_ews {
+  id             String       @id
+  organizationId String
+  userId         String
+  leadId         String?
+  title          String
+  body           String
+  summary        String?
+  status         EWSStatus    @default(NEW)
+  severity       String       @default("Medium")
+  ipAddress      String?
+  device         String?
+  location       String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime
+  leads          Lead?        @relation(fields: [leadId], references: [id])
+  organizations  Organization @relation(fields: [organizationId], references: [id])
+  users          User         @relation(fields: [userId], references: [id])
+
+  @@index([organizationId])
+  @@index([userId])
+}
+
 enum Role {
   MANAGER
   SALES_REP
   ORG_ADMIN
+  LEAD
+  CEO
 }
 
 enum LeadPriority {
@@ -308,31 +505,6 @@ enum AttachmentMimeType {
   OTHER
 }
 
-model AuditLog {
-  id             String       @id @default(uuid())
-  organizationId String
-  leadId         String?
-  actorType      ActorType
-  actorId        String?      // null for SYSTEM/AI if needed
-  actorName      String?      // denormalized for fast read
-  action         String       // CREATE, UPDATE, DELETE, etc.
-  field          String?      // "stage", "priority", etc.
-  beforeValue    String?      // store as string/json
-  afterValue     String?
-  note           String?
-  source         SourceType
-  createdAt      DateTime     @default(now())
-
-  // relations
-  lead           Lead?         @relation(fields: [leadId], references: [id], onDelete: SetNull)
-  organization   Organization @relation(fields: [organizationId], references: [id])
-
-  @@index([leadId])
-  @@index([organizationId])
-  @@index([createdAt])
-  @@map("audit_logs")
-}
-
 enum ActorType {
   USER
   SYSTEM
@@ -357,25 +529,33 @@ enum LeadSubStatus {
   BLANK
 }
 
-model SidebarFilter {
-  id             String        @id @default(uuid())
-  name           String
-  status         LeadStage?
-  subStatus      LeadSubStatus?
-  dealSizeMin    Decimal?      @db.Decimal(15, 2)
-  dealSizeMax    Decimal?      @db.Decimal(15, 2)
-  industry       String?
-  alphabet       String?
-  icon           String        @default("filter")
-  color          String        @default("blue")
-  orderIndex     Int           @default(0)
-  organizationId String
-  createdById    String
-  createdAt      DateTime      @default(now())
+enum DataScopeType {
+  ALL
+  TEAM
+  OWN
+}
 
-  organization   Organization  @relation(fields: [organizationId], references: [id])
-  createdBy      User          @relation("SidebarFilterCreator", fields: [createdById], references: [id])
+enum EWSStatus {
+  NEW
+  MONITORING
+  INVESTIGATING
+  RESOLVED
+}
 
-  @@index([organizationId])
-  @@map("sidebar_filters")
+enum PermissionKey {
+  VIEW_LEADS
+  MANAGE_LEADS
+  CHAT_ACCESS
+  FILE_VIEW
+  FILE_UPLOAD
+  FILE_DOWNLOAD
+  FILE_DELETE
+  USER_MANAGEMENT
+  ACCESS_CONTROL
+  AUDIT_LOGS
+}
+
+enum SenderType {
+  LEAD
+  USER
 }

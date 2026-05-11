@@ -1,7 +1,7 @@
 "use client"
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { X, ChevronLeft, ChevronRight, Building2, Phone, Mail, CalendarCheck, ChevronDown, MessageCircle, ShieldAlert, Target, CalendarClock } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Building2, Phone, Mail, CalendarCheck, ChevronDown, MessageCircle, ShieldAlert, Target, CalendarClock, Info } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthContext";
 import toast from "react-hot-toast";
 
@@ -51,6 +51,7 @@ export interface DbLead {
   createdAt: string;
   ownerId: string;
   owner: { name: string; initials: string };
+  source: { name: string } | null;
   reminders?: any[];
 }
 
@@ -401,6 +402,18 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Secondary Email</p>
                         <span className="text-[14px] font-bold text-slate-700 tracking-tight lowercase truncate block">
                           {lead.email2 || "-"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-slate-50 text-slate-600 flex items-center justify-center flex-shrink-0 border border-slate-100">
+                        <Info size={16} strokeWidth={2.5} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Source</p>
+                        <span className="text-[14px] font-bold text-slate-700 tracking-tight block truncate">
+                          {lead.source?.name || "Not Specified"}
                         </span>
                       </div>
                     </div>

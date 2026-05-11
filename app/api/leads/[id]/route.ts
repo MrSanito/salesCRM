@@ -95,11 +95,29 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       ...(data.subStatus !== undefined && { subStatus: data.subStatus }),
     };
 
+    if (data.source) {
+      const leadSource = await prisma.leadSource.upsert({
+        where: {
+          name_organizationId: {
+            name: data.source,
+            organizationId: user.organizationId
+          }
+        },
+        update: {},
+        create: {
+          name: data.source,
+          organizationId: user.organizationId
+        }
+      });
+      updateData.sourceId = leadSource.id;
+    }
+
     const updatedLead = await prisma.lead.update({
       where: { id },
       data: updateData,
       include: {
         owner: { select: { name: true, initials: true } },
+        source: { select: { name: true } },
       }
     });
 

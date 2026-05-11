@@ -1,6 +1,6 @@
 "use client"
 import { useState, useEffect } from "react";
-import { X, CheckCircle2, User, ChevronRight, Layout, BarChart3, AlertTriangle } from "lucide-react";
+import { X, CheckCircle2, User, ChevronRight, Layout, BarChart3, AlertTriangle, Target } from "lucide-react";
 import toast from "react-hot-toast";
 import axios from "axios";
 
@@ -44,13 +44,19 @@ export default function BulkUpdateModal({ isOpen, onClose, selectedIds, onSucces
     stage: "",
     subStatus: "",
     priority: "",
-    ownerId: ""
+    ownerId: "",
+    sourceId: ""
   });
+  const [sources, setSources] = useState<any[]>([]);
 
   useEffect(() => {
     if (isOpen) {
       axios.get("/api/team")
         .then(res => { if (Array.isArray(res.data)) setUsers(res.data); })
+        .catch(console.error);
+
+      axios.get("/api/leads/sources")
+        .then(res => { if (Array.isArray(res.data)) setSources(res.data); })
         .catch(console.error);
     }
   }, [isOpen]);
@@ -62,6 +68,7 @@ export default function BulkUpdateModal({ isOpen, onClose, selectedIds, onSucces
     if (updateData.subStatus) data.subStatus = updateData.subStatus;
     if (updateData.priority) data.priority = updateData.priority;
     if (updateData.ownerId) data.ownerId = updateData.ownerId;
+    if (updateData.sourceId) data.sourceId = updateData.sourceId;
 
     if (Object.keys(data).length === 0) {
       toast.error("Please select at least one field to update");
@@ -169,6 +176,23 @@ export default function BulkUpdateModal({ isOpen, onClose, selectedIds, onSucces
               <option value="">Keep Current Owners</option>
               {users.map(u => (
                 <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Source */}
+          <div className="space-y-2">
+            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+              <Target size={12} className="text-orange-500" /> Update Source
+            </label>
+            <select
+              value={updateData.sourceId}
+              onChange={(e) => setUpdateData(prev => ({ ...prev, sourceId: e.target.value }))}
+              className="w-full h-12 bg-slate-50 border border-slate-200 rounded-xl px-4 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none"
+            >
+              <option value="">Keep Current Sources</option>
+              {sources.map(s => (
+                <option key={s.id} value={s.id}>{s.name}</option>
               ))}
             </select>
           </div>

@@ -56,6 +56,7 @@ interface SidebarFilterItem {
   dealSizeMin: string | null;
   dealSizeMax: string | null;
   industry: string | null;
+  source: string | null;
   alphabet: string | null;
   icon: string;
   color: string;
@@ -80,10 +81,12 @@ export default function SettingsView() {
     subStatus: "",
     dealSize: "",
     industry: "",
+    source: "",
     alphabet: "",
     color: "blue",
   });
   const [industries, setIndustries] = useState<string[]>([]);
+  const [sources, setSources] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -110,6 +113,14 @@ export default function SettingsView() {
         .then(r => r.json())
         .then(data => {
           if (Array.isArray(data)) setIndustries(data);
+        })
+        .catch(console.error);
+
+      // Fetch unique sources
+      fetch("/api/leads/sources")
+        .then(r => r.json())
+        .then(data => {
+          if (Array.isArray(data)) setSources(data.map((s: any) => s.name));
         })
         .catch(console.error);
     }
@@ -167,6 +178,7 @@ export default function SettingsView() {
           dealSizeMin,
           dealSizeMax,
           industry: newFilter.industry || null,
+          source: newFilter.source || null,
           alphabet: newFilter.alphabet || null,
           color: newFilter.color,
         }),
@@ -175,7 +187,7 @@ export default function SettingsView() {
       if (res.ok) {
         const created = await res.json();
         setSidebarFilters((prev) => [...prev, created]);
-        setNewFilter({ name: "", status: "", subStatus: "", dealSize: "", industry: "", alphabet: "", color: "blue" });
+        setNewFilter({ name: "", status: "", subStatus: "", dealSize: "", industry: "", source: "", alphabet: "", color: "blue" });
         setShowAddForm(false);
         toast.success(`"${created.name}" added to sidebar`);
       } else {
@@ -420,6 +432,21 @@ export default function SettingsView() {
                         </select>
                       </div>
 
+                      {/* Source */}
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Source</label>
+                        <select
+                          value={newFilter.source}
+                          onChange={(e) => setNewFilter({ ...newFilter, source: e.target.value })}
+                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:outline-none focus:ring-4 focus:ring-purple-500/10 focus:border-purple-500 transition-all appearance-none cursor-pointer"
+                        >
+                          <option value="">Any Source</option>
+                          {sources.map((src) => (
+                            <option key={src} value={src}>{src}</option>
+                          ))}
+                        </select>
+                      </div>
+
                       {/* Alphabet Filter */}
                       <div className="sm:col-span-2 space-y-1.5">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Alphabetical (Contact Name)</label>
@@ -536,7 +563,12 @@ export default function SettingsView() {
                                   Starts with: {f.alphabet}
                                 </span>
                               )}
-                              {!f.status && !f.subStatus && !f.dealSizeMin && !f.dealSizeMax && !f.industry && !f.alphabet && (
+                              {f.source && (
+                                <span className="text-[9px] font-bold bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                  Source: {f.source}
+                                </span>
+                              )}
+                              {!f.status && !f.subStatus && !f.dealSizeMin && !f.dealSizeMax && !f.industry && !f.alphabet && !f.source && (
                                 <span className="text-[9px] font-bold bg-slate-50 text-slate-400 px-2 py-0.5 rounded-full uppercase tracking-wider">
                                   All Leads
                                 </span>

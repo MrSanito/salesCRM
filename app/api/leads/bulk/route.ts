@@ -37,6 +37,7 @@ export async function PATCH(req: Request) {
     if (data.subStatus) updateData.subStatus = data.subStatus;
     if (data.priority) updateData.priority = data.priority;
     if (data.ownerId) updateData.ownerId = data.ownerId;
+    if (data.sourceId) updateData.sourceId = data.sourceId;
 
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json({ error: "No update data provided" }, { status: 400 });
@@ -182,6 +183,24 @@ export async function POST(req: Request) {
     // Create leads sequentially to handle nested notes and ensure proper relation creation
     const createdLeads = [];
     for (const l of leads) {
+      let sourceId = undefined;
+      if (l.source) {
+        const leadSource = await prisma.leadSource.upsert({
+          where: {
+            name_organizationId: {
+              name: l.source,
+              organizationId: user.organizationId
+            }
+          },
+          update: {},
+          create: {
+            name: l.source,
+            organizationId: user.organizationId
+          }
+        });
+        sourceId = leadSource.id;
+      }
+
       const lead = await prisma.lead.create({
         data: {
           contactName: l.contactName || "Unknown",
@@ -198,6 +217,7 @@ export async function POST(req: Request) {
           organizationId: user.organizationId,
           ownerId: user.id,
           createdById: user.id,
+          sourceId: sourceId,
           // Handle nested notes
           notes: l.notes ? {
             create: {

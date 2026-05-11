@@ -44,7 +44,8 @@ export async function GET() {
       include: {
         owner: {
           select: { name: true, initials: true }
-        }
+        },
+        source: true
       },
       orderBy: {
         createdAt: 'desc',
@@ -69,7 +70,7 @@ export async function POST(req: Request) {
     const userId = decoded.userId;
 
     const body = await req.json();
-    const { name, company, phone, phone2, email, email2, value, industry, requirement, notes, ownerId } = body;
+    const { name, company, phone, phone2, email, email2, value, industry, requirement, notes, ownerId, source } = body;
 
     // Fetch user for org context and role
     const user = await prisma.user.findUnique({
@@ -79,6 +80,25 @@ export async function POST(req: Request) {
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // Handle source
+    let sourceId = undefined;
+    if (source) {
+      const leadSource = await prisma.leadSource.upsert({
+        where: {
+          name_organizationId: {
+            name: source,
+            organizationId: user.organizationId
+          }
+        },
+        update: {},
+        create: {
+          name: source,
+          organizationId: user.organizationId
+        }
+      });
+      sourceId = leadSource.id;
     }
 
     // Check if lead already exists with this email or phone
@@ -112,6 +132,7 @@ export async function POST(req: Request) {
         email2,
         requirement,
         industry,
+        sourceId,
         subStatus: body.subStatus || "CHATTING",
         dealValueInr: (value || 0).toString(),
         organizationId: user.organizationId,

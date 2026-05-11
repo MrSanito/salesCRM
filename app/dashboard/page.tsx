@@ -17,6 +17,7 @@ export interface SidebarFilterConfig {
   dealSizeMin: string | null;
   dealSizeMax: string | null;
   industry: string | null;
+  source: string | null;
   alphabet: string | null;
 }
 
