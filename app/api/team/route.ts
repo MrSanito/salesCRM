@@ -46,7 +46,11 @@ export async function GET() {
     });
 
 
-    return NextResponse.json(users);
+    return NextResponse.json(users, {
+      headers: {
+        'Cache-Control': 'private, max-age=300, stale-while-revalidate=60'
+      }
+    });
   } catch (error) {
     console.error("Error fetching team:", error);
     return NextResponse.json({ error: "Failed to fetch team" }, { status: 500 });

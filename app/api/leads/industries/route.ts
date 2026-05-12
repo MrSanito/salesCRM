@@ -36,7 +36,11 @@ export async function GET() {
       .filter((i): i is string => !!i && i.trim() !== "")
       .sort();
 
-    return NextResponse.json(list);
+    return NextResponse.json(list, {
+      headers: {
+        'Cache-Control': 'private, max-age=300, stale-while-revalidate=60'
+      }
+    });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

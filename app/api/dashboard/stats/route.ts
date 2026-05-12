@@ -121,6 +121,10 @@ export async function GET() {
         followUpsTotal,
       },
       pipeline,
+    }, {
+      headers: {
+        'Cache-Control': 'private, max-age=300, stale-while-revalidate=60'
+      }
     });
   } catch (error) {
     console.error("Stats error:", error);

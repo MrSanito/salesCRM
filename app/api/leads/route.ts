@@ -53,7 +53,11 @@ export async function GET() {
     });
 
 
-    return NextResponse.json(leads);
+    return NextResponse.json(leads, {
+      headers: {
+        'Cache-Control': 'private, max-age=300, stale-while-revalidate=60'
+      }
+    });
   } catch (error) {
     console.error("Error fetching leads:", error);
     return NextResponse.json({ error: "Failed to fetch leads" }, { status: 500 });

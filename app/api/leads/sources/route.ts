@@ -31,7 +31,11 @@ export async function GET() {
       orderBy: { name: 'asc' }
     });
 
-    return NextResponse.json(sources);
+    return NextResponse.json(sources, {
+      headers: {
+        'Cache-Control': 'private, max-age=300, stale-while-revalidate=60'
+      }
+    });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

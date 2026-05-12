@@ -40,7 +40,11 @@ export async function GET(req: NextRequest) {
     });
 
 
-    return NextResponse.json(reminders);
+    return NextResponse.json(reminders, {
+      headers: {
+        'Cache-Control': 'private, max-age=300, stale-while-revalidate=60'
+      }
+    });
   } catch (error) {
     console.error("Reminders GET error:", error);
     return NextResponse.json({ error: "Failed to fetch reminders" }, { status: 500 });

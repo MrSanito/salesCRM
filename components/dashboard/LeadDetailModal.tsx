@@ -111,9 +111,9 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
     if (showLoading) setLoading(true);
     try {
       const [leadRes, teamRes, notesRes] = await Promise.all([
-        fetch(`/api/leads/${leadId}?t=${Date.now()}`),
-        canChangeOwner ? fetch(`/api/team?t=${Date.now()}`) : Promise.resolve(null),
-        fetch(`/api/notes?leadId=${leadId}&t=${Date.now()}`)
+        fetch(`/api/leads/${leadId}`),
+        canChangeOwner ? fetch(`/api/team`) : Promise.resolve(null),
+        fetch(`/api/notes?leadId=${leadId}`)
       ]);
 
       const leadData = await leadRes.json();
@@ -568,7 +568,7 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Lead Requirement </p>
-                          <p className="text-[12px] text-slate-700 font-bold leading-relaxed">
+                          <p className="text-[12px] text-slate-700 font-bold leading-relaxed whitespace-pre-wrap">
                             {lead.requirement}
                           </p>
                         </div>
@@ -854,7 +854,7 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                             </div>
                           ) : (
                             <>
-                              <p className="text-sm text-slate-700 font-medium leading-relaxed pr-8">{note.content}</p>
+                              <p className="text-sm text-slate-700 font-medium leading-relaxed pr-8 whitespace-pre-wrap">{note.content}</p>
                               <button 
                                 onClick={() => {
                                   setEditingNoteId(note.id);

@@ -111,7 +111,7 @@ export default function EngagementStream({ leadId, ownerName }: EngagementStream
                 </div>
                 <span className="text-[8px] font-bold text-slate-500 uppercase">{formatDate(note.createdAt)}</span>
               </div>
-              <p className="text-[12px] text-slate-700 font-medium border-l-2 border-slate-900 pl-3 py-1 bg-slate-50 rounded-r-lg">
+              <p className="text-[12px] text-slate-700 font-medium border-l-2 border-slate-900 pl-3 py-1 bg-slate-50 rounded-r-lg whitespace-pre-wrap">
                 {note.content}
               </p>
             </div>
