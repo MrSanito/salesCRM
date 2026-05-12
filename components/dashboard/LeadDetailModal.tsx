@@ -18,9 +18,10 @@ const STAGE_LABEL: Record<string, string> = {
   NEGOTIATION: "Negotiation",
   COLD: "Cold Chatting", 
   CHATTING: "Cold Chatting",
+  CUSTOMER: "Customer",
 };
 
-const PIPELINE_STAGES = ["NEW", "CONTACTED", "CHATTING", "MEETING_SET", "NEGOTIATION", "NOT_INTERESTED"];
+const PIPELINE_STAGES = ["NEW", "CONTACTED", "CHATTING", "MEETING_SET", "NEGOTIATION", "CUSTOMER", "NOT_INTERESTED"];
 
 const SUB_STATUS_LABEL: Record<string, string> = {
   CHATTING: "Chatting",

@@ -215,7 +215,7 @@ export default function Sidebar({
                     {group.section}
                     {group.section === "CUSTOM VIEWS" && <Sparkles size={10} className="text-orange-400" />}
                   </p>
-                  {group.section === "CUSTOM VIEWS" && user?.role === "ORG_ADMIN" && (
+                  {group.section === "CUSTOM VIEWS" && (user?.role === "ORG_ADMIN" || user?.role === "CEO") && (
                     <div className="relative group/manage">
                       <button 
                         onClick={(e) => {

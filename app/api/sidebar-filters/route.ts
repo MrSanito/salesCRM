@@ -44,7 +44,7 @@ export async function POST(req: Request) {
   try {
     const user = await getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    if (user.role !== "ORG_ADMIN") {
+    if (user.role !== "ORG_ADMIN" && user.role !== "CEO") {
       return NextResponse.json({ error: "Only the CEO can configure sidebar filters." }, { status: 403 });
     }
 
@@ -105,7 +105,7 @@ export async function DELETE(req: Request) {
   try {
     const user = await getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    if (user.role !== "ORG_ADMIN") {
+    if (user.role !== "ORG_ADMIN" && user.role !== "CEO") {
       return NextResponse.json({ error: "Only the CEO can delete sidebar filters." }, { status: 403 });
     }
 

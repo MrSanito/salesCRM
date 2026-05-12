@@ -465,6 +465,7 @@ enum LeadStage {
   NEGOTIATION
   COLD
   CHATTING
+  CUSTOMER
 }
 
 enum InteractionType {

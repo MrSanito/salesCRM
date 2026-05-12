@@ -15,6 +15,7 @@ const STAGE_STYLES: Record<string, string> = {
   NEGOTIATION: "bg-amber-50 text-amber-700",
   COLD: "bg-slate-50 text-slate-600",
   CHATTING: "bg-green-50 text-green-700",
+  CUSTOMER: "bg-blue-600 text-white",
 };
 
 const STAGE_LABEL: Record<string, string> = {
@@ -25,6 +26,7 @@ const STAGE_LABEL: Record<string, string> = {
   NEGOTIATION: "Negotiation",
   COLD: "Cold Chatting", 
   CHATTING: "Cold Chatting",
+  CUSTOMER: "Customer",
 };
 
 const PRIORITY_STYLES: Record<string, string> = {
@@ -669,7 +671,7 @@ export default function LeadsTable({ onLeadClick, activeNav, refreshKey = 0, sid
                       <div className="px-3 py-1.5 border-b border-slate-50 mb-1">
                         <button onClick={() => setColumnFilters(prev => ({ ...prev, stage: new Set() }))} className="text-[9px] font-bold text-blue-600 uppercase">Clear</button>
                       </div>
-                      {["NEW", "CONTACTED", "COLD", "MEETING_SET", "NEGOTIATION", "NOT_INTERESTED"].map(v => (
+                      {["NEW", "CONTACTED", "COLD", "MEETING_SET", "NEGOTIATION", "CUSTOMER", "NOT_INTERESTED"].map(v => (
                         <label key={v} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer">
                           <input 
                             type="checkbox" 

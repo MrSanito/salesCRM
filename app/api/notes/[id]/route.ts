@@ -37,7 +37,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
 
     // Authorization check: User can edit their own notes, or MANAGER/ORG_ADMIN can edit any note
-    if (existingNote.userId !== user.id && user.role !== "ORG_ADMIN" && user.role !== "MANAGER") {
+    if (existingNote.userId !== user.id && user.role !== "ORG_ADMIN" && user.role !== "MANAGER" && user.role !== "CEO") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -93,7 +93,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     }
 
     // Authorization check: User can delete their own notes, or MANAGER/ORG_ADMIN can delete any note
-    if (existingNote.userId !== user.id && user.role !== "ORG_ADMIN" && user.role !== "MANAGER") {
+    if (existingNote.userId !== user.id && user.role !== "ORG_ADMIN" && user.role !== "MANAGER" && user.role !== "CEO") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

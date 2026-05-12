@@ -79,7 +79,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
 
     // Role-based restrictions: Only ORG_ADMIN and MANAGER can change owner
-    if (data.ownerId && (user.role !== "ORG_ADMIN" && user.role !== "MANAGER")) {
+    if (data.ownerId && (user.role !== "ORG_ADMIN" && user.role !== "MANAGER" && user.role !== "CEO")) {
       delete data.ownerId;
     }
 
@@ -196,7 +196,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     // Only ORG_ADMIN and MANAGER can delete
-    if (user.role !== "ORG_ADMIN" && user.role !== "MANAGER") {
+    if (user.role !== "ORG_ADMIN" && user.role !== "MANAGER" && user.role !== "CEO") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

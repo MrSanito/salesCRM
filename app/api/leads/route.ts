@@ -118,7 +118,7 @@ export async function POST(req: Request) {
 
     // Determine owner: if worker, they are the owner. If manager/admin, they can specify.
     let finalOwnerId = userId;
-    if (ownerId && (user.role === "ORG_ADMIN" || user.role === "MANAGER")) {
+    if (ownerId && (user.role === "ORG_ADMIN" || user.role === "MANAGER" || user.role === "CEO")) {
       finalOwnerId = ownerId;
     }
 
