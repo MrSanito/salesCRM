@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
     const notes = await prisma.note.findMany({
       where: { leadId, organizationId: user.organizationId },
       include: { user: { select: { name: true, initials: true, role: true } } },
-      orderBy: { createdAt: "desc" },
+      orderBy: { updatedAt: "desc" },
     });
 
 

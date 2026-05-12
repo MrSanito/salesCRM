@@ -1,7 +1,7 @@
 "use client"
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { X, ChevronLeft, ChevronRight, Building2, Phone, Mail, CalendarCheck, ChevronDown, MessageCircle, ShieldAlert, Target, CalendarClock, Info } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Building2, Phone, Mail, CalendarCheck, ChevronDown, MessageCircle, ShieldAlert, Target, CalendarClock, Info, Pencil } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthContext";
 import toast from "react-hot-toast";
 
@@ -54,6 +54,7 @@ export interface DbLead {
   source: { name: string } | null;
   reminders?: any[];
   lastCommunicatedAt?: string | null;
+  updatedAt: string;
 }
 
 interface LeadDetailModalProps {
@@ -80,6 +81,14 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
   const [showSchedule, setShowSchedule] = useState(false);
   const [isDossierOpen, setIsDossierOpen] = useState(true);
   const [expandedField, setExpandedField] = useState<string | null>("wholeSummary");
+  
+  const [contactName, setContactName] = useState("");
+  const [company, setCompany] = useState("");
+  const [email, setEmail] = useState("");
+  const [email2, setEmail2] = useState("");
+  const [phone, setPhone] = useState("");
+  const [phone2, setPhone2] = useState("");
+  
   const [context, setContext] = useState({
     wholeSummary: "", requirement: "", useCase: "", scope: "",
     constraints: "", drivers: "", objections: "", commitments: ""
@@ -93,6 +102,9 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
   const [notes, setNotes] = useState<any[]>([]);
   const [noteInput, setNoteInput] = useState("");
   const [isAddingNote, setIsAddingNote] = useState(false);
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editingNoteContent, setEditingNoteContent] = useState("");
+  const [isUpdatingNote, setIsUpdatingNote] = useState(false);
 
   const fetchData = async (showLoading = true) => {
     if (showLoading) setLoading(true);
@@ -112,6 +124,12 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
         setIndustry(leadData.industry || "");
         setDealValue(leadData.dealValueInr || "");
         setOwnerId(leadData.ownerId);
+        setContactName(leadData.contactName || "");
+        setCompany(leadData.company || "");
+        setEmail(leadData.email || "");
+        setEmail2(leadData.email2 || "");
+        setPhone(leadData.phone || "");
+        setPhone2(leadData.phone2 || "");
         setContext(prev => ({
           ...prev,
           requirement: leadData.requirement || "",
@@ -177,6 +195,31 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
       setIsAddingNote(false);
     }
   };
+  
+  const handleUpdateNote = async (noteId: string) => {
+    if (!editingNoteContent.trim()) return;
+    setIsUpdatingNote(true);
+    try {
+      const res = await fetch(`/api/notes/${noteId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: editingNoteContent.trim() }),
+      });
+      if (res.ok) {
+        const updatedNote = await res.json();
+        setNotes(notes.map(n => n.id === noteId ? updatedNote : n));
+        setEditingNoteId(null);
+        setEditingNoteContent("");
+        toast.success("Note intelligence updated");
+      } else {
+        toast.error("Failed to update note");
+      }
+    } catch (err) {
+      toast.error("Network error");
+    } finally {
+      setIsUpdatingNote(false);
+    }
+  };
 
   const handleUpdate = async (overrideStage?: string, overrideOwner?: string, overrideSubStatus?: string) => {
     setUpdating(true);
@@ -188,6 +231,12 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
         dealValueInr: parseFloat(dealValue) || 0,
         ownerId: overrideOwner || (ownerId !== lead?.ownerId ? ownerId : undefined),
         requirement: context.requirement,
+        contactName,
+        company,
+        email,
+        email2,
+        phone,
+        phone2,
       };
 
       const res = await fetch(`/api/leads/${leadId}`, {
@@ -277,14 +326,26 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
             </div>
           </div>
 
-          {!loading && !isLoading && (
-            <button
-              onClick={() => router.push(`/lead/${leadId}/edit`)}
-              className="bg-slate-900 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-100 hover:bg-slate-800 transition-all active:scale-95"
-            >
-              Edit Details
-            </button>
-          )}
+          <div className="flex items-center gap-6">
+            {lead && (
+              <div className="text-right hidden sm:block">
+                <p className="text-[8px] font-bold text-slate-400 uppercase tracking-[0.2em] leading-none mb-1">Last Edited</p>
+                <p className="text-[10px] font-black text-slate-700">
+                  {new Date(lead.updatedAt).toLocaleString("en-IN", { 
+                    day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" 
+                  })}
+                </p>
+              </div>
+            )}
+            {!loading && !isLoading && (
+              <button
+                onClick={() => router.push(`/lead/${leadId}/edit`)}
+                className="bg-slate-900 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-100 hover:bg-slate-800 transition-all active:scale-95"
+              >
+                Edit Details
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Body */}
@@ -303,12 +364,24 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                     <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 uppercase tracking-tighter">
                       {STAGE_LABEL[lead.stage] || lead.stage}
                     </span>
-                    <h1 className="text-3xl font-bold text-slate-900 tracking-tight">{lead.contactName}</h1>
+                    <input
+                      type="text"
+                      value={contactName}
+                      onChange={e => setContactName(e.target.value)}
+                      onBlur={() => handleUpdate()}
+                      className="text-3xl font-bold text-slate-900 tracking-tight bg-transparent border-none outline-none focus:ring-2 focus:ring-blue-100 rounded px-1 -ml-1 w-full sm:w-auto"
+                    />
                   </div>
                   <div className="flex items-center gap-4 text-slate-500">
                     <div className="flex items-center gap-2">
                       <Building2 size={16} className="text-slate-400" />
-                      <span className="text-base font-semibold">{lead.company}</span>
+                      <input
+                        type="text"
+                        value={company}
+                        onChange={e => setCompany(e.target.value)}
+                        onBlur={() => handleUpdate()}
+                        className="text-base font-semibold text-slate-700 bg-transparent border-none outline-none focus:ring-2 focus:ring-blue-100 rounded px-1 -ml-1 w-48"
+                      />
                     </div>
                     <div className="h-4 w-[1px] bg-slate-200" />
                     <div className="flex items-center gap-1.5 bg-slate-50 px-3 py-1 rounded-lg text-[11px] text-slate-900 border border-slate-200">
@@ -383,6 +456,14 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                         >
                           {lead.phone || "Not Provided"}
                         </a>
+                        <input
+                          type="text"
+                          value={phone}
+                          onChange={e => setPhone(e.target.value)}
+                          onBlur={() => handleUpdate()}
+                          className="text-[11px] text-slate-400 bg-transparent border-none outline-none focus:ring-1 focus:ring-blue-50 rounded w-full"
+                          placeholder="Edit Phone"
+                        />
                       </div>
                     </div>
 
@@ -399,6 +480,14 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                         >
                           {lead.email || "—"}
                         </a>
+                        <input
+                          type="text"
+                          value={email}
+                          onChange={e => setEmail(e.target.value)}
+                          onBlur={() => handleUpdate()}
+                          className="text-[11px] text-slate-400 bg-transparent border-none outline-none focus:ring-1 focus:ring-blue-50 rounded w-full"
+                          placeholder="Edit Email"
+                        />
                       </div>
                     </div>
 
@@ -411,6 +500,14 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                         <span className="text-[14px] font-bold text-slate-700 tracking-tight block truncate">
                           {lead.phone2 || "-"}
                         </span>
+                        <input
+                          type="text"
+                          value={phone2}
+                          onChange={e => setPhone2(e.target.value)}
+                          onBlur={() => handleUpdate()}
+                          className="text-[11px] text-slate-400 bg-transparent border-none outline-none focus:ring-1 focus:ring-blue-50 rounded w-full"
+                          placeholder="Edit Secondary Phone"
+                        />
                       </div>
                     </div>
 
@@ -423,6 +520,14 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                         <span className="text-[14px] font-bold text-slate-700 tracking-tight lowercase truncate block">
                           {lead.email2 || "-"}
                         </span>
+                        <input
+                          type="text"
+                          value={email2}
+                          onChange={e => setEmail2(e.target.value)}
+                          onBlur={() => handleUpdate()}
+                          className="text-[11px] text-slate-400 bg-transparent border-none outline-none focus:ring-1 focus:ring-blue-50 rounded w-full"
+                          placeholder="Edit Secondary Email"
+                        />
                       </div>
                     </div>
 
@@ -496,6 +601,18 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                       <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Created On</p>
                       <p className="text-[14px] font-bold text-slate-700">
                         {new Date(lead.createdAt).toLocaleString("en-IN", { 
+                          day: "numeric", 
+                          month: "short", 
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit"
+                        })}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Last Edited</p>
+                      <p className="text-[14px] font-bold text-slate-700">
+                        {new Date(lead.updatedAt).toLocaleString("en-IN", { 
                           day: "numeric", 
                           month: "short", 
                           year: "numeric",
@@ -701,7 +818,7 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                               <span className="text-[10px] font-bold text-slate-900">{note.user?.name}</span>
                             </div>
                             <span className="text-[9px] font-bold text-slate-400 uppercase">
-                              {new Date(note.createdAt).toLocaleString("en-IN", { 
+                              {new Date(note.updatedAt).toLocaleString("en-IN", { 
                                 day: "numeric", 
                                 month: "short", 
                                 year: "numeric",
@@ -710,7 +827,44 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                               })}
                             </span>
                           </div>
-                          <p className="text-sm text-slate-700 font-medium leading-relaxed">{note.content}</p>
+                          {editingNoteId === note.id ? (
+                            <div className="space-y-3">
+                              <textarea
+                                value={editingNoteContent}
+                                onChange={(e) => setEditingNoteContent(e.target.value)}
+                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium resize-y min-h-[80px]"
+                                rows={3}
+                              />
+                              <div className="flex justify-end gap-2">
+                                <button
+                                  onClick={() => setEditingNoteId(null)}
+                                  className="px-3 py-1.5 rounded-lg text-[10px] font-bold text-slate-500 hover:bg-slate-100 transition-colors"
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  onClick={() => handleUpdateNote(note.id)}
+                                  disabled={isUpdatingNote || !editingNoteContent.trim()}
+                                  className="bg-slate-900 text-white px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 disabled:opacity-50 transition-all active:scale-95"
+                                >
+                                  {isUpdatingNote ? "Updating..." : "Update Note"}
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <p className="text-sm text-slate-700 font-medium leading-relaxed pr-8">{note.content}</p>
+                              <button 
+                                onClick={() => {
+                                  setEditingNoteId(note.id);
+                                  setEditingNoteContent(note.content);
+                                }}
+                                className="absolute top-4 right-4 p-2 text-slate-300 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                              >
+                                <Pencil size={14} />
+                              </button>
+                            </>
+                          )}
                         </div>
                       ))
                     )}
