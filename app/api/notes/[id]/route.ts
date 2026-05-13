@@ -29,7 +29,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     // Check if note exists and belongs to the organization
     const existingNote = await prisma.note.findUnique({
       where: { id },
-      include: { lead: true }
+      select: { id: true, content: true, leadId: true, userId: true, organizationId: true }
     });
 
     if (!existingNote || existingNote.organizationId !== user.organizationId) {

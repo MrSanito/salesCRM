@@ -43,8 +43,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     if (!lead) return NextResponse.json({ error: "Lead not found" }, { status: 404 });
 
-
-    return NextResponse.json(lead);
+    return NextResponse.json(lead, {
+      headers: {
+        'Cache-Control': 'private, max-age=30, stale-while-revalidate=10'
+      }
+    });
   } catch (error) {
     console.error("Lead GET error:", error);
     return NextResponse.json({ error: "Failed to fetch lead" }, { status: 500 });
@@ -124,14 +127,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
 
     if (data.notes !== undefined) {
-      const firstNote = await prisma.note.findFirst({
+      const existingNote = await prisma.note.findFirst({
         where: { leadId: id },
-        orderBy: { createdAt: 'asc' }
+        orderBy: { createdAt: 'asc' },
+        select: { id: true, content: true, leadId: true, userId: true, organizationId: true }
       });
       
-      if (firstNote) {
+      if (existingNote) {
         await prisma.note.update({
-          where: { id: firstNote.id },
+          where: { id: existingNote.id },
           data: { content: data.notes || "" }
         });
       } else if (data.notes) {

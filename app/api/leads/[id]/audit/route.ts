@@ -36,7 +36,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       take: 100,
     });
 
-    return NextResponse.json(auditLogs);
+    return NextResponse.json(auditLogs, {
+      headers: {
+        'Cache-Control': 'private, max-age=60, stale-while-revalidate=15'
+      }
+    });
   } catch (error) {
     console.error("Audit logs GET error:", error);
     return NextResponse.json({ error: "Failed to fetch audit logs" }, { status: 500 });

@@ -33,7 +33,11 @@ export async function GET() {
       include: { createdBy: { select: { name: true } } },
     });
 
-    return NextResponse.json(filters);
+    return NextResponse.json(filters, {
+      headers: {
+        'Cache-Control': 'private, max-age=120, stale-while-revalidate=30'
+      }
+    });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

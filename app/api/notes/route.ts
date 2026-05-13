@@ -30,7 +30,11 @@ export async function GET(req: NextRequest) {
     });
 
 
-    return NextResponse.json(notes);
+    return NextResponse.json(notes, {
+      headers: {
+        'Cache-Control': 'private, max-age=60, stale-while-revalidate=15'
+      }
+    });
   } catch (error) {
     console.error("Notes GET error:", error);
     return NextResponse.json({ error: "Failed to fetch notes" }, { status: 500 });

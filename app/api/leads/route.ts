@@ -41,21 +41,44 @@ export async function GET() {
 
     const leads = await prisma.lead.findMany({
       where: whereClause,
-      include: {
+      select: {
+        id: true,
+        contactName: true,
+        company: true,
+        email: true,
+        email2: true,
+        phone: true,
+        phone2: true,
+        stage: true,
+        dealValueInr: true,
+        priority: true,
+        subStatus: true,
+        followUpAt: true,
+        closedAt: true,
+        createdAt: true,
+        updatedAt: true,
+        industry: true,
+        project: true,
+        lastCommunicatedAt: true,
+        requirement: true,
+        organizationId: true,
+        ownerId: true,
+        sourceId: true,
         owner: {
           select: { name: true, initials: true }
         },
-        source: true
+        source: {
+          select: { id: true, name: true }
+        }
       },
       orderBy: {
         createdAt: 'desc',
       },
     });
 
-
     return NextResponse.json(leads, {
       headers: {
-        'Cache-Control': 'private, max-age=300, stale-while-revalidate=60'
+        'Cache-Control': 'private, max-age=30, stale-while-revalidate=10'
       }
     });
   } catch (error) {

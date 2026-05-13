@@ -123,7 +123,7 @@ export async function GET() {
       pipeline,
     }, {
       headers: {
-        'Cache-Control': 'private, max-age=300, stale-while-revalidate=60'
+        'Cache-Control': 'private, max-age=60, stale-while-revalidate=15'
       }
     });
   } catch (error) {

@@ -39,7 +39,11 @@ export async function GET(req: NextRequest) {
       take: 500, // Limit for performance
     });
 
-    return NextResponse.json(auditLogs);
+    return NextResponse.json(auditLogs, {
+      headers: {
+        'Cache-Control': 'private, max-age=120, stale-while-revalidate=30'
+      }
+    });
   } catch (error) {
     console.error("Audit Report GET error:", error);
     return NextResponse.json({ error: "Failed to fetch audit report" }, { status: 500 });

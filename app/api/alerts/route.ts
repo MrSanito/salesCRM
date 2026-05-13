@@ -37,7 +37,11 @@ export async function GET(req: NextRequest) {
     });
 
 
-    return NextResponse.json(alerts);
+    return NextResponse.json(alerts, {
+      headers: {
+        'Cache-Control': 'private, max-age=60, stale-while-revalidate=15'
+      }
+    });
   } catch (error) {
     console.error("Alerts GET error:", error);
     return NextResponse.json({ error: "Failed to fetch alerts" }, { status: 500 });
