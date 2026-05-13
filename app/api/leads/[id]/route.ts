@@ -13,6 +13,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const decoded = jwt.verify(token, JWT_SECRET) as any;
+    
+    // Optimized user fetch: get organizationId once
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
       select: { organizationId: true, role: true, id: true, name: true },
@@ -21,36 +23,55 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     const { id } = await params;
 
-    const lead = await prisma.lead.findFirst({
-      where: {
-        id,
-        organizationId: user.organizationId,
-        // SALES_REP can only view their own leads
-        ...(user.role === "SALES_REP" ? { ownerId: user.id } : {}),
-      },
-      include: {
-        owner: { select: { name: true, initials: true } },
-        source: { select: { name: true } },
-        notes: {
-          orderBy: { createdAt: 'asc' },
-          take: 1
+    // Fetch Lead, Notes, and Team in parallel to minimize latency
+    const [lead, team] = await Promise.all([
+      prisma.lead.findFirst({
+        where: {
+          id,
+          organizationId: user.organizationId,
+          ...(user.role === "SALES_REP" ? { ownerId: user.id } : {}),
         },
-        reminders: {
-          orderBy: { scheduledAt: 'desc' }
-        }
-      },
-    });
+        include: {
+          owner: { select: { name: true, initials: true } },
+          source: { select: { name: true } },
+          notes: {
+            include: { user: { select: { name: true, initials: true, role: true } } },
+            orderBy: { updatedAt: "desc" },
+          },
+          reminders: {
+            orderBy: { scheduledAt: 'desc' }
+          }
+        },
+      }),
+      prisma.user.findMany({
+        where: { organizationId: user.organizationId },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          initials: true,
+          managerId: true,
+          _count: { select: { ownedLeads: true } }
+        },
+        orderBy: { createdAt: 'asc' },
+      })
+    ]);
 
     if (!lead) return NextResponse.json({ error: "Lead not found" }, { status: 404 });
 
-    return NextResponse.json(lead, {
+    // Combine lead and team into a single response
+    return NextResponse.json({
+      ...lead,
+      team_members: team // Inject team directly into response to save a separate call
+    }, {
       headers: {
-        'Cache-Control': 'private, max-age=30, stale-while-revalidate=10'
+        'Cache-Control': 'private, max-age=10, stale-while-revalidate=5'
       }
     });
   } catch (error) {
     console.error("Lead GET error:", error);
-    return NextResponse.json({ error: "Failed to fetch lead" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to fetch lead dossier" }, { status: 500 });
   }
 }
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

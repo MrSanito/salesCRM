@@ -1,12 +1,11 @@
 "use client"
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Search, Filter, ChevronDown, Download, Eye, MoreVertical, ChevronRight, XCircle, Edit, Trash2 } from "lucide-react";
 import * as XLSX from "xlsx";
 import BulkUpdateModal from "./BulkUpdateModal";
 import BulkDeleteModal from "./BulkDeleteModal";
 
-// Stage/priority style maps — kept in sync with schema enums
 const STAGE_STYLES: Record<string, string> = {
   NEW: "bg-blue-50 text-blue-600",
   CONTACTED: "bg-cyan-50 text-cyan-600",
@@ -19,12 +18,12 @@ const STAGE_STYLES: Record<string, string> = {
 };
 
 const STAGE_LABEL: Record<string, string> = {
-  NEW: "New", 
-  CONTACTED: "Contacted", 
+  NEW: "New",
+  CONTACTED: "Contacted",
   NOT_INTERESTED: "Not Interested",
-  MEETING_SET: "Meeting Set", 
+  MEETING_SET: "Meeting Set",
   NEGOTIATION: "Negotiation",
-  COLD: "Cold", 
+  COLD: "Cold",
   CHATTING: "Chatting",
   CUSTOMER: "Customer",
 };
@@ -84,16 +83,26 @@ interface LeadsTableProps {
   onLeadClick: (id: string, allIds?: string[]) => void;
   activeNav: string;
   refreshKey?: number;
-  sidebarFilter?: { id: string; status: string | null; subStatus: string | null; dealSizeMin: string | null; dealSizeMax: string | null; industry: string | null; alphabet: string | null; name: string } | null;
+  sidebarFilter?: {
+    id: string;
+    name: string;
+    statuses: string[];
+    subStatuses: string[];
+    dealSizeMin: string | null;
+    dealSizeMax: string | null;
+    industries: string[];
+    sources: string[];
+    alphabet: string | null;
+  } | null;
   onStatsUpdate?: (stats: any) => void;
   initialData?: any;
 }
 
-export default function LeadsTable({ 
-  onLeadClick, 
-  activeNav, 
-  refreshKey = 0, 
-  sidebarFilter, 
+export default function LeadsTable({
+  onLeadClick,
+  activeNav,
+  refreshKey = 0,
+  sidebarFilter,
   onStatsUpdate,
   initialData
 }: LeadsTableProps) {
@@ -101,10 +110,11 @@ export default function LeadsTable({
   const [leads, setLeads] = useState<DbLead[]>(initialData?.leads || []);
   const [totalCount, setTotalCount] = useState(initialData?.pagination?.totalCount || 0);
   const [loading, setLoading] = useState(!initialData);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [activeLeadMenu, setActiveLeadMenu] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  // New States for Pagination & Sorting
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
@@ -112,7 +122,6 @@ export default function LeadsTable({
   const [sortConfig, setSortConfig] = useState<{ key: keyof DbLead | 'lead', direction: 'asc' | 'desc' } | null>(null);
   const [activeColumnFilter, setActiveColumnFilter] = useState<string | null>(null);
   const [columnFilters, setColumnFilters] = useState<Record<string, Set<string>>>({});
-
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -137,39 +146,12 @@ export default function LeadsTable({
       "Owner": lead.owner?.name || "",
       "Created At": new Date(lead.createdAt).toLocaleDateString("en-IN")
     }));
-
     const worksheet = XLSX.utils.json_to_sheet(worksheetData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Leads");
     XLSX.writeFile(workbook, `${filename}.xlsx`);
   };
 
-  const handleExportCSV = (dataToExport: DbLead[], filename: string) => {
-    const worksheetData = dataToExport.map(lead => ({
-      "Person Name": lead.contactName,
-      "Company": lead.company,
-      "Industry": lead.industry || "",
-      "Source": lead.source?.name || "",
-      "Stage": STAGE_LABEL[lead.stage] || lead.stage,
-      "Primary Phone": lead.phone || "",
-      "Secondary Phone": lead.phone2 || "",
-      "Primary Email": lead.email || "",
-      "Secondary Email": lead.email2 || "",
-      "Deal Value (INR)": lead.dealValueInr,
-      "Priority": lead.priority,
-      "Requirement": lead.requirement || "",
-      "Internal Notes": (lead as any).notes || "",
-      "Owner": lead.owner?.name || "",
-      "Created At": new Date(lead.createdAt).toLocaleDateString("en-IN")
-    }));
-
-    const worksheet = XLSX.utils.json_to_sheet(worksheetData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Leads");
-    XLSX.writeFile(workbook, `${filename}.csv`, { bookType: "csv" });
-  };
-
-  // Reset selection and page when filter changes
   useEffect(() => {
     setSelectedLeads(new Set());
     setCurrentPage(1);
@@ -196,68 +178,96 @@ export default function LeadsTable({
   };
 
   const isFirstRun = useRef(true);
+  const leadsRef = useRef(leads);
+  useEffect(() => { leadsRef.current = leads; }, [leads]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearchQuery(searchQuery), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const optimisticLeads = useMemo(() => {
+    // If not loading/refreshing, always show the source of truth
+    if (!loading && !isRefreshing) return leads;
+    
+    let result = [...leads];
+    
+    // Apply local search for immediate feedback
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(l => 
+        l.contactName.toLowerCase().includes(q) || 
+        l.company.toLowerCase().includes(q) || 
+        (l.phone && l.phone.includes(q)) || 
+        (l.email && l.email.toLowerCase().includes(q))
+      );
+    }
+    
+    // Apply local column filters for immediate feedback
+    Object.entries(columnFilters).forEach(([key, values]) => {
+      if (values.size > 0) {
+        if (key === 'stage') {
+          result = result.filter(l => {
+            if (values.has('COLD') && (l.stage === 'COLD' || l.stage === 'CHATTING')) return true;
+            return values.has(l.stage);
+          });
+        } else if (key === 'subStatus') {
+          result = result.filter(l => values.has(l.subStatus));
+        } else if (key === 'source') {
+          result = result.filter(l => l.source && values.has(l.source.name));
+        }
+      }
+    });
+    
+    // If optimistic filtering would leave us with 0 leads but we HAD leads, 
+    // keep showing the previous leads to avoid a "flash of empty state" 
+    // while the server fetches the actual results for the new filter.
+    if (result.length === 0 && leads.length > 0 && isRefreshing) {
+      return leads;
+    }
+    
+    return result;
+  }, [leads, loading, isRefreshing, searchQuery, columnFilters]);
 
   const fetchLeads = useCallback(async () => {
-    // If it's the first run and we have initial data, skip fetching but set first run to false
     if (isFirstRun.current && initialData) {
       isFirstRun.current = false;
-      if (onStatsUpdate && initialData.stats) {
-        onStatsUpdate(initialData.stats);
-      }
+      if (onStatsUpdate && initialData.stats) onStatsUpdate(initialData.stats);
       setLoading(false);
       return;
     }
-    
-    // If it's the first run and we are on the dashboard (indicated by sidebarFilter being undefined/null)
-    // and we DON'T have initialData yet, we should probably wait for it from the parent
-    // to avoid double-fetching.
-    if (isFirstRun.current && !initialData && !sidebarFilter) {
-       // We'll let the parent (DashboardView) handle the first fetch
-       return;
-    }
-
+    if (isFirstRun.current && !initialData && !sidebarFilter) return;
     isFirstRun.current = false;
     
-    setLoading(true);
+    // Only show full loading spinner if we have NO leads
+    if (leadsRef.current.length === 0) setLoading(true);
+    setIsRefreshing(true);
+
     try {
       const params = new URLSearchParams();
       params.set("page", currentPage.toString());
       params.set("pageSize", pageSize.toString());
-      if (searchQuery) params.set("search", searchQuery);
-      if (sortConfig) {
-        params.set("sortBy", sortConfig.key);
-        params.set("sortDir", sortConfig.direction);
-      }
-      if (sidebarFilter) {
-        params.set("sidebarFilterId", sidebarFilter.id);
-      }
-      
+      if (debouncedSearchQuery) params.set("search", debouncedSearchQuery);
+      if (sortConfig) { params.set("sortBy", sortConfig.key); params.set("sortDir", sortConfig.direction); }
+      if (sidebarFilter) params.set("sidebarFilterId", sidebarFilter.id);
       Object.entries(columnFilters).forEach(([key, values]) => {
-        if (values.size > 0) {
-          params.set(`filter_${key}`, Array.from(values).join(","));
-        }
+        if (values.size > 0) params.set(`filter_${key}`, Array.from(values).join(","));
       });
-
       const res = await fetch(`/api/leads/super-list?${params.toString()}`);
       const data = await res.json();
-      
       if (data.leads) setLeads(data.leads);
       if (data.pagination?.totalCount) setTotalCount(data.pagination.totalCount);
-      if (data.stats && onStatsUpdate) {
-        onStatsUpdate(data.stats);
-      }
+      if (data.stats && onStatsUpdate) onStatsUpdate(data.stats);
     } catch (err) {
       console.error("Fetch error:", err);
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
-  }, [currentPage, pageSize, searchQuery, sortConfig, columnFilters, onStatsUpdate, sidebarFilter?.id]);
+  }, [currentPage, pageSize, debouncedSearchQuery, sortConfig, columnFilters, onStatsUpdate, sidebarFilter?.id]);
 
-  useEffect(() => {
-    fetchLeads();
-  }, [fetchLeads, refreshKey, activeNav]);
+  useEffect(() => { fetchLeads(); }, [fetchLeads, refreshKey, activeNav]);
 
-  // Sync initialData when it arrives from parent
   useEffect(() => {
     if (initialData) {
       if (initialData.leads) setLeads(initialData.leads);
@@ -267,39 +277,25 @@ export default function LeadsTable({
     }
   }, [initialData, onStatsUpdate]);
 
-  // Handle Selection
-
   const toggleSelectAll = () => {
-    if (selectedLeads.size === displayedLeads.length) {
-      setSelectedLeads(new Set());
-    } else {
-      setSelectedLeads(new Set(displayedLeads.map(l => l.id)));
-    }
+    if (selectedLeads.size === displayedLeads.length) setSelectedLeads(new Set());
+    else setSelectedLeads(new Set(displayedLeads.map(l => l.id)));
   };
 
   const toggleSelectLead = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     const next = new Set(selectedLeads);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
+    if (next.has(id)) next.delete(id); else next.add(id);
     setSelectedLeads(next);
   };
 
-  // Processing Leads (Now handled by server)
   const searchResults = searchQuery.length >= 2 ? leads.filter(l => {
     const q = searchQuery.toLowerCase();
-    return (
-      l.contactName.toLowerCase().includes(q) || 
-      l.company.toLowerCase().includes(q) ||
-      l.phone?.toLowerCase().includes(q) ||
-      l.email?.toLowerCase().includes(q)
-    );
+    return l.contactName.toLowerCase().includes(q) || l.company.toLowerCase().includes(q) || l.phone?.toLowerCase().includes(q) || l.email?.toLowerCase().includes(q);
   }).slice(0, 8) : [];
 
   const startIndex = (currentPage - 1) * pageSize;
-  const processedLeads = leads;
-  const displayedLeads = leads;
-  const paginatedLeads = leads;
+  const displayedLeads = optimisticLeads;
   const totalPages = Math.ceil(totalCount / pageSize);
 
   const toggleColumnFilter = (column: string, value: string | string[]) => {
@@ -307,14 +303,8 @@ export default function LeadsTable({
       const next = { ...prev };
       const currentSet = new Set(next[column] || []);
       const values = Array.isArray(value) ? value : [value];
-      
       const allExist = values.every(v => currentSet.has(v));
-      if (allExist) {
-        values.forEach(v => currentSet.delete(v));
-      } else {
-        values.forEach(v => currentSet.add(v));
-      }
-      
+      if (allExist) values.forEach(v => currentSet.delete(v)); else values.forEach(v => currentSet.add(v));
       next[column] = currentSet;
       return next;
     });
@@ -327,7 +317,7 @@ export default function LeadsTable({
     const now = new Date();
     const diffH = Math.round((d.getTime() - now.getTime()) / 3600000);
     if (diffH < 0) return "Overdue";
-    if (diffH < 24) return `Today, ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+    if (diffH < 24) return `Today ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
     if (diffH < 48) return "Tomorrow";
     return d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
   }
@@ -339,566 +329,449 @@ export default function LeadsTable({
     return `₹${n.toLocaleString("en-IN")}`;
   }
 
-  // Helper to get unique values for filters
   const getUniqueValues = (key: keyof DbLead) => {
     const values = new Set<string>();
-    leads.forEach(l => {
-      if (l[key]) values.add(String(l[key]));
-    });
+    leads.forEach(l => { if (l[key]) values.add(String(l[key])); });
     return Array.from(values).sort();
   };
 
+  // Shared dropdown filter panel
+  const FilterDropdown = ({ column, children }: { column: string; children: React.ReactNode }) => (
+    activeColumnFilter === column ? (
+      <div className="absolute left-0 top-full mt-1 min-w-[160px] bg-white border border-slate-200 rounded-xl shadow-2xl z-30 py-1 overflow-hidden">
+        <div className="px-3 py-1.5 border-b border-slate-100 flex items-center justify-between">
+          <button onClick={() => setColumnFilters(prev => ({ ...prev, [column]: new Set() }))} className="text-[9px] font-black text-blue-600 uppercase tracking-wider">Clear</button>
+        </div>
+        {children}
+      </div>
+    ) : null
+  );
+
   return (
-    <div className="bg-white rounded-xl border border-slate-200">
-      {/* Delete Confirmation Modal */}
+    <div className="bg-white rounded-xl border border-slate-200 flex flex-col h-full">
+
+      {/* ── Delete Modal ── */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 animate-in zoom-in-95 duration-200 border border-slate-100">
-            <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mb-4 mx-auto text-red-500">
-              <XCircle size={24} />
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 border border-slate-100">
+            <div className="w-10 h-10 bg-red-50 rounded-full flex items-center justify-center mb-3 mx-auto text-red-500">
+              <XCircle size={20} />
             </div>
-            <h3 className="text-lg font-bold text-slate-900 text-center mb-2">Delete Lead Protocol?</h3>
-            <p className="text-slate-500 text-center text-sm mb-6">
-              This will permanently remove the lead data and all associated protocol history. This action cannot be undone.
-            </p>
-            <div className="flex gap-3">
-              <button
-                disabled={isDeleting}
-                onClick={() => setShowDeleteConfirm(null)}
-                className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-50 transition-all disabled:opacity-50"
-              >
-                No, Keep it
-              </button>
-              <button
-                disabled={isDeleting}
-                onClick={() => handleDeleteLead(showDeleteConfirm)}
-                className="flex-1 px-4 py-2.5 rounded-xl bg-red-600 text-white text-sm font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-200 active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                {isDeleting ? "Deleting..." : "Yes, Delete"}
+            <h3 className="text-base font-black text-slate-900 text-center mb-1">Delete this lead?</h3>
+            <p className="text-slate-400 text-center text-xs mb-5">This permanently removes the lead and all its history. Cannot be undone.</p>
+            <div className="flex gap-2">
+              <button disabled={isDeleting} onClick={() => setShowDeleteConfirm(null)} className="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50 transition-all disabled:opacity-50">Keep it</button>
+              <button disabled={isDeleting} onClick={() => handleDeleteLead(showDeleteConfirm)} className="flex-1 px-3 py-2 rounded-xl bg-red-600 text-white text-xs font-black hover:bg-red-700 transition-all shadow-md shadow-red-100 active:scale-95 disabled:opacity-50">
+                {isDeleting ? "Deleting…" : "Yes, Delete"}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 border-b border-slate-100 gap-4">
-        <div>
-          <h2 className="text-[14px] font-semibold text-slate-800 flex items-center gap-2">
-            {sidebarFilter ? `🔍 ${sidebarFilter.name}` : activeNav === "New Leads" ? "New Leads Pipeline" : activeNav === "Alerts" ? "High Priority Alerts" : "All Leads Pipeline"}
-            {(selectedLeads.size > 0 || (displayedLeads.length > 0 && displayedLeads.length < leads.length)) && (
-              <span className={`flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-black border transition-all ${
-                selectedLeads.size > 0 
-                  ? "bg-blue-600 text-white border-blue-700 shadow-sm" 
-                  : "bg-blue-50 text-blue-600 border-blue-100"
-              }`}>
-                {selectedLeads.size > 0 ? selectedLeads.size : displayedLeads.length}
-              </span>
-            )}
-          </h2>
-          <p className="text-[11px] text-slate-400 mt-0.5">
-            {loading ? "Loading..." : `${displayedLeads.length} lead${displayedLeads.length !== 1 ? "s" : ""} detected in current view`}
-          </p>
+      {/* ── Toolbar ── */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 gap-3 flex-shrink-0">
+        {/* Left: Title */}
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="min-w-0">
+            <h2 className="text-[13px] font-black text-slate-900 flex items-center gap-1.5 leading-tight truncate">
+              {sidebarFilter ? `🔍 ${sidebarFilter.name}` : activeNav === "New Leads" ? "New Leads" : activeNav === "Alerts" ? "High Priority" : "All Leads"}
+              {selectedLeads.size > 0 && (
+                <span className="text-[10px] font-black bg-blue-600 text-white px-1.5 py-0.5 rounded-full">{selectedLeads.size}</span>
+              )}
+            </h2>
+            <p className="text-[10px] font-semibold text-slate-400 mt-0.5 leading-none">
+              {loading || isRefreshing ? "Loading…" : `${totalCount.toLocaleString()} lead${totalCount !== 1 ? "s" : ""}`}
+            </p>
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <div className="flex items-center gap-2 flex-1 sm:flex-none">
-            <div className="relative flex-1 sm:flex-none">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-              <input 
-                type="text" 
-                placeholder="Search leads, company..."
-                value={searchQuery}
-                onFocus={() => setShowSearchDropdown(true)}
-                onChange={(e) => { 
-                  setSearchQuery(e.target.value); 
-                  setCurrentPage(1);
-                  setShowSearchDropdown(true);
-                }}
-                className="w-full sm:w-60 pl-10 pr-4 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-4 focus:ring-blue-500/5 transition-all"
-              />
-              
-              {/* Search Results Dropdown */}
-              {showSearchDropdown && searchResults.length > 0 && (
-                <>
-                  <div 
-                    className="fixed inset-0 z-[65]" 
-                    onClick={() => setShowSearchDropdown(false)}
-                  />
-                  <div className="absolute left-0 top-full mt-2 w-full sm:w-80 bg-white border border-slate-200 rounded-2xl shadow-2xl z-[70] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                    <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Quick Results</span>
-                      <span className="text-[9px] font-bold text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded-md">{searchResults.length} found</span>
-                    </div>
-                    <div className="max-h-[320px] overflow-y-auto py-1">
-                      {searchResults.map((result) => (
-                        <button
-                          key={result.id}
-                          onClick={() => {
-                            onLeadClick(result.id, leads.map(l => l.id));
-                            setShowSearchDropdown(false);
-                            setSearchQuery("");
-                          }}
-                          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors group text-left border-b border-slate-50 last:border-0"
-                        >
-                          <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-[10px] font-black text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all">
-                            {result.contactName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between">
-                              <p className="text-[12px] font-bold text-slate-900 truncate group-hover:text-blue-600 transition-colors">
-                                {result.contactName}
-                              </p>
-                              <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${STAGE_STYLES[result.stage]}`}>
-                                {STAGE_LABEL[result.stage] || result.stage}
-                              </span>
-                            </div>
-                            <p className="text-[10px] text-slate-500 truncate mt-0.5">
-                              {result.company} • {result.owner?.name}
-                            </p>
-                          </div>
-                          <ChevronRight size={14} className="text-slate-300 group-hover:text-blue-500 transition-transform group-hover:translate-x-0.5" />
-                        </button>
-                      ))}
-                    </div>
-                    <div className="p-2 bg-slate-50 border-t border-slate-100">
-                      <button 
-                        onClick={() => setShowSearchDropdown(false)}
-                        className="w-full py-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors"
-                      >
-                        Close Results
-                      </button>
-                    </div>
+        {/* Right: Controls */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={12} />
+            <input
+              type="text"
+              placeholder="Search…"
+              value={searchQuery}
+              onFocus={() => setShowSearchDropdown(true)}
+              onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); setShowSearchDropdown(true); }}
+              className="w-44 pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[11px] font-bold text-slate-700 placeholder:text-slate-400 placeholder:font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-300 transition-all"
+            />
+            {showSearchDropdown && searchResults.length > 0 && (
+              <>
+                <div className="fixed inset-0 z-[65]" onClick={() => setShowSearchDropdown(false)} />
+                <div className="absolute left-0 top-full mt-1.5 w-72 bg-white border border-slate-200 rounded-xl shadow-2xl z-[70] overflow-hidden">
+                  <div className="px-3 py-2 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Quick Results</span>
+                    <span className="text-[9px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">{searchResults.length} found</span>
                   </div>
-                </>
-              )}
-            </div>
-
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Show</span>
-              <input 
-                type="number" 
-                min="1"
-                max="100"
-                value={pageSize}
-                onChange={(e) => {
-                  const val = parseInt(e.target.value);
-                  if (!isNaN(val) && val > 0) {
-                    setPageSize(val);
-                    setCurrentPage(1);
-                  }
-                }}
-                className="w-8 bg-transparent text-xs font-black text-slate-700 outline-none text-center"
-              />
-            </div>
+                  <div className="max-h-64 overflow-y-auto">
+                    {searchResults.map((result) => (
+                      <button key={result.id} onClick={() => { onLeadClick(result.id, leads.map(l => l.id)); setShowSearchDropdown(false); setSearchQuery(""); }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-slate-50 transition-colors group text-left border-b border-slate-50 last:border-0">
+                        <div className="w-7 h-7 rounded-full bg-blue-50 flex items-center justify-center text-[9px] font-black text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all flex-shrink-0">
+                          {result.contactName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-1">
+                            <p className="text-[11px] font-bold text-slate-900 truncate group-hover:text-blue-600 transition-colors">{result.contactName}</p>
+                            <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded flex-shrink-0 ${STAGE_STYLES[result.stage]}`}>{STAGE_LABEL[result.stage] || result.stage}</span>
+                          </div>
+                          <p className="text-[9px] text-slate-400 font-medium truncate">{result.company} · {result.owner?.name}</p>
+                        </div>
+                        <ChevronRight size={12} className="text-slate-300 group-hover:text-blue-400 flex-shrink-0" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <button
-                onClick={() => setShowFilterMenu(!showFilterMenu)}
-                className={`flex items-center gap-1.5 text-[11px] font-bold border px-3 py-1.5 rounded-xl transition-all ${showFilterMenu || sortConfig || Object.keys(columnFilters).length > 0 ? "bg-slate-100 border-slate-300 text-slate-900 shadow-sm" : "text-slate-600 border-slate-200 hover:bg-slate-50"}`}
-              >
-                <Filter size={12} /> Filter
-              </button>
-              {showFilterMenu && (
-                <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-2xl z-[60] overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
-                  <div className="px-3 py-2 border-b border-slate-50 bg-slate-50/50">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Global Sorting</p>
-                  </div>
-                  <button onClick={() => { setSortConfig(null); setShowFilterMenu(false); }} className="w-full text-left px-4 py-2 text-[11px] hover:bg-slate-50 transition-colors font-bold text-slate-700">Newest Created</button>
-                  <button onClick={() => { setSortConfig({ key: 'dealValueInr', direction: 'desc' }); setShowFilterMenu(false); }} className="w-full text-left px-4 py-2 text-[11px] hover:bg-slate-50 transition-colors font-bold text-slate-700 border-t border-slate-50">Value: High to Low</button>
-                  <button onClick={() => { setColumnFilters({}); setSortConfig(null); setShowFilterMenu(false); }} className="w-full text-left px-4 py-2 text-[11px] hover:bg-red-50 text-red-600 transition-colors font-bold border-t border-slate-50">Clear All</button>
-                </div>
-              )}
-            </div>
+          {/* Show count */}
+          <div className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg">
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Show</span>
+            <input type="number" min="1" max="100" value={pageSize}
+              onChange={(e) => { const val = parseInt(e.target.value); if (!isNaN(val) && val > 0) { setPageSize(val); setCurrentPage(1); } }}
+              className="w-7 bg-transparent text-[11px] font-black text-slate-700 outline-none text-center" />
+          </div>
 
-            <div className="relative">
-              <button
-                onClick={() => setShowExportMenu(!showExportMenu)}
-                className={`flex items-center gap-1.5 text-[11px] font-bold border px-3 py-1.5 rounded-xl transition-all ${showExportMenu ? "bg-slate-100 border-slate-300 text-slate-900 shadow-sm" : "text-slate-600 border-slate-200 hover:bg-slate-50"}`}
-              >
-                <Download size={12} /> Export
-              </button>
-              {showExportMenu && (
-                <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-2xl z-[60] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                  <button onClick={() => { handleExportExcel(leads, "All_Leads"); setShowExportMenu(false); }} className="w-full text-left px-4 py-2.5 text-[11px] hover:bg-slate-50 transition-colors font-bold text-slate-700">Excel (.xlsx) - All</button>
-                  <button onClick={() => { handleExportExcel(displayedLeads, "Filtered_Leads"); setShowExportMenu(false); }} className="w-full text-left px-4 py-2.5 text-[11px] hover:bg-slate-50 transition-colors font-bold text-slate-700 border-t border-slate-50">Excel (.xlsx) - Filtered</button>
+          {/* Filter */}
+          <div className="relative">
+            <button onClick={() => setShowFilterMenu(!showFilterMenu)}
+              className={`flex items-center gap-1 text-[11px] font-bold border px-2.5 py-1.5 rounded-lg transition-all ${showFilterMenu || sortConfig || Object.keys(columnFilters).length > 0 ? "bg-slate-900 text-white border-slate-900" : "text-slate-600 border-slate-200 hover:bg-slate-50"}`}>
+              <Filter size={11} /> Filter
+            </button>
+            {showFilterMenu && (
+              <div className="absolute right-0 top-full mt-1.5 w-44 bg-white border border-slate-200 rounded-xl shadow-2xl z-[60] overflow-hidden">
+                <div className="px-3 py-2 bg-slate-50 border-b border-slate-100">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Sort by</p>
                 </div>
-              )}
-            </div>
-
-            {selectedLeads.size > 0 && (
-              <div className="flex items-center gap-1.5 animate-in fade-in slide-in-from-right-2 duration-300">
-                <div className="w-[1px] h-6 bg-slate-200 mx-1" />
-                <button
-                  onClick={() => setShowBulkUpdate(true)}
-                  className="flex items-center justify-center w-8 h-8 rounded-xl bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
-                  title="Bulk Update"
-                >
-                  <Edit size={12} />
-                </button>
-                <button
-                  onClick={() => setShowBulkDelete(true)}
-                  className="flex items-center justify-center w-8 h-8 rounded-xl bg-red-50 text-red-600 border border-red-200 hover:bg-red-600 hover:text-white transition-all shadow-sm"
-                  title="Bulk Delete"
-                >
-                  <Trash2 size={12} />
-                </button>
+                <button onClick={() => { setSortConfig(null); setShowFilterMenu(false); }} className="w-full text-left px-3 py-2 text-[11px] font-bold text-slate-700 hover:bg-slate-50 transition-colors">Newest First</button>
+                <button onClick={() => { setSortConfig({ key: 'dealValueInr', direction: 'desc' }); setShowFilterMenu(false); }} className="w-full text-left px-3 py-2 text-[11px] font-bold text-slate-700 hover:bg-slate-50 transition-colors border-t border-slate-50">Value: High → Low</button>
+                <button onClick={() => { setColumnFilters({}); setSortConfig(null); setShowFilterMenu(false); }} className="w-full text-left px-3 py-2 text-[11px] font-black text-red-500 hover:bg-red-50 transition-colors border-t border-slate-100">Clear All Filters</button>
               </div>
             )}
           </div>
+
+          {/* Export */}
+          <div className="relative">
+            <button onClick={() => setShowExportMenu(!showExportMenu)}
+              className={`flex items-center gap-1 text-[11px] font-bold border px-2.5 py-1.5 rounded-lg transition-all ${showExportMenu ? "bg-slate-900 text-white border-slate-900" : "text-slate-600 border-slate-200 hover:bg-slate-50"}`}>
+              <Download size={11} /> Export
+            </button>
+            {showExportMenu && (
+              <div className="absolute right-0 top-full mt-1.5 w-44 bg-white border border-slate-200 rounded-xl shadow-2xl z-[60] overflow-hidden">
+                <button onClick={() => { handleExportExcel(leads, "All_Leads"); setShowExportMenu(false); }} className="w-full text-left px-3 py-2.5 text-[11px] font-bold text-slate-700 hover:bg-slate-50 transition-colors">Excel — All Leads</button>
+                <button onClick={() => { handleExportExcel(displayedLeads, "Filtered_Leads"); setShowExportMenu(false); }} className="w-full text-left px-3 py-2.5 text-[11px] font-bold text-slate-700 hover:bg-slate-50 transition-colors border-t border-slate-50">Excel — Filtered</button>
+              </div>
+            )}
+          </div>
+
+          {/* Bulk actions */}
+          {selectedLeads.size > 0 && (
+            <div className="flex items-center gap-1.5">
+              <div className="w-px h-5 bg-slate-200" />
+              <button onClick={() => setShowBulkUpdate(true)} title="Bulk Update"
+                className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-600 hover:text-white transition-all flex items-center justify-center">
+                <Edit size={11} />
+              </button>
+              <button onClick={() => setShowBulkDelete(true)} title="Bulk Delete"
+                className="w-7 h-7 rounded-lg bg-red-50 text-red-600 border border-red-200 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center">
+                <Trash2 size={11} />
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="w-full overflow-x-auto scrollbar-hide">
-        <table className="w-full table-auto text-[13px]">
-          <thead>
-            <tr className="bg-slate-50 border-b border-slate-100">
-              <th className="w-[40px] px-3 py-2.5">
-                <input 
-                  type="checkbox" 
-                  checked={selectedLeads.size > 0 && selectedLeads.size === displayedLeads.length}
-                  onChange={toggleSelectAll}
-                  className="appearance-none w-4 h-4 rounded border-2 border-slate-400 bg-white checked:bg-blue-600 checked:border-blue-600 transition-all cursor-pointer relative checked:after:content-['✓'] checked:after:absolute checked:after:text-white checked:after:text-[10px] checked:after:font-bold checked:after:left-[1.5px] checked:after:top-[-1.5px]"
-                />
+      {/* ── Table ── */}
+      <div className="flex-1 overflow-auto relative">
+        {(loading || isRefreshing) && leads.length > 0 && (
+          <div className="absolute top-0 left-0 right-0 h-0.5 bg-blue-500/10 z-20 overflow-hidden">
+            <div className="h-full bg-blue-600 animate-pulse w-full" />
+          </div>
+        )}
+        <table className="w-full text-[12px]" style={{ tableLayout: "fixed" }}>
+          <colgroup>
+            <col style={{ width: 36 }} />          {/* checkbox */}
+            <col style={{ width: "17%" }} />        {/* lead */}
+            <col style={{ width: "13%" }} />        {/* company */}
+            <col style={{ width: "9%" }} />         {/* stage */}
+            <col style={{ width: "10%" }} />        {/* sub-status */}
+            <col style={{ width: "11%" }} />        {/* phone */}
+            <col style={{ width: "9%" }} />         {/* source */}
+            <col style={{ width: "8%" }} />         {/* owner */}
+            <col style={{ width: "9%" }} />         {/* follow-up */}
+            <col style={{ width: "7%" }} />         {/* value */}
+            <col style={{ width: 36 }} />           {/* actions */}
+          </colgroup>
+
+          <thead className="sticky top-0 z-10 bg-slate-50 border-b border-slate-100">
+            <tr>
+              <th className="px-2 py-2">
+                <input type="checkbox" checked={selectedLeads.size > 0 && selectedLeads.size === displayedLeads.length} onChange={toggleSelectAll}
+                  className="appearance-none w-3.5 h-3.5 rounded border-2 border-slate-300 bg-white checked:bg-blue-600 checked:border-blue-600 transition-all cursor-pointer relative checked:after:content-['✓'] checked:after:absolute checked:after:text-white checked:after:text-[8px] checked:after:font-black checked:after:left-[1px] checked:after:top-[-2px]" />
               </th>
-              {/* Interactive Headers */}
-              <th 
-                className="w-[15%] text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider px-3 py-2.5 cursor-pointer hover:bg-slate-100 transition-colors group"
-                onClick={() => setSortConfig(prev => ({ key: 'lead', direction: prev?.key === 'lead' && prev.direction === 'asc' ? 'desc' : 'asc' }))}
-              >
-                <div className="flex items-center gap-1">
-                  Lead {sortConfig?.key === 'lead' && (sortConfig.direction === 'asc' ? "↑" : "↓")}
-                </div>
+
+              {/* Lead — sortable */}
+              <th className="text-left px-2 py-2 cursor-pointer select-none group" onClick={() => setSortConfig(p => ({ key: 'lead', direction: p?.key === 'lead' && p.direction === 'asc' ? 'desc' : 'asc' }))}>
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider group-hover:text-slate-800 transition-colors">
+                  Lead {sortConfig?.key === 'lead' ? (sortConfig.direction === 'asc' ? "↑" : "↓") : ""}
+                </span>
               </th>
-              <th 
-                className="hidden md:table-cell w-[12%] text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider px-4 py-2.5 cursor-pointer hover:bg-slate-100 transition-colors group"
-                onClick={() => setSortConfig(prev => ({ key: 'company', direction: prev?.key === 'company' && prev.direction === 'asc' ? 'desc' : 'asc' }))}
-              >
-                <div className="flex items-center gap-1">
-                  Company {sortConfig?.key === 'company' && (sortConfig.direction === 'asc' ? "↑" : "↓")}
-                </div>
+
+              {/* Company — sortable */}
+              <th className="text-left px-2 py-2 cursor-pointer select-none group" onClick={() => setSortConfig(p => ({ key: 'company', direction: p?.key === 'company' && p.direction === 'asc' ? 'desc' : 'asc' }))}>
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider group-hover:text-slate-800 transition-colors">
+                  Company {sortConfig?.key === 'company' ? (sortConfig.direction === 'asc' ? "↑" : "↓") : ""}
+                </span>
               </th>
-              
-              {/* Filterable Headers */}
-              <th className="hidden lg:table-cell w-[10%] text-left px-2 py-2.5">
+
+              {/* Stage — filterable */}
+              <th className="text-left px-2 py-2">
                 <div className="relative inline-block">
-                  <button 
-                    onClick={() => setActiveColumnFilter(activeColumnFilter === 'industry' ? null : 'industry')}
-                    className={`text-[11px] font-bold uppercase tracking-wider flex items-center gap-1 hover:text-slate-900 transition-colors ${columnFilters['industry']?.size ? "text-blue-600" : "text-slate-500"}`}
-                  >
-                    Industry <Filter size={10} />
+                  <button onClick={() => setActiveColumnFilter(activeColumnFilter === 'stage' ? null : 'stage')}
+                    className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-0.5 transition-colors ${columnFilters['stage']?.size ? "text-blue-600" : "text-slate-500 hover:text-slate-800"}`}>
+                    Status <Filter size={9} />
                   </button>
-                  {activeColumnFilter === 'industry' && (
-                    <div className="absolute left-0 top-full mt-1 w-48 bg-white border border-slate-200 rounded-lg shadow-xl z-30 py-1">
-                      <div className="px-3 py-1.5 border-b border-slate-50 mb-1">
-                        <button onClick={() => setColumnFilters(prev => ({ ...prev, industry: new Set() }))} className="text-[9px] font-bold text-blue-600 uppercase">Clear</button>
-                      </div>
-                      <div className="max-h-48 overflow-y-auto">
-                        {getUniqueValues('industry').map(v => (
-                          <label key={v} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer">
-                            <input 
-                              type="checkbox" 
-                              checked={columnFilters['industry']?.has(v)} 
-                              onChange={() => toggleColumnFilter('industry', v)}
-                              className="appearance-none w-3.5 h-3.5 rounded border-2 border-slate-400 bg-white checked:bg-blue-600 checked:border-blue-600 transition-all cursor-pointer relative checked:after:content-['✓'] checked:after:absolute checked:after:text-white checked:after:text-[9px] checked:after:font-bold checked:after:left-[1px] checked:after:top-[-2px]"
-                            />
-                            <span className="text-[11px] text-slate-700 font-medium truncate">{v}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  <FilterDropdown column="stage">
+                    {["NEW", "CONTACTED", "COLD", "MEETING_SET", "NEGOTIATION", "CUSTOMER", "NOT_INTERESTED"].map(v => (
+                      <label key={v} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer">
+                        <input type="checkbox" checked={columnFilters['stage']?.has(v)} onChange={() => toggleColumnFilter('stage', v === 'COLD' ? ['COLD', 'CHATTING'] : v)}
+                          className="appearance-none w-3 h-3 rounded border-2 border-slate-300 bg-white checked:bg-blue-600 checked:border-blue-600 transition-all cursor-pointer relative checked:after:content-['✓'] checked:after:absolute checked:after:text-white checked:after:text-[8px] checked:after:font-black checked:after:left-[0.5px] checked:after:top-[-2px]" />
+                        <span className="text-[11px] font-semibold text-slate-700">{v === 'COLD' ? 'Cold/Chatting' : STAGE_LABEL[v]}</span>
+                      </label>
+                    ))}
+                  </FilterDropdown>
                 </div>
               </th>
 
-              <th className="hidden lg:table-cell w-[10%] text-left px-2 py-2.5">
+              {/* Sub-status — filterable */}
+              <th className="text-left px-2 py-2">
                 <div className="relative inline-block">
-                  <button 
-                    onClick={() => setActiveColumnFilter(activeColumnFilter === 'source' ? null : 'source')}
-                    className={`text-[11px] font-bold uppercase tracking-wider flex items-center gap-1 hover:text-slate-900 transition-colors ${columnFilters['source']?.size ? "text-blue-600" : "text-slate-500"}`}
-                  >
-                    Source <Filter size={10} />
+                  <button onClick={() => setActiveColumnFilter(activeColumnFilter === 'subStatus' ? null : 'subStatus')}
+                    className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-0.5 transition-colors ${columnFilters['subStatus']?.size ? "text-blue-600" : "text-slate-500 hover:text-slate-800"}`}>
+                    Sub-status <Filter size={9} />
                   </button>
-                  {activeColumnFilter === 'source' && (
-                    <div className="absolute left-0 top-full mt-1 w-48 bg-white border border-slate-200 rounded-lg shadow-xl z-30 py-1">
-                      <div className="px-3 py-1.5 border-b border-slate-50 mb-1">
-                        <button onClick={() => setColumnFilters(prev => ({ ...prev, source: new Set() }))} className="text-[9px] font-bold text-blue-600 uppercase">Clear</button>
-                      </div>
-                      <div className="max-h-48 overflow-y-auto">
-                        {Array.from(new Set(leads.map(l => l.source?.name).filter(Boolean))).sort().map(v => (
-                          <label key={v as string} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer">
-                            <input 
-                              type="checkbox" 
-                              checked={columnFilters['source']?.has(v as string)} 
-                              onChange={() => toggleColumnFilter('source', v as string)}
-                              className="appearance-none w-3.5 h-3.5 rounded border-2 border-slate-400 bg-white checked:bg-blue-600 checked:border-blue-600 transition-all cursor-pointer relative checked:after:content-['✓'] checked:after:absolute checked:after:text-white checked:after:text-[9px] checked:after:font-bold checked:after:left-[1px] checked:after:top-[-2px]"
-                            />
-                            <span className="text-[11px] text-slate-700 font-medium truncate">{v as string}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  <FilterDropdown column="subStatus">
+                    {Object.keys(SUB_STATUS_LABEL).map(v => (
+                      <label key={v} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer">
+                        <input type="checkbox" checked={columnFilters['subStatus']?.has(v)} onChange={() => toggleColumnFilter('subStatus', v)}
+                          className="appearance-none w-3 h-3 rounded border-2 border-slate-300 bg-white checked:bg-blue-600 checked:border-blue-600 transition-all cursor-pointer relative checked:after:content-['✓'] checked:after:absolute checked:after:text-white checked:after:text-[8px] checked:after:font-black checked:after:left-[0.5px] checked:after:top-[-2px]" />
+                        <span className="text-[11px] font-semibold text-slate-700">{SUB_STATUS_LABEL[v]}</span>
+                      </label>
+                    ))}
+                  </FilterDropdown>
                 </div>
               </th>
 
-              <th className="w-[8%] text-left px-2 sm:px-3 py-2.5">
+              {/* Phone */}
+              <th className="text-left px-2 py-2">
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Phone</span>
+              </th>
+
+              {/* Source — filterable */}
+              <th className="text-left px-2 py-2">
                 <div className="relative inline-block">
-                  <button 
-                    onClick={() => setActiveColumnFilter(activeColumnFilter === 'stage' ? null : 'stage')}
-                    className={`text-[11px] font-bold uppercase tracking-wider flex items-center gap-1 hover:text-slate-900 transition-colors ${columnFilters['stage']?.size ? "text-blue-600" : "text-slate-500"}`}
-                  >
-                    Status <Filter size={10} />
+                  <button onClick={() => setActiveColumnFilter(activeColumnFilter === 'source' ? null : 'source')}
+                    className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-0.5 transition-colors ${columnFilters['source']?.size ? "text-blue-600" : "text-slate-500 hover:text-slate-800"}`}>
+                    Source <Filter size={9} />
                   </button>
-                  {activeColumnFilter === 'stage' && (
-                    <div className="absolute left-0 top-full mt-1 w-40 bg-white border border-slate-200 rounded-lg shadow-xl z-30 py-1">
-                      <div className="px-3 py-1.5 border-b border-slate-50 mb-1">
-                        <button onClick={() => setColumnFilters(prev => ({ ...prev, stage: new Set() }))} className="text-[9px] font-bold text-blue-600 uppercase">Clear</button>
-                      </div>
-                      {["NEW", "CONTACTED", "COLD", "MEETING_SET", "NEGOTIATION", "CUSTOMER", "NOT_INTERESTED"].map(v => (
-                        <label key={v} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer">
-                          <input 
-                            type="checkbox" 
-                            checked={columnFilters['stage']?.has(v)} 
-                            onChange={() => toggleColumnFilter('stage', v === 'COLD' ? ['COLD', 'CHATTING'] : v)}
-                            className="appearance-none w-3.5 h-3.5 rounded border-2 border-slate-400 bg-white checked:bg-blue-600 checked:border-blue-600 transition-all cursor-pointer relative checked:after:content-['✓'] checked:after:absolute checked:after:text-white checked:after:text-[9px] checked:after:font-bold checked:after:left-[1px] checked:after:top-[-2px]"
-                          />
-                          <span className="text-[11px] text-slate-700 font-medium">{v === 'COLD' ? 'Cold Chatting' : STAGE_LABEL[v]}</span>
+                  <FilterDropdown column="source">
+                    <div className="max-h-44 overflow-y-auto">
+                      {Array.from(new Set(leads.map(l => l.source?.name).filter(Boolean))).sort().map(v => (
+                        <label key={v as string} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer">
+                          <input type="checkbox" checked={columnFilters['source']?.has(v as string)} onChange={() => toggleColumnFilter('source', v as string)}
+                            className="appearance-none w-3 h-3 rounded border-2 border-slate-300 bg-white checked:bg-blue-600 checked:border-blue-600 transition-all cursor-pointer" />
+                          <span className="text-[11px] font-semibold text-slate-700 truncate">{v as string}</span>
                         </label>
                       ))}
                     </div>
-                  )}
+                  </FilterDropdown>
                 </div>
               </th>
 
-              <th className="w-[10%] text-left px-2 sm:px-3 py-2.5">
-                <div className="relative inline-block">
-                  <button 
-                    onClick={() => setActiveColumnFilter(activeColumnFilter === 'subStatus' ? null : 'subStatus')}
-                    className={`text-[11px] font-bold uppercase tracking-wider flex items-center gap-1 hover:text-slate-900 transition-colors ${columnFilters['subStatus']?.size ? "text-blue-600" : "text-slate-500"}`}
-                  >
-                    Sub-status <Filter size={10} />
-                  </button>
-                  {activeColumnFilter === 'subStatus' && (
-                    <div className="absolute left-0 top-full mt-1 w-44 bg-white border border-slate-200 rounded-lg shadow-xl z-30 py-1">
-                      <div className="px-3 py-1.5 border-b border-slate-50 mb-1">
-                        <button onClick={() => setColumnFilters(prev => ({ ...prev, subStatus: new Set() }))} className="text-[9px] font-bold text-blue-600 uppercase">Clear</button>
-                      </div>
-                      {Object.keys(SUB_STATUS_LABEL).map(v => (
-                        <label key={v} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer">
-                          <input 
-                            type="checkbox" 
-                            checked={columnFilters['subStatus']?.has(v)} 
-                            onChange={() => toggleColumnFilter('subStatus', v)}
-                            className="appearance-none w-3.5 h-3.5 rounded border-2 border-slate-400 bg-white checked:bg-blue-600 checked:border-blue-600 transition-all cursor-pointer relative checked:after:content-['✓'] checked:after:absolute checked:after:text-white checked:after:text-[9px] checked:after:font-bold checked:after:left-[1px] checked:after:top-[-2px]"
-                          />
-                          <span className="text-[11px] text-slate-700 font-medium">{SUB_STATUS_LABEL[v]}</span>
-                        </label>
-                      ))}
-                    </div>
-                  )}
-                </div>
+              {/* Owner */}
+              <th className="text-left px-2 py-2">
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Owner</span>
               </th>
 
-              <th className="hidden sm:table-cell w-[10%] text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider px-2 sm:px-3 py-2.5">Phone</th>
-              <th className="hidden lg:table-cell w-[10%] text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider px-3 py-2.5">Owner</th>
-              <th className="hidden xl:table-cell w-[10%] text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider px-3 py-2.5">Last Comm</th>
-              <th className="hidden sm:table-cell w-[12%] text-left px-3 py-2.5">
+              {/* Follow-up — filterable */}
+              <th className="text-left px-2 py-2">
                 <div className="relative inline-block">
-                  <button 
-                    onClick={() => setActiveColumnFilter(activeColumnFilter === 'followup' ? null : 'followup')}
-                    className={`text-[11px] font-bold uppercase tracking-wider flex items-center gap-1 hover:text-slate-900 transition-colors ${columnFilters['followup']?.size ? "text-blue-600" : "text-slate-500"}`}
-                  >
-                    Follow Up <Filter size={10} />
+                  <button onClick={() => setActiveColumnFilter(activeColumnFilter === 'followup' ? null : 'followup')}
+                    className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-0.5 transition-colors ${columnFilters['followup']?.size ? "text-blue-600" : "text-slate-500 hover:text-slate-800"}`}>
+                    Follow-up <Filter size={9} />
                   </button>
                   {activeColumnFilter === 'followup' && (
-                    <div className="absolute left-0 top-full mt-1 w-40 bg-white border border-slate-200 rounded-lg shadow-xl z-30 py-1">
-                      <button onClick={() => { toggleColumnFilter('followup', 'OVERDUE'); setActiveColumnFilter(null); }} className="w-full text-left px-3 py-2 text-[11px] hover:bg-slate-50 text-red-600 font-bold">Overdue Only</button>
-                      <button onClick={() => { toggleColumnFilter('followup', 'TODAY'); setActiveColumnFilter(null); }} className="w-full text-left px-3 py-2 text-[11px] hover:bg-slate-50 text-blue-600 font-bold border-t border-slate-50">Today Only</button>
-                      <button onClick={() => { setColumnFilters(prev => ({ ...prev, followup: new Set() })); setActiveColumnFilter(null); }} className="w-full text-left px-3 py-2 text-[11px] hover:bg-slate-50 text-slate-400 font-bold border-t border-slate-50">Clear Filter</button>
+                    <div className="absolute left-0 top-full mt-1 w-36 bg-white border border-slate-200 rounded-xl shadow-2xl z-30 overflow-hidden">
+                      <button onClick={() => { toggleColumnFilter('followup', 'OVERDUE'); setActiveColumnFilter(null); }} className="w-full text-left px-3 py-2 text-[11px] font-bold text-red-600 hover:bg-red-50 transition-colors">Overdue</button>
+                      <button onClick={() => { toggleColumnFilter('followup', 'TODAY'); setActiveColumnFilter(null); }} className="w-full text-left px-3 py-2 text-[11px] font-bold text-blue-600 hover:bg-blue-50 transition-colors border-t border-slate-50">Today</button>
+                      <button onClick={() => { setColumnFilters(prev => ({ ...prev, followup: new Set() })); setActiveColumnFilter(null); }} className="w-full text-left px-3 py-2 text-[11px] font-bold text-slate-400 hover:bg-slate-50 transition-colors border-t border-slate-100">Clear</button>
                     </div>
                   )}
                 </div>
               </th>
-              <th 
-                className="hidden xl:table-cell w-[6%] text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider px-3 py-2.5 cursor-pointer hover:bg-slate-100 transition-colors group"
-                onClick={() => setSortConfig(prev => ({ key: 'dealValueInr', direction: prev?.key === 'dealValueInr' && prev.direction === 'asc' ? 'desc' : 'asc' }))}
-              >
-                <div className="flex items-center gap-1">
-                  Value {sortConfig?.key === 'dealValueInr' && (sortConfig.direction === 'asc' ? "↑" : "↓")}
-                </div>
+
+              {/* Value — sortable */}
+              <th className="text-left px-2 py-2 cursor-pointer select-none group" onClick={() => setSortConfig(p => ({ key: 'dealValueInr', direction: p?.key === 'dealValueInr' && p.direction === 'asc' ? 'desc' : 'asc' }))}>
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider group-hover:text-slate-800 transition-colors">
+                  Value {sortConfig?.key === 'dealValueInr' ? (sortConfig.direction === 'asc' ? "↑" : "↓") : ""}
+                </span>
               </th>
-              <th 
-                className="hidden xl:table-cell w-[4%] text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider px-3 py-2.5 cursor-pointer hover:bg-slate-100 transition-colors group"
-                onClick={() => setSortConfig(prev => ({ key: 'priority', direction: prev?.key === 'priority' && prev.direction === 'asc' ? 'desc' : 'asc' }))}
-              >
-                <div className="flex items-center gap-1">
-                  Priority {sortConfig?.key === 'priority' && (sortConfig.direction === 'asc' ? "↑" : "↓")}
-                </div>
-              </th>
-              <th className="w-[45px] text-right px-2 sm:px-4 py-2.5"></th>
+
+              <th className="px-2 py-2" />
             </tr>
           </thead>
+
           <tbody className="divide-y divide-slate-50">
-            {loading && (
-              <tr><td colSpan={11} className="text-center py-20">
-                <div className="inline-block w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mb-2" />
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Calibrating Pipeline...</p>
-              </td></tr>
+            {(loading || isRefreshing) && leads.length === 0 && (
+              <tr>
+                <td colSpan={11} className="text-center py-16">
+                  <div className="inline-block w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mb-2" />
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Loading pipeline…</p>
+                </td>
+              </tr>
             )}
-            {!loading && paginatedLeads.length === 0 && (
-              <tr><td colSpan={11} className="text-center py-20 text-slate-400 text-[13px]">No leads matching protocol filters</td></tr>
+            {!loading && !isRefreshing && displayedLeads.length === 0 && (
+              <tr>
+                <td colSpan={11} className="text-center py-16 text-[12px] font-semibold text-slate-400">No leads match current filters</td>
+              </tr>
             )}
-            {paginatedLeads.map((lead) => (
-              <tr
-                key={lead.id}
-                onClick={() => onLeadClick(lead.id, displayedLeads.map(l => l.id))}
-                className={`group hover:bg-slate-50 transition-all cursor-pointer ${selectedLeads.has(lead.id) ? "bg-blue-50/30" : ""}`}
-              >
-                <td className="px-3 py-3" onClick={(e) => toggleSelectLead(lead.id, e)}>
-                  <input 
-                    type="checkbox" 
-                    checked={selectedLeads.has(lead.id)}
-                    onChange={() => {}} // Handled by row click
-                    className="appearance-none w-4 h-4 rounded border-2 border-slate-400 bg-white checked:bg-blue-600 checked:border-blue-600 transition-all cursor-pointer relative checked:after:content-['✓'] checked:after:absolute checked:after:text-white checked:after:text-[10px] checked:after:font-bold checked:after:left-[1.5px] checked:after:top-[-1.5px]"
-                  />
-                </td>
-                <td className="px-3 py-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-600 flex-shrink-0 group-hover:bg-white border border-transparent group-hover:border-slate-200 transition-all">
-                      {lead.contactName.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
+
+            {displayedLeads.map((lead) => {
+              const isOverdue = lead.followUpAt && new Date(lead.followUpAt) < new Date();
+              return (
+                <tr key={lead.id} onClick={() => onLeadClick(lead.id, displayedLeads.map(l => l.id))}
+                  className={`group hover:bg-slate-50/80 transition-colors cursor-pointer ${selectedLeads.has(lead.id) ? "bg-blue-50/40" : ""}`}>
+
+                  {/* Checkbox */}
+                  <td className="px-2 py-2" onClick={(e) => toggleSelectLead(lead.id, e)}>
+                    <input type="checkbox" checked={selectedLeads.has(lead.id)} onChange={() => {}}
+                      className="appearance-none w-3.5 h-3.5 rounded border-2 border-slate-300 bg-white checked:bg-blue-600 checked:border-blue-600 transition-all cursor-pointer relative checked:after:content-['✓'] checked:after:absolute checked:after:text-white checked:after:text-[8px] checked:after:font-black checked:after:left-[1px] checked:after:top-[-2px]" />
+                  </td>
+
+                  {/* Lead name + avatar */}
+                  <td className="px-2 py-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-[9px] font-black text-slate-600 flex-shrink-0 group-hover:bg-white group-hover:border group-hover:border-slate-200 transition-all">
+                        {lead.contactName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
+                      </div>
+                      <span className="font-bold text-[12px] text-slate-900 truncate group-hover:text-blue-600 transition-colors leading-tight">{lead.contactName}</span>
                     </div>
-                    <div className="min-w-0">
-                      <span className="font-bold text-slate-900 block truncate group-hover:text-blue-600 transition-colors">{lead.contactName}</span>
-                      <span className="text-[10px] text-slate-400 font-medium block md:hidden truncate">{lead.company}</span>
+                  </td>
+
+                  {/* Company */}
+                  <td className="px-2 py-2">
+                    <span className="text-[11px] font-semibold text-slate-600 truncate block">{lead.company}</span>
+                  </td>
+
+                  {/* Stage badge */}
+                  <td className="px-2 py-2">
+                    <span className={`inline-block px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-tight whitespace-nowrap ${STAGE_STYLES[lead.stage] ?? "bg-slate-100 text-slate-500"}`}>
+                      {STAGE_LABEL[lead.stage] || lead.stage}
+                    </span>
+                  </td>
+
+                  {/* Sub-status badge */}
+                  <td className="px-2 py-2">
+                    <span className={`inline-block px-1.5 py-0.5 rounded-md text-[9px] font-bold whitespace-nowrap border ${SUB_STATUS_STYLES[lead.subStatus] ?? "bg-slate-50 text-slate-400 border-slate-100"}`}>
+                      {SUB_STATUS_LABEL[lead.subStatus] || lead.subStatus}
+                    </span>
+                  </td>
+
+                  {/* Phone */}
+                  <td className="px-2 py-2">
+                    <span className="text-[11px] font-bold text-slate-600 font-mono tracking-tight">{lead.phone || "—"}</span>
+                  </td>
+
+                  {/* Source */}
+                  <td className="px-2 py-2">
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-tight truncate block">{lead.source?.name || "—"}</span>
+                  </td>
+
+                  {/* Owner */}
+                  <td className="px-2 py-2">
+                    <span className="text-[11px] font-semibold text-slate-500 truncate block">{lead.owner?.name.split(" ")[0] || "—"}</span>
+                  </td>
+
+                  {/* Follow-up */}
+                  <td className="px-2 py-2">
+                    <span className={`text-[11px] font-bold whitespace-nowrap ${isOverdue ? "text-red-500" : "text-slate-400"}`}>
+                      {formatFollowUp(lead.followUpAt)}
+                    </span>
+                  </td>
+
+                  {/* Value + priority dot */}
+                  <td className="px-2 py-2">
+                    <div className="flex items-center gap-1.5">
+                      <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${lead.priority === "HIGH" ? "bg-red-500" : lead.priority === "MEDIUM" ? "bg-amber-400" : "bg-green-400"}`} />
+                      <span className="text-[11px] font-black text-slate-800">{formatValue(lead.dealValueInr)}</span>
                     </div>
-                  </div>
-                </td>
-                <td className="hidden md:table-cell px-3 py-3 text-slate-600 font-medium truncate">{lead.company}</td>
-                <td className="hidden lg:table-cell px-2 py-3 text-slate-950 text-[11px] font-black tracking-tight truncate uppercase">{lead.industry || "—"}</td>
-                <td className="hidden lg:table-cell px-2 py-3 text-slate-950 text-[11px] font-black tracking-tight truncate uppercase">{lead.source?.name || "—"}</td>
-                <td className="px-2 sm:px-3 py-3">
-                  <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-tighter ${STAGE_STYLES[lead.stage] ?? "bg-slate-100 text-slate-600"}`}>
-                    {STAGE_LABEL[lead.stage] || lead.stage}
-                  </span>
-                </td>
-                <td className="px-2 sm:px-3 py-3">
-                  <span className={`px-2 py-0.5 rounded-lg text-[9px] font-bold whitespace-nowrap border ${SUB_STATUS_STYLES[lead.subStatus] ?? "bg-slate-50 text-slate-400 border-slate-100"}`}>
-                    {SUB_STATUS_LABEL[lead.subStatus] || lead.subStatus}
-                  </span>
-                </td>
-                <td className="hidden sm:table-cell px-2 sm:px-3 py-3 font-bold text-slate-600 text-[11px] sm:text-[12px] font-mono">{lead.phone || "—"}</td>
-                <td className="hidden lg:table-cell px-3 py-3 text-slate-500 font-medium truncate">{lead.owner?.name.split(" ")[0] || "—"}</td>
-                <td className="hidden xl:table-cell px-3 py-3">
-                  <span className="text-slate-500 text-[11px] font-medium whitespace-nowrap">
-                    {lead.lastCommunicatedAt ? new Date(lead.lastCommunicatedAt).toLocaleDateString("en-IN", { day: 'numeric', month: 'short' }) : "—"}
-                  </span>
-                </td>
-                <td className={`hidden sm:table-cell px-3 py-3 text-[12px] font-bold whitespace-nowrap ${lead.followUpAt && new Date(lead.followUpAt) < new Date() ? "text-red-500" : "text-slate-400"}`}>
-                  {formatFollowUp(lead.followUpAt)}
-                </td>
-                <td className="hidden xl:table-cell px-3 py-3 text-slate-900 font-black text-[12px]">{formatValue(lead.dealValueInr)}</td>
-                <td className="hidden xl:table-cell px-3 py-3 text-center">
-                  <div className={`w-2 h-2 rounded-full mx-auto ${lead.priority === "HIGH" ? "bg-red-500" : lead.priority === "MEDIUM" ? "bg-amber-500" : "bg-green-500"}`} />
-                </td>
-                <td className="px-3 sm:px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                  <div className="flex items-center justify-end">
-                    <div className="relative">
-                      <button
-                        onClick={() => setActiveLeadMenu(activeLeadMenu === lead.id ? null : lead.id)}
-                        className={`p-1.5 rounded-lg transition-all ${activeLeadMenu === lead.id ? "bg-slate-900 text-white" : "text-slate-400 hover:bg-slate-100"}`}
-                      >
-                        <MoreVertical size={14} />
+                  </td>
+
+                  {/* Actions */}
+                  <td className="px-2 py-2" onClick={(e) => e.stopPropagation()}>
+                    <div className="relative flex justify-end">
+                      <button onClick={() => setActiveLeadMenu(activeLeadMenu === lead.id ? null : lead.id)}
+                        className={`p-1 rounded-lg transition-all ${activeLeadMenu === lead.id ? "bg-slate-900 text-white" : "text-slate-300 hover:text-slate-600 hover:bg-slate-100"}`}>
+                        <MoreVertical size={13} />
                       </button>
                       {activeLeadMenu === lead.id && (
-                        <div className="absolute right-0 top-full mt-1 w-40 bg-white border border-slate-200 rounded-xl shadow-2xl z-30 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                          <button onClick={() => onLeadClick(lead.id, displayedLeads.map(l => l.id))} className="w-full text-left px-4 py-2.5 text-[11px] font-bold text-slate-700 hover:bg-slate-50 transition-colors">View Details</button>
-                          <button onClick={() => router.push(`/lead/${lead.id}/edit`)} className="w-full text-left px-4 py-2.5 text-[11px] font-bold text-slate-700 hover:bg-slate-50 transition-colors border-t border-slate-50">Edit Lead</button>
-                          <button 
-                            onClick={() => setShowDeleteConfirm(lead.id)}
-                            className="w-full text-left px-4 py-2.5 text-[11px] font-black text-red-600 hover:bg-red-50 transition-colors border-t border-slate-50 uppercase tracking-widest"
-                          >
-                            Delete
-                          </button>
+                        <div className="absolute right-0 top-full mt-1 w-36 bg-white border border-slate-200 rounded-xl shadow-2xl z-30 overflow-hidden">
+                          <button onClick={() => onLeadClick(lead.id, displayedLeads.map(l => l.id))} className="w-full text-left px-3 py-2 text-[11px] font-bold text-slate-700 hover:bg-slate-50 transition-colors">View Details</button>
+                          <button onClick={() => router.push(`/lead/${lead.id}/edit`)} className="w-full text-left px-3 py-2 text-[11px] font-bold text-slate-700 hover:bg-slate-50 transition-colors border-t border-slate-50">Edit Lead</button>
+                          <button onClick={() => setShowDeleteConfirm(lead.id)} className="w-full text-left px-3 py-2 text-[11px] font-black text-red-500 hover:bg-red-50 transition-colors border-t border-slate-100 uppercase tracking-wider">Delete</button>
                         </div>
                       )}
                     </div>
-                  </div>
-                </td>
-              </tr>
-            ))}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
 
-      <div className="px-5 py-4 flex items-center justify-between border-t border-slate-100 bg-slate-50/30 rounded-b-xl">
-        <div className="flex items-center gap-4">
-          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
-            Showing {startIndex + 1}-{Math.min(startIndex + pageSize, displayedLeads.length)} of {displayedLeads.length}
+      {/* ── Pagination ── */}
+      <div className="flex items-center justify-between px-4 py-2.5 border-t border-slate-100 bg-slate-50/40 rounded-b-xl flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+            {startIndex + 1}–{Math.min(startIndex + pageSize, totalCount)} of {totalCount.toLocaleString()}
           </p>
           {selectedLeads.size > 0 && (
-            <div className="h-4 w-[1px] bg-slate-200" />
-          )}
-          {selectedLeads.size > 0 && (
-            <p className="text-[11px] font-bold text-blue-600 uppercase tracking-widest bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
-              {selectedLeads.size} Selected
-            </p>
+            <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100 uppercase tracking-wider">
+              {selectedLeads.size} selected
+            </span>
           )}
         </div>
-        
-        <div className="flex items-center gap-1.5">
-          <button 
-            disabled={currentPage === 1}
-            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-            className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95"
-          >
-            Previous
-          </button>
-          
-          <div className="flex items-center px-2">
-            <span className="text-[11px] font-black text-slate-400">PAGE</span>
-            <input 
-              type="number"
-              value={currentPage}
-              onChange={(e) => {
-                const val = parseInt(e.target.value) || 1;
-                setCurrentPage(Math.min(Math.max(1, val), totalPages));
-              }}
-              className="w-8 text-center bg-transparent border-none text-[12px] font-black text-slate-900 focus:outline-none"
-            />
-            <span className="text-[11px] font-black text-slate-400 uppercase">OF {totalPages || 1}</span>
-          </div>
 
-          <button 
-            disabled={currentPage === totalPages || totalPages === 0}
-            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-            className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95"
-          >
+        <div className="flex items-center gap-1">
+          <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            className="px-2.5 py-1.5 rounded-lg text-[10px] font-black text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all uppercase tracking-wide">
+            Prev
+          </button>
+          <div className="flex items-center gap-0.5 px-2">
+            <span className="text-[10px] font-black text-slate-400 uppercase">Pg</span>
+            <input type="number" value={currentPage}
+              onChange={(e) => { const val = parseInt(e.target.value) || 1; setCurrentPage(Math.min(Math.max(1, val), totalPages)); }}
+              className="w-7 text-center bg-transparent border-none text-[11px] font-black text-slate-900 focus:outline-none" />
+            <span className="text-[10px] font-black text-slate-400 uppercase">/ {totalPages || 1}</span>
+          </div>
+          <button disabled={currentPage === totalPages || totalPages === 0} onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            className="px-2.5 py-1.5 rounded-lg text-[10px] font-black text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all uppercase tracking-wide">
             Next
           </button>
         </div>
       </div>
-      <BulkUpdateModal 
-        isOpen={showBulkUpdate}
-        onClose={() => setShowBulkUpdate(false)}
-        selectedIds={Array.from(selectedLeads)}
-        onSuccess={() => {
-          setSelectedLeads(new Set());
-          fetchLeads();
-        }}
-      />
 
-      <BulkDeleteModal 
-        isOpen={showBulkDelete}
-        onClose={() => setShowBulkDelete(false)}
-        selectedIds={Array.from(selectedLeads)}
-        onSuccess={() => {
-          setSelectedLeads(new Set());
-          fetchLeads();
-        }}
-      />
-      
+      <BulkUpdateModal isOpen={showBulkUpdate} onClose={() => setShowBulkUpdate(false)} selectedIds={Array.from(selectedLeads)}
+        onSuccess={() => { setSelectedLeads(new Set()); fetchLeads(); }} />
+      <BulkDeleteModal isOpen={showBulkDelete} onClose={() => setShowBulkDelete(false)} selectedIds={Array.from(selectedLeads)}
+        onSuccess={() => { setSelectedLeads(new Set()); fetchLeads(); }} />
     </div>
   );
 }

@@ -80,12 +80,12 @@ interface CustomProtocolViewProps {
   filter: {
     id: string;
     name: string;
-    status: string | null;
-    subStatus: string | null;
+    statuses: string[];
+    subStatuses: string[];
     dealSizeMin: string | null;
     dealSizeMax: string | null;
-    industry: string | null;
-    source: string | null;
+    industries: string[];
+    sources: string[];
     alphabet: string | null;
   };
   onLeadClick: (id: string, allIds?: string[]) => void;
@@ -218,8 +218,12 @@ export default function CustomProtocolView({ filter, onLeadClick, refreshKey = 0
   }
 
   // 1. Sidebar Filter (The main focus of this view)
-  if (filter.status) processedLeads = processedLeads.filter(l => l.stage === filter.status);
-  if (filter.subStatus) processedLeads = processedLeads.filter(l => l.subStatus === filter.subStatus);
+  if (filter.statuses && filter.statuses.length > 0) {
+    processedLeads = processedLeads.filter(l => filter.statuses.includes(l.stage));
+  }
+  if (filter.subStatuses && filter.subStatuses.length > 0) {
+    processedLeads = processedLeads.filter(l => filter.subStatuses.includes(l.subStatus));
+  }
   if (filter.dealSizeMin) {
     const min = parseFloat(filter.dealSizeMin);
     processedLeads = processedLeads.filter(l => parseFloat(l.dealValueInr || "0") >= min);
@@ -228,14 +232,14 @@ export default function CustomProtocolView({ filter, onLeadClick, refreshKey = 0
     const max = parseFloat(filter.dealSizeMax);
     processedLeads = processedLeads.filter(l => parseFloat(l.dealValueInr || "0") <= max);
   }
-  if (filter.industry) {
-    processedLeads = processedLeads.filter(l => l.industry === filter.industry);
+  if (filter.industries && filter.industries.length > 0) {
+    processedLeads = processedLeads.filter(l => l.industry && filter.industries.includes(l.industry));
   }
   if (filter.alphabet) {
     processedLeads = processedLeads.filter(l => l.contactName.toUpperCase().startsWith(filter.alphabet?.toUpperCase() || ""));
   }
-  if (filter.source) {
-    processedLeads = processedLeads.filter(l => l.source?.name === filter.source);
+  if (filter.sources && filter.sources.length > 0) {
+    processedLeads = processedLeads.filter(l => l.source?.name && filter.sources.includes(l.source.name));
   }
 
   // 2. Column Filters

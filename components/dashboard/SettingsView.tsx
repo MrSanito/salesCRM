@@ -51,12 +51,12 @@ const COLOR_OPTIONS = [
 interface SidebarFilterItem {
   id: string;
   name: string;
-  status: string | null;
-  subStatus: string | null;
+  statuses: string[];
+  subStatuses: string[];
+  industries: string[];
+  sources: string[];
   dealSizeMin: string | null;
   dealSizeMax: string | null;
-  industry: string | null;
-  source: string | null;
   alphabet: string | null;
   icon: string;
   color: string;
@@ -77,11 +77,11 @@ export default function SettingsView() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newFilter, setNewFilter] = useState({
     name: "",
-    status: "",
-    subStatus: "",
+    statuses: [] as string[],
+    subStatuses: [] as string[],
+    industries: [] as string[],
+    sources: [] as string[],
     dealSize: "",
-    industry: "",
-    source: "",
     alphabet: "",
     color: "blue",
   });
@@ -173,12 +173,12 @@ export default function SettingsView() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: newFilter.name,
-          status: newFilter.status || null,
-          subStatus: newFilter.subStatus || null,
+          statuses: newFilter.statuses,
+          subStatuses: newFilter.subStatuses,
+          industries: newFilter.industries,
+          sources: newFilter.sources,
           dealSizeMin,
           dealSizeMax,
-          industry: newFilter.industry || null,
-          source: newFilter.source || null,
           alphabet: newFilter.alphabet || null,
           color: newFilter.color,
         }),
@@ -187,7 +187,7 @@ export default function SettingsView() {
       if (res.ok) {
         const created = await res.json();
         setSidebarFilters((prev) => [...prev, created]);
-        setNewFilter({ name: "", status: "", subStatus: "", dealSize: "", industry: "", source: "", alphabet: "", color: "blue" });
+        setNewFilter({ name: "", statuses: [], subStatuses: [], industries: [], sources: [], dealSize: "", alphabet: "", color: "blue" });
         setShowAddForm(false);
         toast.success(`"${created.name}" added to sidebar`);
       } else {
@@ -375,37 +375,127 @@ export default function SettingsView() {
                         />
                       </div>
 
-                      {/* Status */}
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</label>
-                        <select
-                          value={newFilter.status}
-                          onChange={(e) => setNewFilter({ ...newFilter, status: e.target.value })}
-                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:outline-none focus:ring-4 focus:ring-purple-500/10 focus:border-purple-500 transition-all appearance-none cursor-pointer"
-                        >
-                          {STATUS_OPTIONS.map((o) => (
-                            <option key={o.value} value={o.value}>{o.label}</option>
-                          ))}
-                        </select>
+                      {/* Multi-Status */}
+                      <div className="sm:col-span-2 space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Lead Statuses (Select Multiple)</label>
+                        <div className="flex flex-wrap gap-2">
+                          {STATUS_OPTIONS.filter(o => o.value).map((o) => {
+                            const isSelected = newFilter.statuses.includes(o.value);
+                            return (
+                              <button
+                                key={o.value}
+                                type="button"
+                                onClick={() => {
+                                  const next = isSelected 
+                                    ? newFilter.statuses.filter(s => s !== o.value)
+                                    : [...newFilter.statuses, o.value];
+                                  setNewFilter({ ...newFilter, statuses: next });
+                                }}
+                                className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest border transition-all ${
+                                  isSelected 
+                                    ? "bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-100" 
+                                    : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
+                                }`}
+                              >
+                                {o.label}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
 
-                      {/* Sub-status */}
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sub-status</label>
-                        <select
-                          value={newFilter.subStatus}
-                          onChange={(e) => setNewFilter({ ...newFilter, subStatus: e.target.value })}
-                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:outline-none focus:ring-4 focus:ring-purple-500/10 focus:border-purple-500 transition-all appearance-none cursor-pointer"
-                        >
-                          {SUB_STATUS_OPTIONS.map((o) => (
-                            <option key={o.value} value={o.value}>{o.label}</option>
-                          ))}
-                        </select>
+                      {/* Multi-Sub-status */}
+                      <div className="sm:col-span-2 space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Sub-statuses (Select Multiple)</label>
+                        <div className="flex flex-wrap gap-2">
+                          {SUB_STATUS_OPTIONS.filter(o => o.value).map((o) => {
+                            const isSelected = newFilter.subStatuses.includes(o.value);
+                            return (
+                              <button
+                                key={o.value}
+                                type="button"
+                                onClick={() => {
+                                  const next = isSelected 
+                                    ? newFilter.subStatuses.filter(s => s !== o.value)
+                                    : [...newFilter.subStatuses, o.value];
+                                  setNewFilter({ ...newFilter, subStatuses: next });
+                                }}
+                                className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest border transition-all ${
+                                  isSelected 
+                                    ? "bg-purple-600 text-white border-purple-600 shadow-lg shadow-purple-100" 
+                                    : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
+                                }`}
+                              >
+                                {o.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Multi-Industry */}
+                      <div className="sm:col-span-2 space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Industries (Select Multiple)</label>
+                        <div className="flex flex-wrap gap-2">
+                          {industries.map((ind) => {
+                            const isSelected = newFilter.industries.includes(ind);
+                            return (
+                              <button
+                                key={ind}
+                                type="button"
+                                onClick={() => {
+                                  const next = isSelected 
+                                    ? newFilter.industries.filter(i => i !== ind)
+                                    : [...newFilter.industries, ind];
+                                  setNewFilter({ ...newFilter, industries: next });
+                                }}
+                                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${
+                                  isSelected 
+                                    ? "bg-amber-500 text-white border-amber-500 shadow-md shadow-amber-100" 
+                                    : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
+                                }`}
+                              >
+                                {ind}
+                              </button>
+                            );
+                          })}
+                          {industries.length === 0 && <p className="text-[10px] text-slate-400 italic">No industries detected in database yet.</p>}
+                        </div>
+                      </div>
+
+                      {/* Multi-Source */}
+                      <div className="sm:col-span-2 space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Sources (Select Multiple)</label>
+                        <div className="flex flex-wrap gap-2">
+                          {sources.map((src) => {
+                            const isSelected = newFilter.sources.includes(src);
+                            return (
+                              <button
+                                key={src}
+                                type="button"
+                                onClick={() => {
+                                  const next = isSelected 
+                                    ? newFilter.sources.filter(s => s !== src)
+                                    : [...newFilter.sources, src];
+                                  setNewFilter({ ...newFilter, sources: next });
+                                }}
+                                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${
+                                  isSelected 
+                                    ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-100" 
+                                    : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
+                                }`}
+                              >
+                                {src}
+                              </button>
+                            );
+                          })}
+                          {sources.length === 0 && <p className="text-[10px] text-slate-400 italic">No sources detected in database yet.</p>}
+                        </div>
                       </div>
 
                       {/* Deal Size */}
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Deal Size</label>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Deal Size Range</label>
                         <select
                           value={newFilter.dealSize}
                           onChange={(e) => setNewFilter({ ...newFilter, dealSize: e.target.value })}
@@ -417,71 +507,9 @@ export default function SettingsView() {
                         </select>
                       </div>
 
-                      {/* Industry */}
+                      {/* Accent Color */}
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Industry</label>
-                        <select
-                          value={newFilter.industry}
-                          onChange={(e) => setNewFilter({ ...newFilter, industry: e.target.value })}
-                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:outline-none focus:ring-4 focus:ring-purple-500/10 focus:border-purple-500 transition-all appearance-none cursor-pointer"
-                        >
-                          <option value="">Any Industry</option>
-                          {industries.map((ind) => (
-                            <option key={ind} value={ind}>{ind}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      {/* Source */}
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Source</label>
-                        <select
-                          value={newFilter.source}
-                          onChange={(e) => setNewFilter({ ...newFilter, source: e.target.value })}
-                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:outline-none focus:ring-4 focus:ring-purple-500/10 focus:border-purple-500 transition-all appearance-none cursor-pointer"
-                        >
-                          <option value="">Any Source</option>
-                          {sources.map((src) => (
-                            <option key={src} value={src}>{src}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      {/* Alphabet Filter */}
-                      <div className="sm:col-span-2 space-y-1.5">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Alphabetical (Contact Name)</label>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          <button
-                            type="button"
-                            onClick={() => setNewFilter({ ...newFilter, alphabet: "" })}
-                            className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${
-                              newFilter.alphabet === ""
-                                ? "bg-slate-900 text-white border-slate-900"
-                                : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
-                            }`}
-                          >
-                            ANY
-                          </button>
-                          {Array.from("ABCDEFGHIJKLMNOPQRSTUVWXYZ").map(char => (
-                            <button
-                              key={char}
-                              type="button"
-                              onClick={() => setNewFilter({ ...newFilter, alphabet: newFilter.alphabet === char ? "" : char })}
-                              className={`w-7 h-7 flex items-center justify-center rounded-lg text-[10px] font-bold border transition-all ${
-                                newFilter.alphabet === char
-                                  ? "bg-purple-600 text-white border-purple-600 shadow-md shadow-purple-100"
-                                  : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
-                              }`}
-                            >
-                              {char}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Color Picker */}
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Accent Color</label>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Protocol Accent Color</label>
                         <div className="flex items-center gap-2 py-2">
                           {COLOR_OPTIONS.map((c) => (
                             <button
@@ -497,16 +525,37 @@ export default function SettingsView() {
                           ))}
                         </div>
                       </div>
+
+                      {/* Alphabet Filter */}
+                      <div className="sm:col-span-2 space-y-1.5">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Alphabetical Lock (Contact Name)</label>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {Array.from("ABCDEFGHIJKLMNOPQRSTUVWXYZ").map(char => (
+                            <button
+                              key={char}
+                              type="button"
+                              onClick={() => setNewFilter({ ...newFilter, alphabet: newFilter.alphabet === char ? "" : char })}
+                              className={`w-7 h-7 flex items-center justify-center rounded-lg text-[10px] font-bold border transition-all ${
+                                newFilter.alphabet === char
+                                  ? "bg-slate-900 text-white border-slate-900 shadow-md shadow-slate-100"
+                                  : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
+                              }`}
+                            >
+                              {char}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     </div>
 
                     <button
                       type="button"
                       onClick={handleAddFilter}
                       disabled={saving || !newFilter.name.trim()}
-                      className="w-full flex items-center justify-center gap-2 bg-purple-600 text-white px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-purple-700 transition-all active:scale-95 shadow-lg shadow-purple-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full flex items-center justify-center gap-2 bg-slate-900 text-white px-6 py-4 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all active:scale-95 shadow-xl shadow-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Plus size={14} />
-                      {saving ? "Creating..." : "Create Sidebar Filter"}
+                      {saving ? "Initiating Protocol..." : "Activate Sidebar Protocol"}
                     </button>
                   </div>
                 )}
@@ -537,43 +586,59 @@ export default function SettingsView() {
                           </div>
                           <div>
                             <p className="text-sm font-bold text-slate-900">{f.name}</p>
-                            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                              {f.status && (
-                                <span className="text-[9px] font-bold bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                                  {getStatusLabel(f.status)}
-                                </span>
-                              )}
-                              {f.subStatus && (
-                                <span className="text-[9px] font-bold bg-purple-50 text-purple-600 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                                  {getSubStatusLabel(f.subStatus)}
-                                </span>
-                              )}
-                              {(f.dealSizeMin || f.dealSizeMax) && (
-                                <span className="text-[9px] font-bold bg-green-50 text-green-600 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                                  {getDealSizeLabel(f.dealSizeMin, f.dealSizeMax)}
-                                </span>
-                              )}
-                              {f.industry && (
-                                <span className="text-[9px] font-bold bg-amber-50 text-amber-600 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                                  {f.industry}
-                                </span>
-                              )}
-                              {f.alphabet && (
-                                <span className="text-[9px] font-bold bg-rose-50 text-rose-600 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                                  Starts with: {f.alphabet}
-                                </span>
-                              )}
-                              {f.source && (
-                                <span className="text-[9px] font-bold bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                                  Source: {f.source}
-                                </span>
-                              )}
-                              {!f.status && !f.subStatus && !f.dealSizeMin && !f.dealSizeMax && !f.industry && !f.alphabet && !f.source && (
-                                <span className="text-[9px] font-bold bg-slate-50 text-slate-400 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                                  All Leads
-                                </span>
-                              )}
-                            </div>
+                            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                {f.statuses && f.statuses.length > 0 && (
+                                  <div className="flex items-center gap-1">
+                                    {f.statuses.map(s => (
+                                      <span key={s} className="text-[8px] font-black bg-blue-50 text-blue-600 px-2 py-0.5 rounded-lg border border-blue-100 uppercase tracking-tighter">
+                                        {getStatusLabel(s)}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                                {f.subStatuses && f.subStatuses.length > 0 && (
+                                  <div className="flex items-center gap-1">
+                                    {f.subStatuses.map(ss => (
+                                      <span key={ss} className="text-[8px] font-black bg-purple-50 text-purple-600 px-2 py-0.5 rounded-lg border border-purple-100 uppercase tracking-tighter">
+                                        {getSubStatusLabel(ss)}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                                {(f.dealSizeMin || f.dealSizeMax) && (
+                                  <span className="text-[8px] font-black bg-green-50 text-green-600 px-2 py-0.5 rounded-lg border border-green-100 uppercase tracking-tighter">
+                                    {getDealSizeLabel(f.dealSizeMin, f.dealSizeMax)}
+                                  </span>
+                                )}
+                                {f.industries && f.industries.length > 0 && (
+                                  <div className="flex items-center gap-1">
+                                    {f.industries.map(ind => (
+                                      <span key={ind} className="text-[8px] font-black bg-amber-50 text-amber-600 px-2 py-0.5 rounded-lg border border-amber-100 uppercase tracking-tighter">
+                                        {ind}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                                {f.alphabet && (
+                                  <span className="text-[8px] font-black bg-rose-50 text-rose-600 px-2 py-0.5 rounded-lg border border-rose-100 uppercase tracking-tighter">
+                                    {f.alphabet}*
+                                  </span>
+                                )}
+                                {f.sources && f.sources.length > 0 && (
+                                  <div className="flex items-center gap-1">
+                                    {f.sources.map(src => (
+                                      <span key={src} className="text-[8px] font-black bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-lg border border-indigo-100 uppercase tracking-tighter">
+                                        {src}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                                {!f.statuses?.length && !f.subStatuses?.length && !f.dealSizeMin && !f.dealSizeMax && !f.industries?.length && !f.alphabet && !f.sources?.length && (
+                                  <span className="text-[8px] font-black bg-slate-50 text-slate-400 px-2 py-0.5 rounded-lg border border-slate-100 uppercase tracking-tighter">
+                                    Full Access Protocol
+                                  </span>
+                                )}
+                              </div>
                           </div>
                         </div>
 

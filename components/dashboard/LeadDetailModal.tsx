@@ -110,14 +110,13 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
   const fetchData = async (showLoading = true) => {
     if (showLoading) setLoading(true);
     try {
-      const [leadRes, teamRes, notesRes] = await Promise.all([
-        fetch(`/api/leads/${leadId}`),
-        canChangeOwner ? fetch(`/api/team`) : Promise.resolve(null),
-        fetch(`/api/notes?leadId=${leadId}`)
-      ]);
-
+      // Unified API call: Lead + Notes + Team all in one
+      const leadRes = await fetch(`/api/leads/${leadId}`);
+      if (!leadRes.ok) throw new Error("Failed to fetch lead dossier");
+      
       const leadData = await leadRes.json();
-      console.log(`[LeadDetailModal] Fetched Lead: ${leadData.id}, lastCommunicatedAt: ${leadData.lastCommunicatedAt}`);
+      console.log(`[LeadDetailModal] Unified Fetch Success: ${leadData.id}`);
+
       if (leadData.id) {
         setLead(leadData);
         setStage(leadData.stage);
@@ -135,19 +134,19 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
           ...prev,
           requirement: leadData.requirement || "",
         }));
-      }
 
-      if (teamRes) {
-        const teamData = await teamRes.json();
-        if (Array.isArray(teamData)) setTeam(teamData);
-      }
-
-      if (notesRes) {
-        const notesData = await notesRes.json();
-        if (Array.isArray(notesData)) setNotes(notesData);
+        // Notes and Team are now part of the lead data response
+        if (Array.isArray(leadData.notes)) {
+          setNotes(leadData.notes);
+        }
+        
+        if (Array.isArray(leadData.team_members)) {
+          setTeam(leadData.team_members);
+        }
       }
     } catch (err) {
-      console.error(err);
+      console.error("[LeadDetailModal] Fetch Error:", err);
+      toast.error("Failed to sync intelligence");
     } finally {
       setLoading(false);
     }

@@ -351,23 +351,23 @@ model AuditLog {
 }
 
 model SidebarFilter {
-  id             String         @id @default(uuid())
+  id             String          @id @default(uuid())
   name           String
-  status         LeadStage?
-  subStatus      LeadSubStatus?
-  dealSizeMin    Decimal?       @db.Decimal(15, 2)
-  dealSizeMax    Decimal?       @db.Decimal(15, 2)
-  icon           String         @default("filter")
-  color          String         @default("blue")
-  orderIndex     Int            @default(0)
+  statuses       LeadStage[]
+  subStatuses    LeadSubStatus[]
+  industries     String[]
+  sources        String[]
+  dealSizeMin    Decimal?        @db.Decimal(15, 2)
+  dealSizeMax    Decimal?        @db.Decimal(15, 2)
+  icon           String          @default("filter")
+  color          String          @default("blue")
+  orderIndex     Int             @default(0)
   organizationId String
   createdById    String
-  createdAt      DateTime       @default(now())
+  createdAt      DateTime        @default(now())
   alphabet       String?
-  industry       String?
-  source         String?
-  createdBy      User           @relation("SidebarFilterCreator", fields: [createdById], references: [id])
-  organization   Organization   @relation(fields: [organizationId], references: [id])
+  createdBy      User            @relation("SidebarFilterCreator", fields: [createdById], references: [id])
+  organization   Organization    @relation(fields: [organizationId], references: [id])
 
   @@index([organizationId])
   @@map("sidebar_filters")

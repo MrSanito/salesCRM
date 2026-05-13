@@ -12,8 +12,9 @@ export async function GET(req: Request) {
     const page = parseInt(searchParams.get("page") || "1");
     const pageSize = parseInt(searchParams.get("pageSize") || "50");
     const search = searchParams.get("search") || "";
-    const stage = searchParams.get("stage") || "";
-    const ownerId = searchParams.get("ownerId") || "";
+    const sortBy = searchParams.get("sortBy") || "createdAt";
+    const sortDir = (searchParams.get("sortDir") || "desc") as "asc" | "desc";
+    const sidebarFilterId = searchParams.get("sidebarFilterId");
 
     const cookieStore = await cookies();
     const token = cookieStore.get("token")?.value;
@@ -31,14 +32,29 @@ export async function GET(req: Request) {
       organizationId: user.organizationId,
     };
 
+    // Role-based access
     if (user.role === "SALES_REP") {
       baseWhere.ownerId = user.id;
-    } else if (ownerId) {
-      baseWhere.ownerId = ownerId;
+    } else if (searchParams.get("ownerId")) {
+      baseWhere.ownerId = searchParams.get("ownerId");
+    }
+
+    // Sidebar Filter Logic
+    if (sidebarFilterId) {
+      const sf = await prisma.sidebarFilter.findUnique({ where: { id: sidebarFilterId } });
+      if (sf) {
+        if (sf.statuses && sf.statuses.length > 0) baseWhere.stage = { in: sf.statuses };
+        if (sf.subStatuses && sf.subStatuses.length > 0) baseWhere.subStatus = { in: sf.subStatuses };
+        if (sf.industries && sf.industries.length > 0) baseWhere.industry = { in: sf.industries };
+        if (sf.sources && sf.sources.length > 0) baseWhere.source = { name: { in: sf.sources } };
+        if (sf.dealSizeMin) baseWhere.dealValueInr = { gte: sf.dealSizeMin };
+        if (sf.dealSizeMax) baseWhere.dealValueInr = { ...baseWhere.dealValueInr, lte: sf.dealSizeMax };
+      }
     }
 
     const queryWhere: any = { ...baseWhere };
     
+    // Handle search
     if (search) {
       queryWhere.OR = [
         { contactName: { contains: search, mode: 'insensitive' } },
@@ -49,9 +65,34 @@ export async function GET(req: Request) {
       ];
     }
 
-    if (stage && stage !== "All Stages") {
-      queryWhere.stage = stage;
-    }
+    // Handle column filters (filter_*)
+    searchParams.forEach((value, key) => {
+      if (key.startsWith("filter_") && value) {
+        const field = key.replace("filter_", "");
+        const values = value.split(",");
+        
+        if (field === "stage") {
+          queryWhere.stage = { in: values };
+        } else if (field === "subStatus") {
+          queryWhere.subStatus = { in: values };
+        } else if (field === "source") {
+          queryWhere.source = { name: { in: values } };
+        } else if (field === "followup") {
+          const now = new Date();
+          if (values.includes("OVERDUE")) {
+            queryWhere.followUpAt = { lt: now };
+          } else if (values.includes("TODAY")) {
+            const endOfDay = new Date();
+            endOfDay.setHours(23, 59, 59, 999);
+            queryWhere.followUpAt = { gte: new Date(now.setHours(0,0,0,0)), lte: endOfDay };
+          }
+        }
+      }
+    });
+
+    // Handle sorting
+    let orderBy: any = { [sortBy]: sortDir };
+    if (sortBy === "lead") orderBy = { contactName: sortDir };
 
     const [leads, totalCount, statsData] = await Promise.all([
       prisma.lead.findMany({
@@ -72,10 +113,10 @@ export async function GET(req: Request) {
           project: true,
           lastCommunicatedAt: true,
           requirement: true,
-          owner: { select: { name: true, initials: true } },
+          owner: { select: { id: true, name: true, initials: true } },
           source: { select: { id: true, name: true } }
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy,
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),

@@ -12,12 +12,12 @@ import ImportExcelModal from "@/components/dashboard/ImportExcelModal";
 export interface SidebarFilterConfig {
   id: string;
   name: string;
-  status: string | null;
-  subStatus: string | null;
+  statuses: string[];
+  subStatuses: string[];
   dealSizeMin: string | null;
   dealSizeMax: string | null;
-  industry: string | null;
-  source: string | null;
+  industries: string[];
+  sources: string[];
   alphabet: string | null;
 }
 

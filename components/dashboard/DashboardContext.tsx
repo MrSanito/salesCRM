@@ -21,12 +21,12 @@ interface CustomFilter {
   id: string;
   name: string;
   color: string;
-  status: string | null;
-  subStatus: string | null;
+  statuses: string[];
+  subStatuses: string[];
+  industries: string[];
+  sources: string[];
   dealSizeMin: string | null;
   dealSizeMax: string | null;
-  industry: string | null;
-  source: string | null;
   alphabet: string | null;
 }
 
