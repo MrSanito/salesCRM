@@ -34,39 +34,39 @@ model Organization {
 }
 
 model User {
-  id             String          @id @default(uuid())
-  name           String
-  email          String          @unique
-  password       String
-  initials       String          @db.VarChar(4)
-  role           Role            @default(SALES_REP)
-  avatarUrl      String?
-  department     String?
-  jobTitle       String?
-  organizationId String
-  managerId      String?
-  teamId         String?
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  customRoleId   String?
-  alerts         Alert[]
-  drive_files    drive_files[]
-  interactions   Interaction[]
-  createdLeads   Lead[]          @relation("LeadCreator")
-  ownedLeads     Lead[]          @relation("LeadOwner")
-  notes          Note[]
-  reminders      Reminder[]
-  security_ews   security_ews[]
-  sidebarFilters SidebarFilter[] @relation("SidebarFilterCreator")
-  managedTeam    Team?           @relation("TeamManager")
-  custom_roles   custom_roles?   @relation(fields: [customRoleId], references: [id])
-  manager        User?           @relation("UserHierarchy", fields: [managerId], references: [id])
-  subordinates   User[]          @relation("UserHierarchy")
-  googleAccessToken  String?
-  googleRefreshToken String?
-  googleCalendarSyncEnabled Boolean @default(false)
-  organization   Organization    @relation(fields: [organizationId], references: [id])
-  team           Team?           @relation("TeamMembers", fields: [teamId], references: [id])
+  id                        String          @id @default(uuid())
+  name                      String
+  email                     String          @unique
+  password                  String
+  initials                  String          @db.VarChar(4)
+  role                      Role            @default(SALES_REP)
+  avatarUrl                 String?
+  organizationId            String
+  managerId                 String?
+  teamId                    String?
+  createdAt                 DateTime        @default(now())
+  updatedAt                 DateTime        @updatedAt
+  customRoleId              String?
+  department                String?
+  jobTitle                  String?
+  googleCalendarSyncEnabled Boolean         @default(false)
+  googleAccessToken         String?
+  googleRefreshToken        String?
+  alerts                    Alert[]
+  drive_files               drive_files[]
+  interactions              Interaction[]
+  createdLeads              Lead[]          @relation("LeadCreator")
+  ownedLeads                Lead[]          @relation("LeadOwner")
+  notes                     Note[]
+  reminders                 Reminder[]
+  security_ews              security_ews[]
+  sidebarFilters            SidebarFilter[] @relation("SidebarFilterCreator")
+  managedTeam               Team?           @relation("TeamManager")
+  custom_roles              custom_roles?   @relation(fields: [customRoleId], references: [id])
+  manager                   User?           @relation("UserHierarchy", fields: [managerId], references: [id])
+  subordinates              User[]          @relation("UserHierarchy")
+  organization              Organization    @relation(fields: [organizationId], references: [id])
+  team                      Team?           @relation("TeamMembers", fields: [teamId], references: [id])
 
   @@index([organizationId])
   @@map("users")
@@ -135,8 +135,8 @@ model Lead {
   updatedAt            DateTime              @updatedAt
   requirement          String?
   industry             String?
-  project              String?
   subStatus            LeadSubStatus         @default(BLANK)
+  project              String?
   lastCommunicatedAt   DateTime?
   alerts               Alert[]
   auditLogs            AuditLog[]
@@ -213,9 +213,9 @@ model NoteAttachment {
   fileSizeBytes Int
   mimeType      AttachmentMimeType @default(PDF)
   pageCount     Int?
-  isRestricted  Boolean            @default(true)
-  accessKey     String?
   uploadedAt    DateTime           @default(now())
+  accessKey     String?
+  isRestricted  Boolean            @default(true)
   note          Note               @relation(fields: [noteId], references: [id], onDelete: Cascade)
 
   @@index([noteId])
@@ -301,8 +301,8 @@ model SidebarFilter {
   createdById    String
   createdAt      DateTime       @default(now())
   industry       String?
-  alphabet       String?
   source         String?
+  alphabet       String?
   createdBy      User           @relation("SidebarFilterCreator", fields: [createdById], references: [id])
   organization   Organization   @relation(fields: [organizationId], references: [id])
 
@@ -441,6 +441,14 @@ model security_ews {
 
   @@index([organizationId])
   @@index([userId])
+}
+
+model otps {
+  id        String   @id
+  email     String   @unique
+  code      String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 }
 
 enum Role {
