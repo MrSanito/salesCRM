@@ -13,12 +13,18 @@ export async function GET() {
     if (!token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    console.time("jwt");
 
     const decoded = jwt.verify(token, JWT_SECRET) as any;
+    console.timeEnd("jwt");
+    
+    console.time("user");
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
       select: { id: true, name: true, email: true, role: true, initials: true, organizationId: true },
     });
+    console.timeEnd("user");
+    console.log("user", user);
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });

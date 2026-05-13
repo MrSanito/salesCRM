@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Search, Filter, ChevronDown, Download, Eye, MoreVertical, ChevronRight, XCircle, Edit, Trash2 } from "lucide-react";
 import * as XLSX from "xlsx";
@@ -24,8 +24,8 @@ const STAGE_LABEL: Record<string, string> = {
   NOT_INTERESTED: "Not Interested",
   MEETING_SET: "Meeting Set", 
   NEGOTIATION: "Negotiation",
-  COLD: "Cold Chatting", 
-  CHATTING: "Cold Chatting",
+  COLD: "Cold", 
+  CHATTING: "Chatting",
   CUSTOMER: "Customer",
 };
 
@@ -85,12 +85,22 @@ interface LeadsTableProps {
   activeNav: string;
   refreshKey?: number;
   sidebarFilter?: { id: string; status: string | null; subStatus: string | null; dealSizeMin: string | null; dealSizeMax: string | null; industry: string | null; alphabet: string | null; name: string } | null;
+  onStatsUpdate?: (stats: any) => void;
+  initialData?: any;
 }
 
-export default function LeadsTable({ onLeadClick, activeNav, refreshKey = 0, sidebarFilter }: LeadsTableProps) {
+export default function LeadsTable({ 
+  onLeadClick, 
+  activeNav, 
+  refreshKey = 0, 
+  sidebarFilter, 
+  onStatsUpdate,
+  initialData
+}: LeadsTableProps) {
   const router = useRouter();
-  const [leads, setLeads] = useState<DbLead[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [leads, setLeads] = useState<DbLead[]>(initialData?.leads || []);
+  const [totalCount, setTotalCount] = useState(initialData?.pagination?.totalCount || 0);
+  const [loading, setLoading] = useState(!initialData);
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [activeLeadMenu, setActiveLeadMenu] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -98,6 +108,7 @@ export default function LeadsTable({ onLeadClick, activeNav, refreshKey = 0, sid
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const [sortConfig, setSortConfig] = useState<{ key: keyof DbLead | 'lead', direction: 'asc' | 'desc' } | null>(null);
   const [activeColumnFilter, setActiveColumnFilter] = useState<string | null>(null);
   const [columnFilters, setColumnFilters] = useState<Record<string, Set<string>>>({});
@@ -184,16 +195,80 @@ export default function LeadsTable({ onLeadClick, activeNav, refreshKey = 0, sid
     }
   };
 
-  useEffect(() => {
+  const isFirstRun = useRef(true);
+
+  const fetchLeads = useCallback(async () => {
+    // If it's the first run and we have initial data, skip fetching but set first run to false
+    if (isFirstRun.current && initialData) {
+      isFirstRun.current = false;
+      if (onStatsUpdate && initialData.stats) {
+        onStatsUpdate(initialData.stats);
+      }
+      setLoading(false);
+      return;
+    }
+    
+    // If it's the first run and we are on the dashboard (indicated by sidebarFilter being undefined/null)
+    // and we DON'T have initialData yet, we should probably wait for it from the parent
+    // to avoid double-fetching.
+    if (isFirstRun.current && !initialData && !sidebarFilter) {
+       // We'll let the parent (DashboardView) handle the first fetch
+       return;
+    }
+
+    isFirstRun.current = false;
+    
     setLoading(true);
-    fetch("/api/leads")
-      .then((r) => r.json())
-      .then((d) => { if (Array.isArray(d)) setLeads(d); })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [refreshKey]);
+    try {
+      const params = new URLSearchParams();
+      params.set("page", currentPage.toString());
+      params.set("pageSize", pageSize.toString());
+      if (searchQuery) params.set("search", searchQuery);
+      if (sortConfig) {
+        params.set("sortBy", sortConfig.key);
+        params.set("sortDir", sortConfig.direction);
+      }
+      if (sidebarFilter) {
+        params.set("sidebarFilterId", sidebarFilter.id);
+      }
+      
+      Object.entries(columnFilters).forEach(([key, values]) => {
+        if (values.size > 0) {
+          params.set(`filter_${key}`, Array.from(values).join(","));
+        }
+      });
+
+      const res = await fetch(`/api/leads/super-list?${params.toString()}`);
+      const data = await res.json();
+      
+      if (data.leads) setLeads(data.leads);
+      if (data.pagination?.totalCount) setTotalCount(data.pagination.totalCount);
+      if (data.stats && onStatsUpdate) {
+        onStatsUpdate(data.stats);
+      }
+    } catch (err) {
+      console.error("Fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPage, pageSize, searchQuery, sortConfig, columnFilters, onStatsUpdate, sidebarFilter?.id]);
+
+  useEffect(() => {
+    fetchLeads();
+  }, [fetchLeads, refreshKey, activeNav]);
+
+  // Sync initialData when it arrives from parent
+  useEffect(() => {
+    if (initialData) {
+      if (initialData.leads) setLeads(initialData.leads);
+      if (initialData.pagination?.totalCount) setTotalCount(initialData.pagination.totalCount);
+      if (initialData.stats && onStatsUpdate) onStatsUpdate(initialData.stats);
+      setLoading(false);
+    }
+  }, [initialData, onStatsUpdate]);
 
   // Handle Selection
+
   const toggleSelectAll = () => {
     if (selectedLeads.size === displayedLeads.length) {
       setSelectedLeads(new Set());
@@ -210,112 +285,22 @@ export default function LeadsTable({ onLeadClick, activeNav, refreshKey = 0, sid
     setSelectedLeads(next);
   };
 
-  // Processing Leads (Filter -> Sort -> Paginate)
-  let processedLeads = [...leads];
-
-  // 0. Search Filter & Dropdown Logic
-  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+  // Processing Leads (Now handled by server)
   const searchResults = searchQuery.length >= 2 ? leads.filter(l => {
     const q = searchQuery.toLowerCase();
     return (
-      l.id.toLowerCase().includes(q) ||
       l.contactName.toLowerCase().includes(q) || 
       l.company.toLowerCase().includes(q) ||
       l.phone?.toLowerCase().includes(q) ||
-      l.email?.toLowerCase().includes(q) ||
-      l.industry?.toLowerCase().includes(q) ||
-      l.source?.name.toLowerCase().includes(q) ||
-      l.requirement?.toLowerCase().includes(q) ||
-      l.owner?.name.toLowerCase().includes(q)
+      l.email?.toLowerCase().includes(q)
     );
   }).slice(0, 8) : [];
 
-  if (searchQuery) {
-    const q = searchQuery.toLowerCase();
-    processedLeads = processedLeads.filter(l => 
-      l.id.toLowerCase().includes(q) ||
-      l.contactName.toLowerCase().includes(q) || 
-      l.company.toLowerCase().includes(q) ||
-      l.phone?.toLowerCase().includes(q) ||
-      l.email?.toLowerCase().includes(q) ||
-      l.industry?.toLowerCase().includes(q) ||
-      l.source?.name.toLowerCase().includes(q) ||
-      l.requirement?.toLowerCase().includes(q) ||
-      l.owner?.name.toLowerCase().includes(q)
-    );
-  }
-
-  // 1. Navigation Filters
-  if (activeNav === "Alerts") processedLeads = processedLeads.filter((l) => l.priority === "HIGH");
-  if (activeNav === "New Leads") processedLeads = processedLeads.filter((l) => l.stage === "NEW");
-
-  // 1.5 Sidebar Filter (from CEO custom shortcuts)
-  if (sidebarFilter) {
-    if (sidebarFilter.status) {
-      processedLeads = processedLeads.filter((l) => l.stage === sidebarFilter.status);
-    }
-    if (sidebarFilter.subStatus) {
-      processedLeads = processedLeads.filter((l) => l.subStatus === sidebarFilter.subStatus);
-    }
-    if (sidebarFilter.dealSizeMin) {
-      const min = parseFloat(sidebarFilter.dealSizeMin);
-      processedLeads = processedLeads.filter((l) => parseFloat(l.dealValueInr || "0") >= min);
-    }
-    if (sidebarFilter.dealSizeMax) {
-      const max = parseFloat(sidebarFilter.dealSizeMax);
-      processedLeads = processedLeads.filter((l) => parseFloat(l.dealValueInr || "0") <= max);
-    }
-    if (sidebarFilter.industry) {
-      processedLeads = processedLeads.filter((l) => l.industry === sidebarFilter.industry);
-    }
-    if (sidebarFilter.alphabet) {
-      processedLeads = processedLeads.filter((l) => l.contactName.toUpperCase().startsWith(sidebarFilter.alphabet?.toUpperCase() || ""));
-    }
-  }
-
-  // 2. Column Filters
-  Object.keys(columnFilters).forEach(key => {
-    const activeValues = columnFilters[key];
-    if (activeValues.size > 0) {
-      processedLeads = processedLeads.filter(l => {
-        const val = key === 'source' ? l.source?.name : (l as any)[key];
-        return activeValues.has(String(val));
-      });
-    }
-  });
-
-  // 3. Sorting
-  if (sortConfig) {
-    processedLeads.sort((a, b) => {
-      let valA: any, valB: any;
-      if (sortConfig.key === 'lead') {
-        valA = a.contactName.toLowerCase();
-        valB = b.contactName.toLowerCase();
-      } else if (sortConfig.key === 'dealValueInr') {
-        valA = parseFloat(a.dealValueInr || "0");
-        valB = parseFloat(b.dealValueInr || "0");
-      } else {
-        valA = (a as any)[sortConfig.key];
-        valB = (b as any)[sortConfig.key];
-        if (typeof valA === 'string') valA = valA.toLowerCase();
-        if (typeof valB === 'string') valB = valB.toLowerCase();
-      }
-
-      if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
-      if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
-      return 0;
-    });
-  } else {
-    // Default sort: newest first
-    processedLeads.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }
-
-  const displayedLeads = processedLeads; // For selection and total count
-  
-  // 4. Pagination
-  const totalPages = Math.ceil(displayedLeads.length / pageSize);
   const startIndex = (currentPage - 1) * pageSize;
-  const paginatedLeads = displayedLeads.slice(startIndex, startIndex + pageSize);
+  const processedLeads = leads;
+  const displayedLeads = leads;
+  const paginatedLeads = leads;
+  const totalPages = Math.ceil(totalCount / pageSize);
 
   const toggleColumnFilter = (column: string, value: string | string[]) => {
     setColumnFilters(prev => {
@@ -900,11 +885,7 @@ export default function LeadsTable({ onLeadClick, activeNav, refreshKey = 0, sid
         selectedIds={Array.from(selectedLeads)}
         onSuccess={() => {
           setSelectedLeads(new Set());
-          router.refresh();
-          // Trigger refresh of leads list
-          fetch("/api/leads")
-            .then(r => r.json())
-            .then(d => { if (Array.isArray(d)) setLeads(d); });
+          fetchLeads();
         }}
       />
 
@@ -914,11 +895,7 @@ export default function LeadsTable({ onLeadClick, activeNav, refreshKey = 0, sid
         selectedIds={Array.from(selectedLeads)}
         onSuccess={() => {
           setSelectedLeads(new Set());
-          router.refresh();
-          // Trigger refresh of leads list
-          fetch("/api/leads")
-            .then(r => r.json())
-            .then(d => { if (Array.isArray(d)) setLeads(d); });
+          fetchLeads();
         }}
       />
       

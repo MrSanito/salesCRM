@@ -15,21 +15,14 @@ function formatINR(n: number) {
 
 interface PipelineFunnelProps {
   refreshKey?: number;
+  pipeline?: PipelineStage[];
+  totalValue?: number;
 }
 
-export default function PipelineFunnel({ refreshKey = 0 }: PipelineFunnelProps) {
-  const [pipeline, setPipeline] = useState<PipelineStage[]>([]);
-  const [totalValue, setTotalValue] = useState(0);
-
-  useEffect(() => {
-    fetch("/api/dashboard/stats")
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.pipeline) setPipeline(d.pipeline);
-        if (d.kpis?.totalPipelineValue) setTotalValue(d.kpis.totalPipelineValue);
-      })
-      .catch(() => {});
-  }, [refreshKey]);
+export default function PipelineFunnel({ refreshKey = 0, pipeline: initialPipeline, totalValue: initialTotalValue }: PipelineFunnelProps) {
+  // Removed independent fetch. Data should come from DashboardView props.
+  const pipeline = initialPipeline || [];
+  const totalValue = initialTotalValue || 0;
 
   const totalLeads = pipeline.reduce((s, p) => s + p.count, 0);
   const wonCount = pipeline.find((p) => p.label === "Won")?.count || 0;

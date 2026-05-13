@@ -5,7 +5,7 @@ import RemindersList from "@/components/dashboard/RemindersList";
 import LeadsTable from "@/components/dashboard/LeadsTable";
 import { useAuth } from "@/components/auth/AuthContext";
 import { UserPlus, UserCircle2, Plus, Bell } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import FollowUpModal from "@/components/dashboard/FollowupModal";
 import type { SidebarFilterConfig } from "@/app/dashboard/page";
 
@@ -21,6 +21,25 @@ interface DashboardViewProps {
 export default function DashboardView({ onAddLead, onAddEmployee, onLeadClick, activeNav, refreshKey = 0, sidebarFilter }: DashboardViewProps) {
   const { user } = useAuth();
   const [showFollowup, setShowFollowup] = useState(false);
+  const [dashboardStats, setDashboardStats] = useState<any>(null);
+  const [fullData, setFullData] = useState<any>(null);
+
+  const fetchDashboardData = useCallback(async () => {
+    try {
+      const res = await fetch("/api/leads/super-list?page=1&pageSize=50");
+      const data = await res.json();
+      setFullData(data);
+      if (data.stats) {
+        setDashboardStats(data.stats);
+      }
+    } catch (err) {
+      console.error("Failed to fetch dashboard data:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData, refreshKey]);
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
@@ -94,13 +113,13 @@ export default function DashboardView({ onAddLead, onAddEmployee, onLeadClick, a
       </header>
 
       {/* Metrics and Pipeline Sections */}
-      <KpiGrid refreshKey={refreshKey} />
+      <KpiGrid refreshKey={refreshKey} kpis={dashboardStats?.kpis} />
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
         <div className="xl:col-span-2">
-          <PipelineFunnel refreshKey={refreshKey} />
+          <PipelineFunnel refreshKey={refreshKey} pipeline={dashboardStats?.pipeline} totalValue={dashboardStats?.kpis?.totalPipelineValue} />
         </div>
-        <RemindersList refreshKey={refreshKey} />
+        <RemindersList refreshKey={refreshKey} reminders={dashboardStats?.reminders} />
       </div>
 
       {/* Leads Management Section */}
@@ -109,6 +128,8 @@ export default function DashboardView({ onAddLead, onAddEmployee, onLeadClick, a
         onLeadClick={onLeadClick} 
         refreshKey={refreshKey}
         sidebarFilter={sidebarFilter}
+        onStatsUpdate={setDashboardStats}
+        initialData={fullData}
       />
       {/* Follow Up Modal Triggered by Test Button */}
       {showFollowup && (

@@ -6,8 +6,9 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/components/auth/AuthContext";
+import { useDashboard } from "@/components/dashboard/DashboardContext";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useState, useEffect } from "react";
 
 interface SidebarItem {
   icon: any;
@@ -114,35 +115,16 @@ export default function Sidebar({
   setIsOpen = () => {} 
 }: SidebarProps) {
   const { user } = useAuth();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const sfId = searchParams.get("sf");
-  const [counts, setCounts] = useState({ alerts: 0, newLeads: 0, followUps: 0 });
-  const [customFilters, setCustomFilters] = useState<CustomFilter[]>([]);
-
-  useEffect(() => {
-    fetch("/api/dashboard/stats")
-      .then(r => r.json())
-      .then(data => {
-        if (data.kpis) {
-          setCounts({
-            alerts: data.kpis.alertsCount || 0,
-            newLeads: data.kpis.newLeadsCount || 0,
-            followUps: data.kpis.followUpsTotal || 0
-          });
-        }
-      })
-      .catch(console.error);
-  }, []);
-
-  const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
-  useEffect(() => {
-    fetch("/api/sidebar-filters")
-      .then(r => r.json())
-      .then(data => {
-        if (Array.isArray(data)) setCustomFilters(data);
-      })
-      .catch(console.error);
-  }, [pathname]);
+  const { stats, filters: customFilters, loading: contextLoading } = useDashboard();
+  
+  const counts = useMemo(() => ({
+    alerts: stats?.kpis?.alertsCount || 0,
+    newLeads: stats?.kpis?.newLeadsCount || 0,
+    followUps: stats?.kpis?.followUpsTotal || 0
+  }), [stats]);
 
   const buildSidebarGroups = (): SidebarGroup[] => {
     const base = SIDEBAR_ITEMS.map(group => ({

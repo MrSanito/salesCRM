@@ -21,9 +21,12 @@ export interface SidebarFilterConfig {
   alphabet: string | null;
 }
 
+import { useDashboard } from "@/components/dashboard/DashboardContext";
+
 export default function DashboardPage() {
   const searchParams = useSearchParams();
   const sfId = searchParams.get("sf");
+  const { filters: customFilters, refreshKey, triggerRefresh } = useDashboard();
   const [sidebarFilter, setSidebarFilter] = useState<SidebarFilterConfig | null>(null);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [isModalLoading, setIsModalLoading] = useState(false);
@@ -32,7 +35,6 @@ export default function DashboardPage() {
   const [isAddChoiceModalOpen, setIsAddChoiceModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isAddEmployeeModalOpen, setIsAddEmployeeModalOpen] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
 
   const openLeadModal = (id: string, allIds?: string[]) => {
     setSelectedLeadId(id);
@@ -52,24 +54,15 @@ export default function DashboardPage() {
     setTimeout(() => setIsModalLoading(false), 600);
   };
 
-  const triggerRefresh = () => setRefreshKey(prev => prev + 1);
-
-  // Fetch sidebar filter config when ?sf= is present
+  // Sync sidebarFilter from customFilters
   useEffect(() => {
-    if (sfId) {
-      fetch("/api/sidebar-filters")
-        .then(r => r.json())
-        .then(data => {
-          if (Array.isArray(data)) {
-            const found = data.find((f: any) => f.id === sfId);
-            setSidebarFilter(found || null);
-          }
-        })
-        .catch(console.error);
+    if (sfId && customFilters.length > 0) {
+      const found = customFilters.find((f: any) => f.id === sfId);
+      setSidebarFilter(found || null);
     } else {
       setSidebarFilter(null);
     }
-  }, [sfId]);
+  }, [sfId, customFilters]);
 
   // Handle ?id= to open lead detail automatically (Global Search)
   useEffect(() => {

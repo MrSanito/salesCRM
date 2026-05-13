@@ -9,6 +9,7 @@ interface NavbarProps {
 }
 
 import { useAuth } from "@/components/auth/AuthContext";
+import { useDashboard } from "@/components/dashboard/DashboardContext";
 
 export default function Navbar({ onMenuClick = () => {}, activeNav = "Dashboard" }: NavbarProps) {
   const [showNotifications, setShowNotifications] = useState(false);
@@ -20,15 +21,13 @@ export default function Navbar({ onMenuClick = () => {}, activeNav = "Dashboard"
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const { user, logout } = useAuth();
+  const { stats } = useDashboard();
 
   useEffect(() => {
-    fetch("/api/dashboard/stats")
-      .then(r => r.json())
-      .then(data => {
-        if (data.kpis) setAlertsCount(data.kpis.alertsCount || 0);
-      })
-      .catch(console.error);
-  }, []);
+    if (stats?.kpis) {
+      setAlertsCount(stats.kpis.alertsCount || 0);
+    }
+  }, [stats]);
 
   useEffect(() => {
     if (searchQuery.length < 2) {

@@ -19,17 +19,11 @@ function formatINR(n: number) {
 
 interface KpiGridProps {
   refreshKey?: number;
+  kpis?: KpiData | null;
 }
 
-export default function KpiGrid({ refreshKey = 0 }: KpiGridProps) {
-  const [kpis, setKpis] = useState<KpiData | null>(null);
-
-  useEffect(() => {
-    fetch("/api/dashboard/stats")
-      .then((r) => r.json())
-      .then((d) => { if (d.kpis) setKpis(d.kpis); })
-      .catch(() => {});
-  }, [refreshKey]);
+export default function KpiGrid({ refreshKey = 0, kpis: initialKpis }: KpiGridProps) {
+  const kpis = initialKpis;
 
   const cards = [
     { label: "Total Leads", value: kpis ? String(kpis.totalLeads) : "—", icon: Users, iconBg: "bg-blue-50", iconColor: "text-blue-500", change: "Pipeline", up: true },

@@ -19,6 +19,7 @@ interface Reminder {
 
 interface RemindersListProps {
   refreshKey?: number;
+  reminders?: Reminder[];
 }
 
 const TYPE_META: Record<string, { Icon: any; color: string; label: string }> = {
@@ -60,27 +61,39 @@ function formatTime(dateStr: string) {
   return `${d.toLocaleDateString("en-IN", { day: "numeric", month: "short" })} ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
 }
 
-export default function RemindersList({ refreshKey = 0 }: RemindersListProps) {
-  const [reminders, setReminders] = useState<Reminder[]>([]);
-  const [loading, setLoading] = useState(true);
+export default function RemindersList({ refreshKey = 0, reminders: initialReminders }: RemindersListProps) {
+  const [reminders, setReminders] = useState<Reminder[]>(initialReminders || []);
+  const [loading, setLoading] = useState(!initialReminders);
   const [completing, setCompleting] = useState<string | null>(null);
   const [tab, setTab] = useState<"overdue" | "today" | "upcoming">("today");
 
   const fetchReminders = useCallback(() => {
+    if (initialReminders && reminders.length === 0) {
+       setReminders(initialReminders);
+       setLoading(false);
+       return;
+    }
     setLoading(true);
     fetch("/api/reminders")
       .then((r) => r.json())
       .then((d) => { if (Array.isArray(d)) setReminders(d); })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [initialReminders, reminders.length]);
 
   useEffect(() => {
+    if (initialReminders) {
+      setReminders(initialReminders);
+      setLoading(false);
+      // Still set interval for auto-refresh but maybe with a longer delay or only if explicitly needed
+      const interval = setInterval(fetchReminders, 60000);
+      return () => clearInterval(interval);
+    }
+    
     fetchReminders();
-    // Auto-refresh every 60s
     const interval = setInterval(fetchReminders, 60000);
     return () => clearInterval(interval);
-  }, [fetchReminders, refreshKey]);
+  }, [fetchReminders, refreshKey, initialReminders]);
 
   const markDone = async (id: string) => {
     setCompleting(id);
