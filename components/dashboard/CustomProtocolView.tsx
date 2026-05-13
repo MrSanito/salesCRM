@@ -118,8 +118,17 @@ export default function CustomProtocolView({ filter, onLeadClick, refreshKey = 0
     setLoading(true);
     fetch("/api/leads")
       .then((r) => r.json())
-      .then((d) => { if (Array.isArray(d)) setLeads(d); })
-      .catch(() => {})
+      .then((d) => { 
+        if (Array.isArray(d)) {
+          setLeads(d);
+          console.log(`Protocol "${filter.name}" fetched ${d.length} leads.`);
+        } else {
+          console.error("API did not return an array:", d);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to fetch leads for protocol:", err);
+      })
       .finally(() => setLoading(false));
   };
 
@@ -219,7 +228,13 @@ export default function CustomProtocolView({ filter, onLeadClick, refreshKey = 0
 
   // 1. Sidebar Filter (The main focus of this view)
   if (filter.statuses && filter.statuses.length > 0) {
-    processedLeads = processedLeads.filter(l => filter.statuses.includes(l.stage));
+    processedLeads = processedLeads.filter(l => {
+      // Robust check for COLD/CHATTING being combined in UI
+      const hasCold = filter.statuses.includes('COLD');
+      const hasChatting = filter.statuses.includes('CHATTING');
+      if ((hasCold || hasChatting) && (l.stage === 'COLD' || l.stage === 'CHATTING')) return true;
+      return filter.statuses.includes(l.stage);
+    });
   }
   if (filter.subStatuses && filter.subStatuses.length > 0) {
     processedLeads = processedLeads.filter(l => filter.subStatuses.includes(l.subStatus));
@@ -417,6 +432,14 @@ export default function CustomProtocolView({ filter, onLeadClick, refreshKey = 0
             )}
           </div>
 
+          <button 
+            onClick={fetchLeads}
+            className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-slate-900 hover:border-slate-300 transition-all shadow-sm shrink-0"
+            title="Refresh protocol data"
+          >
+            <Sparkles size={16} />
+          </button>
+
           {selectedLeads.size > 0 && (
             <div className="flex items-center gap-2 pr-3 border-r border-slate-100 mr-2 animate-in fade-in slide-in-from-right-2 duration-300">
               <button 
@@ -492,9 +515,9 @@ export default function CustomProtocolView({ filter, onLeadClick, refreshKey = 0
             </thead>
             <tbody className="divide-y divide-slate-50">
               {loading ? (
-                <tr><td colSpan={9} className="text-center py-20 animate-pulse text-slate-400 font-bold uppercase text-[10px]">Syncing protocol...</td></tr>
+                <tr><td colSpan={11} className="text-center py-20 animate-pulse text-slate-400 font-bold uppercase text-[10px]">Syncing protocol...</td></tr>
               ) : paginatedLeads.length === 0 ? (
-                <tr><td colSpan={9} className="text-center py-20 text-slate-400">No matching leads in this view</td></tr>
+                <tr><td colSpan={11} className="text-center py-20 text-slate-400">No matching leads in this view</td></tr>
               ) : (
                 paginatedLeads.map((lead) => (
                   <tr 
