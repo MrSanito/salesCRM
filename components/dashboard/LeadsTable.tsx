@@ -599,6 +599,11 @@ export default function LeadsTable({
                 <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Owner</span>
               </th>
 
+              {/* Created On */}
+              <th className="text-left px-2 py-2">
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Created On</span>
+              </th>
+
               {/* Follow-up — filterable */}
               <th className="text-left px-2 py-2">
                 <div className="relative inline-block">
@@ -696,6 +701,13 @@ export default function LeadsTable({
                   {/* Owner */}
                   <td className="px-2 py-2">
                     <span className="text-[11px] font-semibold text-slate-500 truncate block">{lead.owner?.name.split(" ")[0] || "—"}</span>
+                  </td>
+
+                  {/* Created On */}
+                  <td className="px-2 py-2">
+                    <span className="text-[11px] font-semibold text-slate-500 whitespace-nowrap block">
+                      {new Date(lead.createdAt).toLocaleDateString("en-IN", { day: 'numeric', month: 'short' })}
+                    </span>
                   </td>
 
                   {/* Follow-up */}

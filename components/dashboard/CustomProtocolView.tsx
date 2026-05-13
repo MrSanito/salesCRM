@@ -485,6 +485,7 @@ export default function CustomProtocolView({ filter, onLeadClick, refreshKey = 0
                 <th className="hidden sm:table-cell w-[10%] text-left text-[11px] font-bold text-sidebar-foreground/40 uppercase px-3 py-3">Phone</th>
                 <th className="hidden lg:table-cell w-[10%] text-left text-[11px] font-bold text-sidebar-foreground/40 uppercase px-3 py-3">Source</th>
                 <th className="hidden lg:table-cell w-[10%] text-left text-[11px] font-bold text-sidebar-foreground/40 uppercase px-3 py-3">Owner</th>
+                <th className="hidden lg:table-cell w-[10%] text-left text-[11px] font-bold text-sidebar-foreground/40 uppercase px-3 py-3">Created On</th>
                 <th className="hidden xl:table-cell w-[12%] text-left text-[11px] font-bold text-sidebar-foreground/40 uppercase px-3 py-3">Value</th>
                 <th className="w-[45px] text-right px-2 sm:px-4 py-3"></th>
               </tr>
@@ -530,6 +531,11 @@ export default function CustomProtocolView({ filter, onLeadClick, refreshKey = 0
                       </span>
                     </td>
                     <td className="hidden lg:table-cell px-3 py-3 text-slate-500 font-medium truncate">{lead.owner?.name.split(" ")[0] || "—"}</td>
+                    <td className="hidden lg:table-cell px-3 py-3">
+                      <span className="text-[11px] font-semibold text-slate-500 whitespace-nowrap block">
+                        {new Date(lead.createdAt).toLocaleDateString("en-IN", { day: 'numeric', month: 'short' })}
+                      </span>
+                    </td>
                     <td className="hidden xl:table-cell px-3 py-3 text-slate-900 font-black text-[12px]">{formatValue(lead.dealValueInr)}</td>
                     <td className="px-4 py-3 text-right">
                       <button className="p-1.5 rounded-lg text-slate-400 hover:bg-white hover:text-slate-900 transition-all">
