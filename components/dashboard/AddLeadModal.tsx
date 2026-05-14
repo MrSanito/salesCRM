@@ -530,7 +530,7 @@ export default function AddLeadModal({ onClose, onSuccess }: AddLeadModalProps) 
                     const ws = XLSX.utils.aoa_to_sheet([REQUIRED_HEADERS]);
                     const wb = XLSX.utils.book_new();
                     XLSX.utils.book_append_sheet(wb, ws, "Template");
-                    XLSX.writeFile(wb, "CRM_Import_Template.xlsx");
+                    XLSX.writeFile(wb, "Sales_Portal_Import_Template.xlsx");
                   }}
                   className="p-3 bg-white border border-slate-200 rounded-xl text-blue-600 hover:bg-blue-50 transition-all shadow-sm active:scale-95"
                 >

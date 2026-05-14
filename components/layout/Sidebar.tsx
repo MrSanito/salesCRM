@@ -221,7 +221,7 @@ export default function Sidebar({
                   const itemSfId = item.href.includes("?sf=") ? item.href.split("?sf=")[1] : null;
                   const isActive = itemSfId ? sfId === itemSfId : activeNav === item.label;
                   return (
-                    <li key={item.label}>
+                    <li key={item.href + item.label}>
                       <Link
                         href={item.href}
                         onClick={() => setIsOpen(false)}

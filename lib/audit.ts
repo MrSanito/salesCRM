@@ -39,3 +39,29 @@ export async function createAuditLog(params: AuditLogParams) {
     console.error("[Audit] Failed to create audit log:", error);
   }
 }
+export async function createBulkAuditLogs(logs: AuditLogParams[]) {
+  try {
+    const data = logs.map(params => ({
+      organizationId: params.organizationId,
+      leadId: params.leadId,
+      actorType: params.actorType,
+      actorId: params.actorId,
+      actorName: params.actorName,
+      action: params.action,
+      field: params.field,
+      beforeValue: params.beforeValue ? (typeof params.beforeValue === 'object' ? JSON.stringify(params.beforeValue) : String(params.beforeValue)) : null,
+      afterValue: params.afterValue ? (typeof params.afterValue === 'object' ? JSON.stringify(params.afterValue) : String(params.afterValue)) : null,
+      note: params.note,
+      source: params.source || "UI",
+    }));
+
+    const result = await prisma.auditLog.createMany({ 
+      data,
+      skipDuplicates: true 
+    });
+    console.log(`[Audit] Bulk logs created: ${result.count}`);
+    return result;
+  } catch (error) {
+    console.error("[Audit] Failed to create bulk audit logs:", error);
+  }
+}

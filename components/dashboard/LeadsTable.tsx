@@ -14,7 +14,7 @@ const STAGE_STYLES: Record<string, string> = {
   NEGOTIATION: "bg-amber-50 text-amber-700",
   COLD: "bg-slate-50 text-slate-600",
   CHATTING: "bg-green-50 text-green-700",
-  CUSTOMER: "bg-blue-600 text-white",
+  CLIENT: "bg-blue-600 text-white",
 };
 
 const STAGE_LABEL: Record<string, string> = {
@@ -25,7 +25,7 @@ const STAGE_LABEL: Record<string, string> = {
   NEGOTIATION: "Negotiation",
   COLD: "Cold",
   CHATTING: "Chatting",
-  CUSTOMER: "Customer",
+  CLIENT: "Client",
 };
 
 const PRIORITY_STYLES: Record<string, string> = {
@@ -329,6 +329,17 @@ export default function LeadsTable({
     return `₹${n.toLocaleString("en-IN")}`;
   }
 
+  const uniqueDates = useMemo(() => {
+    const dates = new Map<string, string>(); // YYYY-MM-DD -> Display Name
+    leads.forEach(l => {
+      const d = new Date(l.createdAt);
+      const iso = d.toISOString().split('T')[0];
+      const display = d.toLocaleDateString("en-IN", { day: 'numeric', month: 'short' });
+      dates.set(iso, display);
+    });
+    return Array.from(dates.entries()).sort((a, b) => b[0].localeCompare(a[0]));
+  }, [leads]);
+
   const getUniqueValues = (key: keyof DbLead) => {
     const values = new Set<string>();
     leads.forEach(l => { if (l[key]) values.add(String(l[key])); });
@@ -538,7 +549,7 @@ export default function LeadsTable({
                     Status <Filter size={9} />
                   </button>
                   <FilterDropdown column="stage">
-                    {["NEW", "CONTACTED", "COLD", "MEETING_SET", "NEGOTIATION", "CUSTOMER", "NOT_INTERESTED"].map(v => (
+                    {["NEW", "CONTACTED", "COLD", "MEETING_SET", "NEGOTIATION", "CLIENT", "NOT_INTERESTED"].map(v => (
                       <label key={v} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer">
                         <input type="checkbox" checked={columnFilters['stage']?.has(v)} onChange={() => toggleColumnFilter('stage', v === 'COLD' ? ['COLD', 'CHATTING'] : v)}
                           className="appearance-none w-3 h-3 rounded border-2 border-slate-300 bg-white checked:bg-blue-600 checked:border-blue-600 transition-all cursor-pointer relative checked:after:content-['✓'] checked:after:absolute checked:after:text-white checked:after:text-[8px] checked:after:font-black checked:after:left-[0.5px] checked:after:top-[-2px]" />
@@ -599,9 +610,25 @@ export default function LeadsTable({
                 <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Owner</span>
               </th>
 
-              {/* Created On */}
+              {/* Created On — filterable */}
               <th className="text-left px-2 py-2">
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Created On</span>
+                <div className="relative inline-block">
+                  <button onClick={() => setActiveColumnFilter(activeColumnFilter === 'createdAt' ? null : 'createdAt')}
+                    className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-0.5 transition-colors ${columnFilters['createdAt']?.size ? "text-blue-600" : "text-slate-500 hover:text-slate-800"}`}>
+                    Created On <Filter size={9} />
+                  </button>
+                  <FilterDropdown column="createdAt">
+                    <div className="max-h-44 overflow-y-auto">
+                      {uniqueDates.map(([iso, display]) => (
+                        <label key={iso} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer">
+                          <input type="checkbox" checked={columnFilters['createdAt']?.has(iso)} onChange={() => toggleColumnFilter('createdAt', iso)}
+                            className="appearance-none w-3 h-3 rounded border-2 border-slate-300 bg-white checked:bg-blue-600 checked:border-blue-600 transition-all cursor-pointer relative checked:after:content-['✓'] checked:after:absolute checked:after:text-white checked:after:text-[8px] checked:after:font-black checked:after:left-[0.5px] checked:after:top-[-2px]" />
+                          <span className="text-[11px] font-semibold text-slate-700 whitespace-nowrap">{display}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </FilterDropdown>
+                </div>
               </th>
 
               {/* Follow-up — filterable */}
@@ -703,10 +730,10 @@ export default function LeadsTable({
                     <span className="text-[11px] font-semibold text-slate-500 truncate block">{lead.owner?.name.split(" ")[0] || "—"}</span>
                   </td>
 
-                  {/* Created On */}
+                  {/* Created On — Date & Time */}
                   <td className="px-2 py-2">
                     <span className="text-[11px] font-semibold text-slate-500 whitespace-nowrap block">
-                      {new Date(lead.createdAt).toLocaleDateString("en-IN", { day: 'numeric', month: 'short' })}
+                      {new Date(lead.createdAt).toLocaleDateString("en-IN", { day: 'numeric', month: 'short' })} {new Date(lead.createdAt).toLocaleTimeString("en-IN", { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase()}
                     </span>
                   </td>
 

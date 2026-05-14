@@ -267,7 +267,7 @@ model Alert {
   body           String?
   isRead         Boolean      @default(false)
   createdAt      DateTime     @default(now())
-  lead           Lead?        @relation(fields: [leadId], references: [id])
+  lead           Lead?        @relation(fields: [leadId], references: [id], onDelete: SetNull)
   organization   Organization @relation(fields: [organizationId], references: [id])
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -338,7 +338,7 @@ model AuditLog {
   note           String?
   source         SourceType
   createdAt      DateTime     @default(now())
-  lead           Lead?        @relation(fields: [leadId], references: [id])
+  lead           Lead?        @relation(fields: [leadId], references: [id], onDelete: SetNull)
   organization   Organization @relation(fields: [organizationId], references: [id])
 
   @@index([leadId])
@@ -423,7 +423,7 @@ model SecurityEWS {
   location       String?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
-  lead           Lead?        @relation(fields: [leadId], references: [id])
+  lead           Lead?        @relation(fields: [leadId], references: [id], onDelete: SetNull)
   organization   Organization @relation(fields: [organizationId], references: [id])
   user           User         @relation(fields: [userId], references: [id])
 
@@ -506,7 +506,7 @@ enum LeadStage {
   NEGOTIATION
   COLD
   CHATTING
-  CUSTOMER
+  CLIENT
   WON
 }
 

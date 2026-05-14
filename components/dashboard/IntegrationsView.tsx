@@ -187,7 +187,7 @@ export default function IntegrationsView() {
                 </div>
                 <h3 className="font-black text-xs uppercase tracking-widest text-slate-900 mb-2">Bi-Directional Sync</h3>
                 <p className="text-xs text-slate-500 leading-relaxed font-medium">
-                  Automatically link scheduled follow-ups to your user's Google Calendar. Events created in CRM appear instantly in your calendar.
+                  Automatically link scheduled follow-ups to your user's Google Calendar. Events created in Sales Portal appear instantly in your calendar.
                 </p>
               </div>
 

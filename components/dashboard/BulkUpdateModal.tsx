@@ -17,7 +17,7 @@ const STAGES = [
   { id: "CHATTING", label: "Cold Chatting" },
   { id: "MEETING_SET", label: "Meeting Set" },
   { id: "NEGOTIATION", label: "Negotiation" },
-  { id: "CUSTOMER", label: "Customer" },
+  { id: "CLIENT", label: "Client" },
   { id: "NOT_INTERESTED", label: "Not Interested" },
 ];
 

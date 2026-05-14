@@ -1,6 +1,6 @@
 "use client"
 import { useState } from "react";
-import { X, Trash2, AlertCircle, ChevronRight } from "lucide-react";
+import { X, Trash2, AlertCircle, ChevronRight, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import axios from "axios";
 
@@ -36,7 +36,20 @@ export default function BulkDeleteModal({ isOpen, onClose, selectedIds, onSucces
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-      <div className="bg-white rounded-[24px] shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-200">
+      <div className="bg-white rounded-[24px] shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-200 relative">
+        {/* Loading Overlay */}
+        {loading && (
+          <div className="absolute inset-0 z-50 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-300">
+            <div className="w-16 h-16 bg-red-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-red-200 mb-6">
+              <Loader2 size={32} className="text-white animate-spin" />
+            </div>
+            <h3 className="text-xl font-black text-slate-900 mb-2">Purging Data</h3>
+            <p className="text-slate-500 font-medium text-sm leading-relaxed">
+              We are executing the bulk deletion protocol. <br />
+              <span className="text-red-600 font-bold underline italic">Please don't exit or refresh</span> until success.
+            </p>
+          </div>
+        )}
         <div className="px-8 py-6 bg-red-50 border-b border-red-100 flex items-center justify-between">
           <div>
             <h2 className="text-xl font-black text-red-900 flex items-center gap-2">

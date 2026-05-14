@@ -1,0 +1,1 @@
+ALTER TYPE "LeadStage" ADD VALUE 'CLIENT';

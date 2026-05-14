@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { 
   Filter, ChevronDown, Download, Eye, MoreVertical, 
@@ -261,7 +261,14 @@ export default function CustomProtocolView({ filter, onLeadClick, refreshKey = 0
   Object.keys(columnFilters).forEach(key => {
     const activeValues = columnFilters[key];
     if (activeValues.size > 0) {
-      processedLeads = processedLeads.filter(l => activeValues.has(String((l as any)[key])));
+      if (key === 'createdAt') {
+        processedLeads = processedLeads.filter(l => {
+          const iso = new Date(l.createdAt).toISOString().split('T')[0];
+          return activeValues.has(iso);
+        });
+      } else {
+        processedLeads = processedLeads.filter(l => activeValues.has(String((l as any)[key])));
+      }
     }
   });
 
@@ -323,6 +330,29 @@ export default function CustomProtocolView({ filter, onLeadClick, refreshKey = 0
     if (n >= 100000) return `₹${(n / 100000).toFixed(1)}L`;
     return `₹${n.toLocaleString("en-IN")}`;
   }
+
+  const uniqueDates = useMemo(() => {
+    const dates = new Map<string, string>(); // YYYY-MM-DD -> Display Name
+    leads.forEach(l => {
+      const d = new Date(l.createdAt);
+      const iso = d.toISOString().split('T')[0];
+      const display = d.toLocaleDateString("en-IN", { day: 'numeric', month: 'short' });
+      dates.set(iso, display);
+    });
+    return Array.from(dates.entries()).sort((a, b) => b[0].localeCompare(a[0]));
+  }, [leads]);
+
+  // Shared dropdown filter panel
+  const FilterDropdown = ({ column, children }: { column: string; children: React.ReactNode }) => (
+    activeColumnFilter === column ? (
+      <div className="absolute left-0 top-full mt-1 min-w-[160px] bg-white border border-slate-200 rounded-xl shadow-2xl z-30 py-1 overflow-hidden">
+        <div className="px-3 py-1.5 border-b border-slate-100 flex items-center justify-between">
+          <button onClick={() => setColumnFilters(prev => ({ ...prev, [column]: new Set() }))} className="text-[9px] font-black text-blue-600 uppercase tracking-wider">Clear</button>
+        </div>
+        {children}
+      </div>
+    ) : null
+  );
 
   const getUniqueValues = (key: keyof DbLead) => {
     const values = new Set<string>();
@@ -508,7 +538,25 @@ export default function CustomProtocolView({ filter, onLeadClick, refreshKey = 0
                 <th className="hidden sm:table-cell w-[10%] text-left text-[11px] font-bold text-sidebar-foreground/40 uppercase px-3 py-3">Phone</th>
                 <th className="hidden lg:table-cell w-[10%] text-left text-[11px] font-bold text-sidebar-foreground/40 uppercase px-3 py-3">Source</th>
                 <th className="hidden lg:table-cell w-[10%] text-left text-[11px] font-bold text-sidebar-foreground/40 uppercase px-3 py-3">Owner</th>
-                <th className="hidden lg:table-cell w-[10%] text-left text-[11px] font-bold text-sidebar-foreground/40 uppercase px-3 py-3">Created On</th>
+                <th className="hidden lg:table-cell w-[10%] text-left px-3 py-3">
+                  <div className="relative inline-block">
+                    <button onClick={() => setActiveColumnFilter(activeColumnFilter === 'createdAt' ? null : 'createdAt')}
+                      className={`text-[11px] font-bold uppercase tracking-wider flex items-center gap-0.5 transition-colors ${columnFilters['createdAt']?.size ? "text-blue-600" : "text-slate-500 hover:text-slate-800"}`}>
+                      Created On <Filter size={9} />
+                    </button>
+                    <FilterDropdown column="createdAt">
+                      <div className="max-h-44 overflow-y-auto">
+                        {uniqueDates.map(([iso, display]) => (
+                          <label key={iso} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" checked={columnFilters['createdAt']?.has(iso)} onChange={() => toggleColumnFilter('createdAt', iso)}
+                              className="appearance-none w-3 h-3 rounded border-2 border-slate-300 bg-white checked:bg-blue-600 checked:border-blue-600 transition-all cursor-pointer relative checked:after:content-['✓'] checked:after:absolute checked:after:text-white checked:after:text-[8px] checked:after:font-black checked:after:left-[0.5px] checked:after:top-[-2px]" />
+                            <span className="text-[11px] font-semibold text-slate-700 whitespace-nowrap">{display}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </FilterDropdown>
+                  </div>
+                </th>
                 <th className="hidden xl:table-cell w-[12%] text-left text-[11px] font-bold text-sidebar-foreground/40 uppercase px-3 py-3">Value</th>
                 <th className="w-[45px] text-right px-2 sm:px-4 py-3"></th>
               </tr>
@@ -556,7 +604,7 @@ export default function CustomProtocolView({ filter, onLeadClick, refreshKey = 0
                     <td className="hidden lg:table-cell px-3 py-3 text-slate-500 font-medium truncate">{lead.owner?.name.split(" ")[0] || "—"}</td>
                     <td className="hidden lg:table-cell px-3 py-3">
                       <span className="text-[11px] font-semibold text-slate-500 whitespace-nowrap block">
-                        {new Date(lead.createdAt).toLocaleDateString("en-IN", { day: 'numeric', month: 'short' })}
+                        {new Date(lead.createdAt).toLocaleDateString("en-IN", { day: 'numeric', month: 'short' })} {new Date(lead.createdAt).toLocaleTimeString("en-IN", { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase()}
                       </span>
                     </td>
                     <td className="hidden xl:table-cell px-3 py-3 text-slate-900 font-black text-[12px]">{formatValue(lead.dealValueInr)}</td>

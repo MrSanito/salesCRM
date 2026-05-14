@@ -63,7 +63,7 @@ export default function AuthPage() {
               <img src="/logo.png" alt="SoloBuild Logo" className="h-20 w-auto object-contain" />
             </div>
             <h1 className="text-3xl font-black text-slate-900 tracking-tighter uppercase">
-              Sales <span className="text-blue-600">CRM</span>
+              Sales <span className="text-blue-600">Portal</span>
             </h1>
             <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.3em] mt-3">
               {isLogin ? "Strategic Access Portal" : "Enterprise Onboarding"}

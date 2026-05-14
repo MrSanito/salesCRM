@@ -130,7 +130,7 @@ export async function POST(req: NextRequest) {
 
       await syncToGoogleCalendar(user.id, {
         summary: `${type}: Follow-up with ${reminder.lead.contactName} (${reminder.lead.company})`,
-        description: description || `Follow-up protocol [ ${type} ] scheduled via SalesCRM.`,
+        description: description || `Follow-up protocol [ ${type} ] scheduled via Sales Portal.`,
         start: startTime.toISOString(),
         end: endTime.toISOString(),
       });

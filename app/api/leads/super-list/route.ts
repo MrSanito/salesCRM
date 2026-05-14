@@ -86,6 +86,16 @@ export async function GET(req: Request) {
             endOfDay.setHours(23, 59, 59, 999);
             queryWhere.followUpAt = { gte: new Date(now.setHours(0,0,0,0)), lte: endOfDay };
           }
+        } else if (field === "createdAt") {
+          const dateFilters = values.map(v => {
+            const start = new Date(`${v}T00:00:00.000Z`);
+            const end = new Date(`${v}T23:59:59.999Z`);
+            return { createdAt: { gte: start, lte: end } };
+          });
+          if (dateFilters.length > 0) {
+            if (!queryWhere.AND) queryWhere.AND = [];
+            queryWhere.AND.push({ OR: dateFilters });
+          }
         }
       }
     });
@@ -179,7 +189,7 @@ export async function GET(req: Request) {
 
     const countByStage = Object.fromEntries(stageCounts.map((s) => [s.stage, s._count.stage]));
     
-    const PIPELINE_STAGES = ["NEW", "CONTACTED", "COLD", "CHATTING", "MEETING_SET", "NEGOTIATION", "CUSTOMER", "NOT_INTERESTED"];
+    const PIPELINE_STAGES = ["NEW", "CONTACTED", "COLD", "CHATTING", "MEETING_SET", "NEGOTIATION", "CLIENT", "NOT_INTERESTED"];
     
     const stageLabelMap: Record<string, string> = {
       NEW: "New",
@@ -188,7 +198,7 @@ export async function GET(req: Request) {
       CHATTING: "Chatting",
       NEGOTIATION: "Negotiation",
       MEETING_SET: "Meeting Set",
-      CUSTOMER: "Customer",
+      CLIENT: "Client",
       NOT_INTERESTED: "Not Interested",
     };
     const stageColorMap: Record<string, string> = {
@@ -198,7 +208,7 @@ export async function GET(req: Request) {
       CHATTING: "bg-purple-50 text-purple-600 border-purple-100",
       NEGOTIATION: "bg-amber-100 text-amber-700 border-amber-200",
       MEETING_SET: "bg-green-100 text-green-700 border-green-200",
-      CUSTOMER: "bg-blue-600 text-white border-blue-700",
+      CLIENT: "bg-blue-600 text-white border-blue-700",
       NOT_INTERESTED: "bg-red-100 text-red-700 border-red-200",
     };
 

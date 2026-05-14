@@ -161,6 +161,20 @@ export default function ImportExcelModal({ onClose, onImportSuccess }: ImportExc
       {/* Wide modal: 3/4 of screen width, full height constraint */}
       <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-[75vw] max-h-[90vh] overflow-hidden animate-in zoom-in-95 fade-in duration-300 flex flex-col">
         
+        {/* Loading Overlay */}
+        {loading && (
+          <div className="absolute inset-0 z-50 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-300">
+            <div className="w-20 h-20 bg-blue-500 rounded-3xl flex items-center justify-center shadow-2xl shadow-blue-200 mb-6 animate-bounce">
+              <Loader2 size={40} className="text-white animate-spin" />
+            </div>
+            <h3 className="text-2xl font-black text-slate-900 mb-2">Importing Leads</h3>
+            <p className="text-slate-500 font-medium max-w-xs leading-relaxed">
+              We are processing your Excel protocol. <br />
+              <span className="text-blue-600 font-bold underline italic">Please don't exit or refresh</span> until success.
+            </p>
+          </div>
+        )}
+        
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 flex-shrink-0">
           <div className="flex items-center gap-4">

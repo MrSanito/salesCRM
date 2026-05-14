@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
-import { createAuditLog } from "@/lib/audit";
+import { createBulkAuditLogs } from "@/lib/audit";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-me";
 
@@ -64,21 +64,21 @@ export async function PATCH(req: Request) {
       data: updateData
     });
 
-    // Create Audit Logs for each lead
-    for (const lead of leads) {
-      await createAuditLog({
-        organizationId: user.organizationId,
-        leadId: lead.id,
-        actorType: "USER",
-        actorId: user.id,
-        actorName: user.name || "Unknown User",
-        action: "UPDATE",
-        beforeValue: lead,
-        afterValue: { ...lead, ...updateData },
-        note: `Bulk update performed by ${user.name}. Fields updated: ${Object.keys(updateData).join(", ")}.`,
-        source: "UI",
-      });
-    }
+    // Create bulk audit logs
+    const auditLogs = leads.map(lead => ({
+      organizationId: user.organizationId,
+      leadId: lead.id,
+      actorType: "USER" as any,
+      actorId: user.id,
+      actorName: user.name || "Unknown User",
+      action: "UPDATE",
+      beforeValue: lead,
+      afterValue: { ...lead, ...updateData },
+      note: `Bulk update performed by ${user.name}. Fields updated: ${Object.keys(updateData).join(", ")}.`,
+      source: "UI" as any,
+    }));
+
+    await createBulkAuditLogs(auditLogs);
 
     return NextResponse.json({ message: `Successfully updated ${ids.length} leads` });
   } catch (error: any) {
@@ -124,6 +124,21 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ error: "One or more leads not found or unauthorized" }, { status: 403 });
     }
 
+    // Create bulk audit logs for deletion BEFORE deleting
+    const auditLogs = leads.map(lead => ({
+      organizationId: user.organizationId,
+      leadId: lead.id,
+      actorType: "USER" as any,
+      actorId: user.id,
+      actorName: user.name || "Unknown User",
+      action: "DELETE",
+      beforeValue: lead,
+      note: `Lead ${lead.contactName} from ${lead.company} deleted in bulk operation by ${user.name}.`,
+      source: "UI" as any,
+    }));
+
+    await createBulkAuditLogs(auditLogs);
+
     // Perform bulk delete
     await prisma.lead.deleteMany({
       where: {
@@ -131,22 +146,6 @@ export async function DELETE(req: Request) {
         organizationId: user.organizationId
       }
     });
-
-    // Create Audit Logs for deletion
-    // Note: Since leads are deleted, we log it before or as a general log
-    for (const lead of leads) {
-        await createAuditLog({
-          organizationId: user.organizationId,
-          leadId: lead.id,
-          actorType: "USER",
-          actorId: user.id,
-          actorName: user.name || "Unknown User",
-          action: "DELETE",
-          beforeValue: lead,
-          note: `Lead ${lead.contactName} from ${lead.company} deleted in bulk operation by ${user.name}.`,
-          source: "UI",
-        });
-      }
 
     return NextResponse.json({ message: `Successfully deleted ${ids.length} leads` });
   } catch (error: any) {
@@ -180,84 +179,101 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Create leads sequentially to handle nested notes and ensure proper relation creation
-    const createdLeads = [];
-    for (const l of leads) {
-      let sourceId = undefined;
-      if (l.source) {
-        const leadSource = await prisma.leadSource.upsert({
-          where: {
-            name_organizationId: {
-              name: l.source,
-              organizationId: user.organizationId
-            }
-          },
-          update: {},
-          create: {
-            name: l.source,
-            organizationId: user.organizationId
-          }
-        });
-        sourceId = leadSource.id;
-      }
-
-      const lead = await prisma.lead.create({
-        data: {
-          contactName: l.contactName || "Unknown",
-          company: l.company || "Unknown",
-          phone: l.phone || null,
-          phone2: l.phone2 || null,
-          email: l.email || null,
-          email2: l.email2 || null,
-          requirement: l.requirement || null,
-          industry: l.industry || null,
-          dealValueInr: "0",
-          stage: "NEW" as any,
-          subStatus: "BLANK" as any,
-          organizationId: user.organizationId,
-          ownerId: user.id,
-          createdById: user.id,
-          sourceId: sourceId,
-          // Handle nested notes
-          notes: l.notes ? {
-            create: {
-              content: l.notes,
-              userId: user.id,
-              organizationId: user.organizationId
-            }
-          } : undefined
-        },
-      });
-      createdLeads.push(lead);
-    }
-
-    // Create Audit Logs for each created lead
-    for (const lead of createdLeads) {
-      await createAuditLog({
-        organizationId: user.organizationId,
-        leadId: lead.id,
-        actorType: "USER",
-        actorId: user.id,
-        actorName: user.name || "Unknown User",
-        action: "CREATE",
-        afterValue: lead,
-        note: `Imported new lead protocol for ${lead.contactName} from ${lead.company} via bulk upload.`,
-        source: "UI",
+    // 1. Bulk handle Lead Sources
+    const sourceNames = [...new Set(leads.map(l => l.source).filter(Boolean) as string[])];
+    if (sourceNames.length > 0) {
+      // Create missing sources in bulk
+      await prisma.leadSource.createMany({
+        data: sourceNames.map(name => ({
+          name,
+          organizationId: user.organizationId
+        })),
+        skipDuplicates: true
       });
     }
 
-    // General bulk log
-    await createAuditLog({
+    // Map source names to IDs for the leads creation
+    const allSources = await prisma.leadSource.findMany({
+      where: { organizationId: user.organizationId }
+    });
+    const sourceMap = new Map(allSources.map(s => [s.name, s.id]));
+
+    // 2. Bulk Create Leads and return their IDs (supported in Prisma 6+)
+    const leadsToCreate = leads.map(l => ({
+      contactName: l.contactName || "Unknown",
+      company: l.company || "Unknown",
+      phone: l.phone || null,
+      phone2: l.phone2 || null,
+      email: l.email || null,
+      email2: l.email2 || null,
+      requirement: l.requirement || null,
+      industry: l.industry || null,
+      dealValueInr: "0",
+      stage: "NEW" as any,
+      subStatus: "BLANK" as any,
       organizationId: user.organizationId,
-      actorType: "USER",
+      ownerId: user.id,
+      createdById: user.id,
+      sourceId: l.source ? sourceMap.get(l.source) : null,
+    }));
+
+    const createdLeads = await prisma.lead.createManyAndReturn({
+      data: leadsToCreate,
+      skipDuplicates: true
+    });
+
+    // 3. Bulk Create Notes
+    const notesToCreate = [];
+    for (let i = 0; i < leads.length; i++) {
+      const originalLead = leads[i];
+      // We assume order is preserved in createManyAndReturn or we match by unique fields
+      // For simplicity, if leads array and createdLeads array match in length:
+      if (originalLead.notes && createdLeads[i]) {
+        notesToCreate.push({
+          content: originalLead.notes,
+          userId: user.id,
+          organizationId: user.organizationId,
+          leadId: createdLeads[i].id
+        });
+      }
+    }
+
+    if (notesToCreate.length > 0) {
+      await prisma.note.createMany({
+        data: notesToCreate
+      });
+    }
+
+    // 4. Bulk Create Audit Logs
+    const auditLogs = createdLeads.map(lead => ({
+      organizationId: user.organizationId,
+      leadId: lead.id,
+      actorType: "USER" as any,
+      actorId: user.id,
+      actorName: user.name || "Unknown User",
+      action: "CREATE",
+      afterValue: lead,
+      note: `Imported new lead protocol via bulk upload.`,
+      source: "UI" as any,
+    }));
+
+    await createBulkAuditLogs(auditLogs);
+
+    // Final summary log
+    await createBulkAuditLogs([{
+      organizationId: user.organizationId,
+      actorType: "USER" as any,
       actorId: user.id,
       actorName: user.name || "Unknown User",
       action: "BULK_IMPORT",
-      note: `Successfully executed bulk import protocol for ${createdLeads.length} leads with associated intelligence notes.`,
-      source: "UI",
-    });
+      note: `Successfully executed bulk import protocol for ${createdLeads.length} leads.`,
+      source: "UI" as any,
+    }]);
 
-    return NextResponse.json({ message: `Successfully imported ${createdLeads.length} leads` });
+    return NextResponse.json({ 
+      message: `Successfully imported ${createdLeads.length} leads`,
+      count: createdLeads.length
+    });
   } catch (error: any) {
     console.error("Error bulk creating leads:", error);
     return NextResponse.json({ error: error.message || "Failed to import leads" }, { status: 500 });
