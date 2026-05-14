@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "leadId and type are required" }, { status: 400 });
     }
 
-    console.log(`[Interaction API] Request received for Lead: ${leadId}, Type: ${type}`);
+
 
     // Verify lead existence and ownership
     const existingLead = await prisma.lead.findFirst({
@@ -37,7 +37,6 @@ export async function POST(req: NextRequest) {
     });
 
     if (!existingLead) {
-      console.error(`[Interaction API] Lead not found or unauthorized: ${leadId}`);
       return NextResponse.json({ error: "Lead not found" }, { status: 404 });
     }
 
@@ -58,7 +57,7 @@ export async function POST(req: NextRequest) {
       })
     ]);
 
-    console.log(`[Interaction API] Success! New lastCommunicatedAt: ${updatedLead.lastCommunicatedAt}`);
+
 
     // Create Audit Log
     let note = "";
@@ -76,7 +75,8 @@ export async function POST(req: NextRequest) {
         note = `Logged a ${type.toLowerCase()} interaction with the lead.`;
     }
 
-    await createAuditLog({
+    // Fire-and-forget: don't block response for audit logging
+    createAuditLog({
       organizationId: user.organizationId,
       leadId: leadId,
       actorType: "USER",
@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
       action: `LOG_${type}`,
       note: note,
       source: "UI",
-    });
+    }).catch(console.error);
 
     return NextResponse.json({ interaction, updatedLead }, { status: 201 });
   } catch (error) {

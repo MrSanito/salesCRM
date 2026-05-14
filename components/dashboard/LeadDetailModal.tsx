@@ -1,7 +1,7 @@
 "use client"
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { X, ChevronLeft, ChevronRight, Building2, Phone, Mail, CalendarCheck, ChevronDown, MessageCircle, ShieldAlert, Target, CalendarClock, Info, Pencil } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Building2, Phone, Mail, CalendarCheck, ChevronDown, MessageCircle, ShieldAlert, Target, CalendarClock, Info, Pencil, Sparkles } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthContext";
 import toast from "react-hot-toast";
 
@@ -106,6 +106,8 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [editingNoteContent, setEditingNoteContent] = useState("");
   const [isUpdatingNote, setIsUpdatingNote] = useState(false);
+  const [isSummarizing, setIsSummarizing] = useState(false);
+  const [notesSummary, setNotesSummary] = useState<string | null>(null);
 
   const fetchData = async (showLoading = true) => {
     if (showLoading) setLoading(true);
@@ -193,6 +195,27 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
       toast.error("Failed to add note");
     } finally {
       setIsAddingNote(false);
+    }
+  };
+
+  const handleSummarizeNotes = async () => {
+    if (notes.length === 0) return;
+    setIsSummarizing(true);
+    try {
+      const res = await fetch(`/api/leads/${leadId}/summarize-notes`, {
+        method: "POST",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setNotesSummary(data.summary);
+        toast.success("Notes summarized");
+      } else {
+        toast.error("Failed to summarize notes");
+      }
+    } catch (err) {
+      toast.error("Network error");
+    } finally {
+      setIsSummarizing(false);
     }
   };
   
@@ -795,14 +818,39 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium resize-y min-h-[100px]"
                       rows={4}
                     />
-                    <button
-                      onClick={handleAddNote}
-                      disabled={isAddingNote || !noteInput.trim()}
-                      className="bg-slate-900 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 disabled:opacity-50 transition-all active:scale-95 w-full md:w-auto self-end"
-                    >
-                      {isAddingNote ? "Adding..." : "Add Note"}
-                    </button>
+                    <div className="flex justify-end gap-2">
+                      <button
+                        onClick={handleSummarizeNotes}
+                        disabled={isSummarizing || notes.length === 0}
+                        className="bg-purple-600 text-white px-4 md:px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-purple-700 disabled:opacity-50 transition-all active:scale-95 flex items-center justify-center gap-1.5 w-full md:w-auto"
+                      >
+                        <Sparkles size={14} />
+                        {isSummarizing ? "Summarizing..." : "Summarize"}
+                      </button>
+                      <button
+                        onClick={handleAddNote}
+                        disabled={isAddingNote || !noteInput.trim()}
+                        className="bg-slate-900 text-white px-4 md:px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 disabled:opacity-50 transition-all active:scale-95 w-full md:w-auto"
+                      >
+                        {isAddingNote ? "Adding..." : "Add Note"}
+                      </button>
+                    </div>
                   </div>
+
+                  {notesSummary && (
+                    <div className="mb-6 p-4 bg-purple-50 border border-purple-100 rounded-xl relative animate-in fade-in zoom-in-95 duration-200">
+                      <button 
+                        onClick={() => setNotesSummary(null)} 
+                        className="absolute top-3 right-3 p-1.5 text-purple-400 hover:text-purple-600 hover:bg-purple-100 rounded-lg transition-colors"
+                      >
+                        <X size={14} />
+                      </button>
+                      <h4 className="text-[10px] font-bold text-purple-600 uppercase tracking-[0.2em] mb-2 flex items-center gap-1.5">
+                        <Sparkles size={12}/> AI Summary
+                      </h4>
+                      <p className="text-sm text-purple-900 font-medium whitespace-pre-wrap leading-relaxed pr-6">{notesSummary}</p>
+                    </div>
+                  )}
 
                   <div className="space-y-4 mb-10 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                     {notes.length === 0 ? (

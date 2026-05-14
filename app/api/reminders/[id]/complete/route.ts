@@ -37,8 +37,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       data: { status: "DONE", completedAt: new Date() },
     });
 
-    // Create Audit Log
-    await createAuditLog({
+    // Fire-and-forget: don't block response for audit logging
+    createAuditLog({
       organizationId: user.organizationId,
       leadId: reminder.leadId,
       actorType: "USER",
@@ -50,7 +50,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       afterValue: "DONE",
       note: `Successfully completed and closed the ${reminder.type.toLowerCase()} follow-up task originally scheduled for ${new Date(reminder.scheduledAt).toLocaleString("en-IN", { day: "numeric", month: "short" })}.`,
       source: "UI",
-    });
+    }).catch(console.error);
 
     return NextResponse.json({ success: true });
   } catch (error) {

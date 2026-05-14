@@ -31,7 +31,15 @@ export async function GET(req: NextRequest) {
         status: { in: ["PENDING", "SNOOZED"] },
         ...(user.role === "SALES_REP" ? { userId: user.id } : {}),
       },
-      include: {
+      select: {
+        id: true,
+        type: true,
+        status: true,
+        scheduledAt: true,
+        completedAt: true,
+        description: true,
+        createdAt: true,
+        leadId: true,
         lead: { select: { id: true, contactName: true, company: true } },
         user: { select: { name: true, initials: true } },
       },

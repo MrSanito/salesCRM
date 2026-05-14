@@ -227,37 +227,43 @@ export async function GET(req: Request) {
 
       const countByStage = Object.fromEntries(stageCounts.map((s: any) => [s.stage, s._count.stage]));
       
-      const PIPELINE_STAGES = ["NEW", "CONTACTED", "COLD", "CHATTING", "MEETING_SET", "NEGOTIATION", "CLIENT", "WON", "NOT_INTERESTED"];
+      const PIPELINE_DISPLAY_STAGES = [
+        { key: "NEW", label: "New" },
+        { key: "CONTACTED", label: "Contacted" },
+        { key: "COLD_CHATTING", label: "Cold Chatting" },
+        { key: "MEETING_SET", label: "Meeting Set" },
+        { key: "NEGOTIATION", label: "Negotiation" },
+        { key: "CLIENT", label: "Client" },
+        { key: "WON", label: "Won" },
+        { key: "NOT_INTERESTED", label: "Not Interested" },
+      ];
       
-      const stageLabelMap: Record<string, string> = {
-        NEW: "New",
-        CONTACTED: "Contacted",
-        COLD: "Cold",
-        CHATTING: "Chatting",
-        NEGOTIATION: "Negotiation",
-        MEETING_SET: "Meeting Set",
-        CLIENT: "Client",
-        WON: "Won",
-        NOT_INTERESTED: "Not Interested",
-      };
       const stageColorMap: Record<string, string> = {
-        NEW: "bg-blue-100 text-blue-700 border-blue-200",
-        CONTACTED: "bg-cyan-100 text-cyan-700 border-cyan-200",
-        COLD: "bg-purple-100 text-purple-700 border-purple-200",
-        CHATTING: "bg-purple-50 text-purple-600 border-purple-100",
-        NEGOTIATION: "bg-amber-100 text-amber-700 border-amber-200",
-        MEETING_SET: "bg-green-100 text-green-700 border-green-200",
-        CLIENT: "bg-blue-600 text-white border-blue-700",
-        WON: "bg-emerald-600 text-white border-emerald-700",
-        NOT_INTERESTED: "bg-red-100 text-red-700 border-red-200",
+        NEW: "bg-blue-50 text-blue-700 border-blue-100",
+        CONTACTED: "bg-cyan-50 text-cyan-700 border-cyan-100",
+        COLD_CHATTING: "bg-slate-50 text-slate-600 border-slate-100",
+        NEGOTIATION: "bg-amber-50 text-amber-700 border-amber-100",
+        MEETING_SET: "bg-indigo-50 text-indigo-700 border-indigo-100",
+        CLIENT: "bg-blue-100 text-blue-700 border-blue-200",
+        WON: "bg-green-100 text-green-700 border-green-200",
+        NOT_INTERESTED: "bg-red-50 text-red-700 border-red-100",
       };
 
-      const pipeline = PIPELINE_STAGES.map((s) => ({
-        stage: s,
-        count: countByStage[s] || 0,
-        label: stageLabelMap[s] || s.replace(/_/g, ' '),
-        color: stageColorMap[s] || "bg-slate-100 text-slate-700",
-      }));
+      const pipeline = PIPELINE_DISPLAY_STAGES.map((s) => {
+        let count = 0;
+        if (s.key === "COLD_CHATTING") {
+          count = (countByStage["COLD"] || 0) + (countByStage["CHATTING"] || 0);
+        } else {
+          count = countByStage[s.key] || 0;
+        }
+
+        return {
+          stage: s.key,
+          count,
+          label: s.label,
+          color: stageColorMap[s.key] || "bg-slate-50 text-slate-700",
+        };
+      });
 
       stats = {
         pipeline,

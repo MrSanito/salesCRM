@@ -39,7 +39,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
             orderBy: { updatedAt: "desc" },
           },
           reminders: {
-            orderBy: { scheduledAt: 'desc' }
+            orderBy: { scheduledAt: 'desc' },
+            take: 5,
+            select: {
+              id: true, type: true, status: true, scheduledAt: true, 
+              completedAt: true, description: true, createdAt: true,
+            }
           }
         },
       }),
@@ -202,8 +207,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
 
     if (auditLogs.length > 0) {
-      // Don't await if we want maximum speed, but bulk is much better than loop
-      await import("@/lib/audit").then(m => m.createBulkAuditLogs(auditLogs));
+      // Fire-and-forget: don't block response for audit logging
+      import("@/lib/audit").then(m => m.createBulkAuditLogs(auditLogs)).catch(console.error);
     }
 
     return NextResponse.json(updatedLead);

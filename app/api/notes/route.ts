@@ -70,8 +70,8 @@ export async function POST(req: NextRequest) {
       include: { user: { select: { name: true, initials: true, role: true } } },
     });
 
-    // Create Audit Log
-    await createAuditLog({
+    // Fire-and-forget: don't block response for audit logging
+    createAuditLog({
       organizationId: user.organizationId,
       leadId: leadId,
       actorType: "USER",
@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
       afterValue: content,
       note: `Appended a new intelligence note to the lead dossier: "${content.substring(0, 50)}${content.length > 50 ? '...' : ''}"`,
       source: "UI",
-    });
+    }).catch(console.error);
 
     return NextResponse.json(note, { status: 201 });
   } catch (error) {

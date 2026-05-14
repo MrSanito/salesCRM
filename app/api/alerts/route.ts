@@ -60,8 +60,8 @@ export async function DELETE(req: NextRequest) {
       },
     });
 
-    // Create Audit Log
-    await createAuditLog({
+    // Fire-and-forget: don't block response for audit logging
+    createAuditLog({
       organizationId: user.organizationId,
       actorType: "USER",
       actorId: user.id,
@@ -69,7 +69,7 @@ export async function DELETE(req: NextRequest) {
       action: "CLEAR_ALERTS",
       note: `Cleared all pending notification alerts from the dashboard.`,
       source: "UI",
-    });
+    }).catch(console.error);
 
     return NextResponse.json({ message: "Alerts cleared" });
   } catch (error) {
