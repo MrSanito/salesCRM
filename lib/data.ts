@@ -13,12 +13,15 @@ export const PRIORITY_STYLES: Record<string, string> = {
 };
 
 export const STAGE_STYLES: Record<string, string> = {
-  New: "bg-blue-50 text-blue-600",
-  Contacted: "bg-cyan-50 text-cyan-600",
-  Proposal: "bg-amber-50 text-amber-700",
-  Negotiation: "bg-orange-50 text-orange-600",
-  Won: "bg-green-50 text-green-700",
-  Lost: "bg-red-50 text-red-600",
+  NEW: "bg-blue-50 text-blue-600",
+  CONTACTED: "bg-cyan-50 text-cyan-600",
+  NOT_INTERESTED: "bg-red-50 text-red-600",
+  MEETING_SET: "bg-indigo-50 text-indigo-600",
+  NEGOTIATION: "bg-amber-50 text-amber-700",
+  COLD: "bg-slate-50 text-slate-600",
+  CHATTING: "bg-slate-50 text-slate-600",
+  CLIENT: "bg-blue-100 text-blue-700",
+  WON: "bg-green-100 text-green-700",
 };
 
 export interface LeadContext {
