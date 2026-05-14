@@ -13,13 +13,14 @@ interface Reminder {
   description: string | null;
   scheduledAt: string;
   status: string;
-  lead: { contactName: string; company: string } | null;
+  lead: { id: string; contactName: string; company: string } | null;
   user: { name: string; initials: string };
 }
 
 interface RemindersListProps {
   refreshKey?: number;
   reminders?: Reminder[];
+  onLeadClick?: (id: string) => void;
 }
 
 const TYPE_META: Record<string, { Icon: any; color: string; label: string }> = {
@@ -61,7 +62,7 @@ function formatTime(dateStr: string) {
   return `${d.toLocaleDateString("en-IN", { day: "numeric", month: "short" })} ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
 }
 
-export default function RemindersList({ refreshKey = 0, reminders: initialReminders }: RemindersListProps) {
+export default function RemindersList({ refreshKey = 0, reminders: initialReminders, onLeadClick }: RemindersListProps) {
   const [reminders, setReminders] = useState<Reminder[]>(initialReminders || []);
   const [loading, setLoading] = useState(!initialReminders);
   const [completing, setCompleting] = useState<string | null>(null);
@@ -203,7 +204,8 @@ export default function RemindersList({ refreshKey = 0, reminders: initialRemind
           return (
             <div
               key={r.id}
-              className={`flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition-colors group ${isOverdue ? "bg-red-50/30" : ""}`}
+              onClick={() => r.lead?.id && onLeadClick?.(r.lead.id)}
+              className={`flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition-colors group cursor-pointer ${isOverdue ? "bg-red-50/30" : ""}`}
             >
               {/* Type icon */}
               <div className={`w-8 h-8 rounded-xl border flex items-center justify-center flex-shrink-0 mt-0.5 ${meta.color}`}>
@@ -232,7 +234,10 @@ export default function RemindersList({ refreshKey = 0, reminders: initialRemind
 
               {/* Mark done */}
               <button
-                onClick={() => markDone(r.id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  markDone(r.id);
+                }}
                 disabled={isBusy}
                 className={`flex-shrink-0 p-1.5 rounded-lg border transition-all opacity-0 group-hover:opacity-100 ${
                   isBusy

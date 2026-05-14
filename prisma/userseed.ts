@@ -15,21 +15,21 @@ async function main() {
   console.log('🌱 Starting user-only seed...')
 
   const org = await prisma.organization.findUnique({
-    where: { slug: 'solobuild' },
+    where: { slug: 'solosales' },
   })
 
   if (!org) {
-    console.error('❌ Organization "solobuild" not found. Please run the main seed first.')
+    console.error('❌ Organization "solosales" not found. Please run the main seed first.')
     process.exit(1)
   }
 
   console.log('✅ Organization:', org.name)
 
   const users = [
-    { name: 'solobuildceo', email: 'solobuildceo@gmail.com', initials: 'SC', role: Role.ORG_ADMIN },
-    { name: 'solobuildmanager', email: 'solobuildmanager@gmail.com', initials: 'SM', role: Role.MANAGER },
-    { name: 'solobuildworker', email: 'solobuildworker@gmail.com', initials: 'SW', role: Role.SALES_REP },
-    { name: 'solobuildworker2', email: 'solobuildworker2@gmail.com', initials: 'SW2', role: Role.SALES_REP },
+    { name: 'solosalesceo', email: 'solosalesceo@gmail.com', initials: 'SC', role: Role.ORG_ADMIN },
+    { name: 'solosalesmanager', email: 'solosalesmanager@gmail.com', initials: 'SM', role: Role.MANAGER },
+    { name: 'solosalesworker', email: 'solosalesworker@gmail.com', initials: 'SW', role: Role.SALES_REP },
+    { name: 'solosalesworker2', email: 'solosalesworker2@gmail.com', initials: 'SW2', role: Role.SALES_REP },
   ]
 
   for (const u of users) {

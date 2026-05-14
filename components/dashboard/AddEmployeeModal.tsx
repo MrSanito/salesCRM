@@ -152,7 +152,7 @@ export default function AddEmployeeModal({ onClose, preselectedManagerId, presel
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 className="w-full bg-slate-50 border border-slate-100 rounded-2xl pl-12 pr-4 py-3.5 text-sm font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
-                placeholder="arjun@solobuild.com"
+                placeholder="arjun@solosales.com"
               />
             </div>
           </div>

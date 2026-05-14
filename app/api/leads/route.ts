@@ -6,8 +6,12 @@ import { createAuditLog } from "@/lib/audit";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-me";
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
+    const { searchParams } = new URL(req.url);
+    const page = parseInt(searchParams.get("page") || "1");
+    const pageSize = parseInt(searchParams.get("pageSize") || "100");
+
     const cookieStore = await cookies();
     const token = cookieStore.get("token")?.value;
 
@@ -74,6 +78,8 @@ export async function GET() {
       orderBy: {
         createdAt: 'desc',
       },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
     });
 
     return NextResponse.json(leads, {

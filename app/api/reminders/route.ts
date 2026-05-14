@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
         ...(user.role === "SALES_REP" ? { userId: user.id } : {}),
       },
       include: {
-        lead: { select: { contactName: true, company: true } },
+        lead: { select: { id: true, contactName: true, company: true } },
         user: { select: { name: true, initials: true } },
       },
       orderBy: { scheduledAt: "asc" },
@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
           status: "PENDING",
         },
         include: {
-          lead: { select: { contactName: true, company: true } },
+          lead: { select: { id: true, contactName: true, company: true } },
           user: { select: { name: true, initials: true } },
         },
       });
@@ -122,21 +122,20 @@ export async function POST(req: NextRequest) {
       return r;
     });
 
-    // Optional: Sync to Google Calendar in the background
-    try {
-      const { syncToGoogleCalendar } = await import("@/lib/google");
+    // Optional: Sync to Google Calendar in the background (no await to avoid blocking response)
+    import("@/lib/google").then(m => {
       const startTime = new Date(scheduledAt);
       const endTime = new Date(startTime.getTime() + 30 * 60000); // Default 30 mins
 
-      await syncToGoogleCalendar(user.id, {
+      m.syncToGoogleCalendar(user.id, {
         summary: `${type}: Follow-up with ${reminder.lead.contactName} (${reminder.lead.company})`,
         description: description || `Follow-up protocol [ ${type} ] scheduled via Solo Sales.`,
         start: startTime.toISOString(),
         end: endTime.toISOString(),
+      }).catch(err => {
+        console.error("Google Calendar Background Sync Error:", err);
       });
-    } catch (err) {
-      console.error("Google Calendar Background Sync Error:", err);
-    }
+    });
 
     return NextResponse.json(reminder, { status: 201 });
   } catch (error) {

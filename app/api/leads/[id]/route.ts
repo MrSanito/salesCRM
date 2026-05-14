@@ -181,13 +181,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     });
 
     // Create Audit Logs for changes
+    const auditLogs: any[] = [];
     for (const [key, afterValue] of Object.entries(updateData)) {
       const beforeValue = (existingLead as any)[key];
       if (beforeValue?.toString() !== afterValue?.toString()) {
-        await createAuditLog({
+        auditLogs.push({
           organizationId: user.organizationId,
           leadId: id,
-          actorType: "USER",
+          actorType: "USER" as const,
           actorId: user.id,
           actorName: user.name || "Unknown",
           action: "UPDATE",
@@ -195,9 +196,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           beforeValue: beforeValue?.toString(),
           afterValue: afterValue?.toString(),
           note: `Updated protocol field '${key}' from '${beforeValue}' to '${afterValue}'.`,
-          source: "UI",
+          source: "UI" as const,
         });
       }
+    }
+
+    if (auditLogs.length > 0) {
+      // Don't await if we want maximum speed, but bulk is much better than loop
+      await import("@/lib/audit").then(m => m.createBulkAuditLogs(auditLogs));
     }
 
     return NextResponse.json(updatedLead);

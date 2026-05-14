@@ -7,6 +7,8 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useAuth } from "@/components/auth/AuthContext";
+import LeadDetailModal from "@/components/dashboard/LeadDetailModal";
+import { useDashboard } from "@/components/dashboard/DashboardContext";
 
 interface Reminder {
   id: string;
@@ -32,6 +34,10 @@ export default function FollowUpsPage() {
   const [filterType, setFilterType] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const { user } = useAuth();
+  const { triggerRefresh } = useDashboard();
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  const [isModalLoading, setIsModalLoading] = useState(false);
+  const [leadIds, setLeadIds] = useState<string[]>([]);
 
   const fetchReminders = useCallback(async () => {
     setLoading(true);
@@ -49,6 +55,24 @@ export default function FollowUpsPage() {
   useEffect(() => {
     fetchReminders();
   }, [fetchReminders]);
+
+  const openLeadModal = (id: string, allIds?: string[]) => {
+    setSelectedLeadId(id);
+    if (allIds) setLeadIds(allIds);
+    setIsModalLoading(true);
+    setTimeout(() => setIsModalLoading(false), 600);
+  };
+
+  const switchLead = (dir: "next" | "prev") => {
+    if (!selectedLeadId || leadIds.length === 0) return;
+    const currentIndex = leadIds.indexOf(selectedLeadId);
+    let newIndex = dir === "next" ? currentIndex + 1 : currentIndex - 1;
+    if (newIndex < 0) newIndex = leadIds.length - 1;
+    if (newIndex >= leadIds.length) newIndex = 0;
+    setSelectedLeadId(leadIds[newIndex]);
+    setIsModalLoading(true);
+    setTimeout(() => setIsModalLoading(false), 600);
+  };
 
   const markDone = async (id: string) => {
     setCompleting(id);
@@ -152,6 +176,7 @@ export default function FollowUpsPage() {
             tasks={grouped.overdue} 
             onComplete={markDone}
             completingId={completing}
+            onLeadClick={(id: string) => openLeadModal(id, filtered.map(r => r.lead?.id).filter(Boolean) as string[])}
           />
         )}
         
@@ -162,6 +187,7 @@ export default function FollowUpsPage() {
           tasks={grouped.today} 
           onComplete={markDone}
           completingId={completing}
+          onLeadClick={(id: string) => openLeadModal(id, filtered.map(r => r.lead?.id).filter(Boolean) as string[])}
           emptyMsg="No more tasks for today! Take a breather. ☕"
         />
 
@@ -172,13 +198,27 @@ export default function FollowUpsPage() {
           tasks={grouped.future} 
           onComplete={markDone}
           completingId={completing}
+          onLeadClick={(id: string) => openLeadModal(id, filtered.map(r => r.lead?.id).filter(Boolean) as string[])}
         />
       </div>
+
+      {selectedLeadId && (
+        <LeadDetailModal
+          leadId={selectedLeadId}
+          isLoading={isModalLoading}
+          onClose={() => setSelectedLeadId(null)}
+          onSwitch={switchLead}
+          onUpdate={() => {
+            triggerRefresh();
+            fetchReminders();
+          }}
+        />
+      )}
     </div>
   );
 }
 
-function Section({ title, count, color, tasks, onComplete, completingId, emptyMsg = "No tasks found" }: any) {
+function Section({ title, count, color, tasks, onComplete, completingId, onLeadClick, emptyMsg = "No tasks found" }: any) {
   if (tasks.length === 0 && !emptyMsg) return null;
 
   return (
@@ -201,7 +241,11 @@ function Section({ title, count, color, tasks, onComplete, completingId, emptyMs
             const isBusy = completingId === task.id;
 
             return (
-              <div key={task.id} className="bg-white border border-slate-200 rounded-xl p-4 hover:shadow-md transition-all group relative overflow-hidden">
+              <div 
+                key={task.id} 
+                onClick={() => task.lead?.id && onLeadClick?.(task.lead.id)}
+                className="bg-white border border-slate-200 rounded-xl p-4 hover:shadow-md transition-all group relative overflow-hidden cursor-pointer"
+              >
                 <div className="flex items-start gap-3">
                   <div className={`w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 ${meta.bgColor}`}>
                     <Icon className={meta.color} size={18} />
@@ -226,7 +270,10 @@ function Section({ title, count, color, tasks, onComplete, completingId, emptyMs
                   </div>
                   
                   <button
-                    onClick={() => onComplete(task.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onComplete(task.id);
+                    }}
                     disabled={isBusy}
                     className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-green-600 hover:bg-green-50 transition-colors border border-green-100"
                   >

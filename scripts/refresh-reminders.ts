@@ -15,12 +15,12 @@ async function main() {
   console.log('🔄 Refreshing reminders...')
 
   // Get org and users
-  const org = await prisma.organization.findFirst({ where: { slug: 'solobuild' } })
+  const org = await prisma.organization.findFirst({ where: { slug: 'solosales' } })
   if (!org) { console.error('❌ Org not found'); return }
 
   const [worker1, worker2] = await Promise.all([
-    prisma.user.findUnique({ where: { email: 'solobuildworker@gmail.com' } }),
-    prisma.user.findUnique({ where: { email: 'solobuildworker2@gmail.com' } }),
+    prisma.user.findUnique({ where: { email: 'solosalesworker@gmail.com' } }),
+    prisma.user.findUnique({ where: { email: 'solosalesworker2@gmail.com' } }),
   ])
   if (!worker1 || !worker2) { console.error('❌ Workers not found'); return }
 

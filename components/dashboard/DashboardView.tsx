@@ -26,7 +26,7 @@ export default function DashboardView({ onAddLead, onAddEmployee, onLeadClick, a
 
   const fetchDashboardData = useCallback(async () => {
     try {
-      const res = await fetch("/api/leads/super-list?page=1&pageSize=50");
+      const res = await fetch("/api/leads/super-list?page=1&pageSize=50&includeStats=true");
       const data = await res.json();
       setFullData(data);
       if (data.stats) {
@@ -119,7 +119,7 @@ export default function DashboardView({ onAddLead, onAddEmployee, onLeadClick, a
         <div className="xl:col-span-2">
           <PipelineFunnel refreshKey={refreshKey} pipeline={dashboardStats?.pipeline} totalValue={dashboardStats?.kpis?.totalPipelineValue} />
         </div>
-        <RemindersList refreshKey={refreshKey} reminders={dashboardStats?.reminders} />
+        <RemindersList refreshKey={refreshKey} reminders={dashboardStats?.reminders} onLeadClick={onLeadClick} />
       </div>
 
       {/* Leads Management Section */}

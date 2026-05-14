@@ -104,130 +104,162 @@ export async function GET(req: Request) {
     let orderBy: any = { [sortBy]: sortDir };
     if (sortBy === "lead") orderBy = { contactName: sortDir };
 
-    const [leads, totalCount, statsData] = await Promise.all([
-      prisma.lead.findMany({
-        where: queryWhere,
-        select: {
-          id: true,
-          contactName: true,
-          company: true,
-          email: true,
-          phone: true,
-          stage: true,
-          dealValueInr: true,
-          priority: true,
-          subStatus: true,
-          followUpAt: true,
-          createdAt: true,
-          industry: true,
-          project: true,
-          lastCommunicatedAt: true,
-          requirement: true,
-          owner: { select: { id: true, name: true, initials: true } },
-          source: { select: { id: true, name: true } }
-        },
-        orderBy,
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-      }),
-      prisma.lead.count({ where: queryWhere }),
-      Promise.all([
-        prisma.lead.groupBy({
-          by: ["stage"],
-          where: baseWhere,
-          _count: { stage: true },
+    const includeStats = searchParams.get("includeStats") === "true";
+    
+    let leads, totalCount, statsData;
+
+    if (includeStats) {
+      [leads, totalCount, statsData] = await Promise.all([
+        prisma.lead.findMany({
+          where: queryWhere,
+          select: {
+            id: true,
+            contactName: true,
+            company: true,
+            email: true,
+            phone: true,
+            stage: true,
+            dealValueInr: true,
+            priority: true,
+            subStatus: true,
+            followUpAt: true,
+            createdAt: true,
+            industry: true,
+            project: true,
+            lastCommunicatedAt: true,
+            requirement: true,
+            owner: { select: { id: true, name: true, initials: true } },
+            source: { select: { id: true, name: true } }
+          },
+          orderBy,
+          skip: (page - 1) * pageSize,
+          take: pageSize,
         }),
-        prisma.lead.count({ where: { ...baseWhere, priority: "HIGH" } }),
-        prisma.lead.aggregate({
-          where: baseWhere,
-          _sum: { dealValueInr: true },
-        }),
-        prisma.lead.count({ 
-          where: { 
-            ...baseWhere, 
-            createdAt: { gte: new Date(new Date().setDate(new Date().getDate() - 7)) } 
-          } 
-        }),
-        prisma.lead.count({ 
-          where: { 
-            ...baseWhere, 
-            followUpAt: {
-              gte: new Date(new Date().setHours(0,0,0,0)),
-              lte: new Date(new Date().setHours(23,59,59,999))
+        prisma.lead.count({ where: queryWhere }),
+        Promise.all([
+          prisma.lead.groupBy({
+            by: ["stage"],
+            where: baseWhere,
+            _count: { stage: true },
+          }),
+          prisma.lead.count({ where: { ...baseWhere, priority: "HIGH" } }),
+          prisma.lead.aggregate({
+            where: baseWhere,
+            _sum: { dealValueInr: true },
+          }),
+          prisma.lead.count({ 
+            where: { 
+              ...baseWhere, 
+              createdAt: { gte: new Date(new Date().setDate(new Date().getDate() - 7)) } 
             } 
-          } 
-        }),
-        prisma.lead.count({ where: { ...baseWhere, stage: "WON" } }),
-        // Added: Reminders for the dashboard
-        prisma.reminder.findMany({
-          where: {
-            organizationId: user.organizationId,
-            status: { in: ["PENDING", "SNOOZED"] },
-            ...(user.role === "SALES_REP" ? { userId: user.id } : {}),
+          }),
+          prisma.lead.count({ 
+            where: { 
+              ...baseWhere, 
+              followUpAt: {
+                gte: new Date(new Date().setHours(0,0,0,0)),
+                lte: new Date(new Date().setHours(23,59,59,999))
+              } 
+            } 
+          }),
+          prisma.lead.count({ where: { ...baseWhere, stage: "WON" } }),
+          // Added: Reminders for the dashboard
+          prisma.reminder.findMany({
+            where: {
+              organizationId: user.organizationId,
+              status: { in: ["PENDING", "SNOOZED"] },
+              ...(user.role === "SALES_REP" ? { userId: user.id } : {}),
+            },
+            include: {
+              lead: { select: { contactName: true, company: true } },
+              user: { select: { name: true, initials: true } },
+            },
+            orderBy: { scheduledAt: "asc" },
+            take: 20,
+          }),
+          // Added: Total new leads (for sidebar badge)
+          prisma.lead.count({ where: { ...baseWhere, stage: "NEW" } }),
+          // Added: Total follow ups (for sidebar badge)
+          prisma.reminder.count({
+            where: {
+              organizationId: user.organizationId,
+              ...(user.role === "SALES_REP" ? { userId: user.id } : {}),
+              status: "PENDING",
+            }
+          }),
+        ])
+      ]);
+    } else {
+      [leads, totalCount] = await Promise.all([
+        prisma.lead.findMany({
+          where: queryWhere,
+          select: {
+            id: true,
+            contactName: true,
+            company: true,
+            email: true,
+            phone: true,
+            stage: true,
+            dealValueInr: true,
+            priority: true,
+            subStatus: true,
+            followUpAt: true,
+            createdAt: true,
+            industry: true,
+            project: true,
+            lastCommunicatedAt: true,
+            requirement: true,
+            owner: { select: { id: true, name: true, initials: true } },
+            source: { select: { id: true, name: true } }
           },
-          include: {
-            lead: { select: { contactName: true, company: true } },
-            user: { select: { name: true, initials: true } },
-          },
-          orderBy: { scheduledAt: "asc" },
-          take: 20,
+          orderBy,
+          skip: (page - 1) * pageSize,
+          take: pageSize,
         }),
-        // Added: Total new leads (for sidebar badge)
-        prisma.lead.count({ where: { ...baseWhere, stage: "NEW" } }),
-        // Added: Total follow ups (for sidebar badge)
-        prisma.reminder.count({
-          where: {
-            organizationId: user.organizationId,
-            ...(user.role === "SALES_REP" ? { userId: user.id } : {}),
-            status: "PENDING",
-          }
-        }),
-      ])
-    ]);
+        prisma.lead.count({ where: queryWhere }),
+      ]);
+    }
 
-    const [stageCounts, alertsCount, totalValueAgg, newThisWeek, followUpsToday, wonDeals, reminders, newLeadsCount, followUpsTotal] = statsData;
+    let stats: any = null;
 
-    const countByStage = Object.fromEntries(stageCounts.map((s) => [s.stage, s._count.stage]));
-    
-    const PIPELINE_STAGES = ["NEW", "CONTACTED", "COLD", "CHATTING", "MEETING_SET", "NEGOTIATION", "CLIENT", "NOT_INTERESTED"];
-    
-    const stageLabelMap: Record<string, string> = {
-      NEW: "New",
-      CONTACTED: "Contacted",
-      COLD: "Cold",
-      CHATTING: "Chatting",
-      NEGOTIATION: "Negotiation",
-      MEETING_SET: "Meeting Set",
-      CLIENT: "Client",
-      NOT_INTERESTED: "Not Interested",
-    };
-    const stageColorMap: Record<string, string> = {
-      NEW: "bg-blue-100 text-blue-700 border-blue-200",
-      CONTACTED: "bg-cyan-100 text-cyan-700 border-cyan-200",
-      COLD: "bg-purple-100 text-purple-700 border-purple-200",
-      CHATTING: "bg-purple-50 text-purple-600 border-purple-100",
-      NEGOTIATION: "bg-amber-100 text-amber-700 border-amber-200",
-      MEETING_SET: "bg-green-100 text-green-700 border-green-200",
-      CLIENT: "bg-blue-600 text-white border-blue-700",
-      NOT_INTERESTED: "bg-red-100 text-red-700 border-red-200",
-    };
+    if (includeStats && statsData) {
+      const [stageCounts, alertsCount, totalValueAgg, newThisWeek, followUpsToday, wonDeals, reminders, newLeadsCount, followUpsTotal] = statsData;
 
-    const pipeline = PIPELINE_STAGES.map((s) => ({
-      stage: s,
-      count: countByStage[s] || 0,
-      label: stageLabelMap[s] || s.replace(/_/g, ' '),
-      color: stageColorMap[s] || "bg-slate-100 text-slate-700",
-    }));
+      const countByStage = Object.fromEntries(stageCounts.map((s: any) => [s.stage, s._count.stage]));
+      
+      const PIPELINE_STAGES = ["NEW", "CONTACTED", "COLD", "CHATTING", "MEETING_SET", "NEGOTIATION", "CLIENT", "WON", "NOT_INTERESTED"];
+      
+      const stageLabelMap: Record<string, string> = {
+        NEW: "New",
+        CONTACTED: "Contacted",
+        COLD: "Cold",
+        CHATTING: "Chatting",
+        NEGOTIATION: "Negotiation",
+        MEETING_SET: "Meeting Set",
+        CLIENT: "Client",
+        WON: "Won",
+        NOT_INTERESTED: "Not Interested",
+      };
+      const stageColorMap: Record<string, string> = {
+        NEW: "bg-blue-100 text-blue-700 border-blue-200",
+        CONTACTED: "bg-cyan-100 text-cyan-700 border-cyan-200",
+        COLD: "bg-purple-100 text-purple-700 border-purple-200",
+        CHATTING: "bg-purple-50 text-purple-600 border-purple-100",
+        NEGOTIATION: "bg-amber-100 text-amber-700 border-amber-200",
+        MEETING_SET: "bg-green-100 text-green-700 border-green-200",
+        CLIENT: "bg-blue-600 text-white border-blue-700",
+        WON: "bg-emerald-600 text-white border-emerald-700",
+        NOT_INTERESTED: "bg-red-100 text-red-700 border-red-200",
+      };
 
-    return NextResponse.json({
-      leads,
-      pagination: {
-        page,
-        pageSize,
-        totalCount,
-        totalPages: Math.ceil(totalCount / pageSize),
-      },
-      stats: {
+      const pipeline = PIPELINE_STAGES.map((s) => ({
+        stage: s,
+        count: countByStage[s] || 0,
+        label: stageLabelMap[s] || s.replace(/_/g, ' '),
+        color: stageColorMap[s] || "bg-slate-100 text-slate-700",
+      }));
+
+      stats = {
         pipeline,
         reminders,
         kpis: {
@@ -240,7 +272,18 @@ export async function GET(req: Request) {
           newLeadsCount,
           followUpsTotal,
         }
-      }
+      };
+    }
+
+    return NextResponse.json({
+      leads,
+      pagination: {
+        page,
+        pageSize,
+        totalCount,
+        totalPages: Math.ceil(totalCount / pageSize),
+      },
+      stats
     }, {
       headers: {
         'Cache-Control': 'private, max-age=30, stale-while-revalidate=10'

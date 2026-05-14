@@ -178,7 +178,7 @@ export default function Sidebar({
       >
         <div className="flex items-center justify-between px-4 py-4 border-b border-sidebar-border shrink-0">
           <div className="flex items-center gap-2">
-            <img src="/logo.png" alt="SoloBuild" className="h-8 w-auto object-contain" />
+            <span className="text-lg font-black text-white tracking-tighter">SOLO SALES</span>
           </div>
           <button 
             className="md:hidden p-1 text-sidebar-foreground/50 hover:text-sidebar-foreground transition-colors"

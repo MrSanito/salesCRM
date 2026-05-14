@@ -253,10 +253,17 @@ export default function LeadsTable({
       Object.entries(columnFilters).forEach(([key, values]) => {
         if (values.size > 0) params.set(`filter_${key}`, Array.from(values).join(","));
       });
+
+      // Optimization: Only include stats on the first page or if explicitly needed
+      // This makes pagination much faster
+      if (currentPage === 1) {
+        params.set("includeStats", "true");
+      }
+
       const res = await fetch(`/api/leads/super-list?${params.toString()}`);
       const data = await res.json();
       if (data.leads) setLeads(data.leads);
-      if (data.pagination?.totalCount) setTotalCount(data.pagination.totalCount);
+      if (data.pagination?.total) setTotalCount(data.pagination.total);
       if (data.stats && onStatsUpdate) onStatsUpdate(data.stats);
     } catch (err) {
       console.error("Fetch error:", err);
@@ -271,7 +278,7 @@ export default function LeadsTable({
   useEffect(() => {
     if (initialData) {
       if (initialData.leads) setLeads(initialData.leads);
-      if (initialData.pagination?.totalCount) setTotalCount(initialData.pagination.totalCount);
+      if (initialData.pagination?.total) setTotalCount(initialData.pagination.total);
       if (initialData.stats && onStatsUpdate) onStatsUpdate(initialData.stats);
       setLoading(false);
     }

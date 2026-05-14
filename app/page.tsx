@@ -10,7 +10,7 @@ export default function AuthPage() {
     name: "",
     email: "",
     password: "",
-    organizationName: "solobuild"
+    organizationName: "solosales"
   });
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
@@ -59,12 +59,11 @@ export default function AuthPage() {
       <div className="w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-slate-100 relative z-10">
         <div className="p-10">
           <div className="text-center mb-10">
-            <div className="mb-8 flex justify-center">
-              <img src="/logo.png" alt="SoloBuild Logo" className="h-20 w-auto object-contain" />
+            <div className="mb-4 flex justify-center">
+              <span className="text-4xl font-black text-slate-900 tracking-tighter uppercase">
+                Solo <span className="text-blue-600">Sales</span>
+              </span>
             </div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tighter uppercase">
-              Solo <span className="text-blue-600">Sales</span>
-            </h1>
             <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.3em] mt-3">
               {isLogin ? "Strategic Access Portal" : "Enterprise Onboarding"}
             </p>
