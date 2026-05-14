@@ -174,7 +174,7 @@ export default function EditLeadPage() {
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <Field label="Interested In" icon={<Briefcase size={11} />}>
-                  <input className={inputCls} value={form.interestedIn} onChange={e => set("interestedIn", e.target.value)} placeholder="e.g. Enterprise Sales Portal Suite" />
+                  <input className={inputCls} value={form.interestedIn} onChange={e => set("interestedIn", e.target.value)} placeholder="e.g. Enterprise Solo Sales Suite" />
                 </Field>
                 <Field label="Lead Source" icon={<Globe size={11} />}>
                   <select className={selectCls} value={form.source} onChange={e => set("source", e.target.value)}>

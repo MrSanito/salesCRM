@@ -26,7 +26,7 @@ export default function LeadDetails({ params }: { params: { id: string } }) {
     source: "Direct Referral",
     lastActivity: "2 hours ago",
     lastCommunicated: "Yesterday, 04:30 PM",
-    productInterested: "Enterprise Sales Portal Suite v2",
+    productInterested: "Enterprise Solo Sales Suite v2",
     latestNote: "Client is interested in bulk licensing for their sales team of 50+. Requested a demo for next Thursday.",
     status: "Qualified",
     subStatus: "Proposal Sent",

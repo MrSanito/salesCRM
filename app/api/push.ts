@@ -53,7 +53,7 @@ const leads = [
   { company: "Studio 46 India", phone: "7940322115", category: "digital marketing", address: "1st floor, Abhijeet - II, Umashankar Joshi Marg, Mithakhali, Navrangpura, Ahmedabad, Gujarat 380006", size: "N/A" },
   { company: "Zero Gravity Communication", phone: "7969164949", category: "digital marketing", address: "Applewoods Township, Swati Trinity, Sardar Patel Ring Rd, Sarkhej-Okaf, Ahmedabad, Gujarat 380054", size: "200" },
   { company: "Mas Callnet", phone: "7290093873", category: "Telecalling", address: "F-15, Ashram Rd, opp. Natraj Cinema, Ellisbridge, Ahmedabad, Gujarat 380009", size: "N/A" },
-  { company: "Adani Customer Helpdesk", phone: "7927623264", category: "Telecalling", address: "03, Sumangalam Society, Opp Asia School, Drive In Rd, Gurukul, Ahmedabad, Gujarat 380054", size: "N/A" },
+  { company: "Adani Client Helpdesk", phone: "7927623264", category: "Telecalling", address: "03, Sumangalam Society, Opp Asia School, Drive In Rd, Gurukul, Ahmedabad, Gujarat 380054", size: "N/A" },
   { company: "Technomine", phone: "7940075474", category: "Telecalling", address: "4th Floor, 401-403, Shoppers Plaza, Mithakhali, Navrangpura, Ahmedabad, Gujarat 380006", size: "500" },
   { company: "Hitech Digital Solution", phone: "7940003000", category: "Telecalling", address: "9th floor, Prahladnagar, 100 Feet Anand Nagar Rd, Ahmedabad, Gujarat 380015", size: "1000" },
   { company: "Riddhi Corporate Service", phone: "7804040404", category: "Telecalling", address: "10, Mill Officers Colony, B/h Old RBI, Ashram Rd, Ahmedabad, Gujarat 380009", size: "200" },
