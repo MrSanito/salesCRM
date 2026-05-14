@@ -1,0 +1,14 @@
+name: Notification Cron
+on:
+  schedule:
+    - cron: '*/15 * * * *' # Runs every 15 minutes
+  workflow_dispatch: # Allows manual trigger for testing
+
+jobs:
+  ping-cron:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hit Notification API
+        run: |
+          curl -X GET "${{ secrets.APP_URL }}/api/cron/notify-followups" \
+          -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
