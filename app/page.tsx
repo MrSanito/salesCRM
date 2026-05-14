@@ -115,7 +115,7 @@ export default function AuthPage() {
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   className="w-full bg-slate-50 border border-slate-100 rounded-2xl pl-12 pr-4 py-3.5 text-sm font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all placeholder:text-slate-300"
-                  placeholder="admin@salescrm.com"
+                  placeholder="admin@salesportal.com"
                 />
               </div>
             </div>
