@@ -64,7 +64,7 @@ export interface Lead {
 }
 
 export const SUB_STATUSES = [
-  "Meeting confirmed", "No Response", "Budget Issue"
+  "Blank", "Chatting", "Not Answered", "Wrong No.", "Warm Lead", "Proposal Sent", "Budget Low", "No Requirement", "Texted"
 ];
 
 export const ALL_LEADS = [

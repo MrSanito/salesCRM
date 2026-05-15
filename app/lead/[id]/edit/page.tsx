@@ -31,10 +31,11 @@ const SUB_STATUS_LABEL: Record<string, string> = {
   BUDGET_LOW: "Budget Low",
   PROPOSAL_SENT: "Proposal Sent",
   WARM_LEAD: "Warm Lead",
+  TEXTED: "Texted",
   BLANK: "Blank",
 };
 
-const SUB_STATUS_OPTIONS = ["BLANK", "CHATTING", "NOT_ANSWERED", "WRONG_NO", "NO_REQUIREMENT", "BUDGET_LOW", "PROPOSAL_SENT", "WARM_LEAD"];
+const SUB_STATUS_OPTIONS = ["BLANK", "CHATTING", "NOT_ANSWERED", "WRONG_NO", "NO_REQUIREMENT", "BUDGET_LOW", "PROPOSAL_SENT", "WARM_LEAD", "TEXTED"];
 
 export default function EditLeadPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();

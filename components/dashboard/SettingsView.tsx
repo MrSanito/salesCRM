@@ -26,6 +26,7 @@ const SUB_STATUS_OPTIONS = [
   { value: "PROPOSAL_SENT", label: "Proposal Sent" },
   { value: "BUDGET_LOW", label: "Budget Low" },
   { value: "NO_REQUIREMENT", label: "No Requirement" },
+  { value: "TEXTED", label: "Texted" },
 ];
 
 const DEAL_SIZE_OPTIONS = [

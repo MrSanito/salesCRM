@@ -31,6 +31,7 @@ const SUB_STATUS_LABEL: Record<string, string> = {
   BUDGET_LOW: "Budget Low",
   PROPOSAL_SENT: "Proposal Sent",
   WARM_LEAD: "Warm Lead",
+  TEXTED: "Texted",
   BLANK: "Blank",
 };
 

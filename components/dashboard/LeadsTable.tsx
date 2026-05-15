@@ -44,6 +44,7 @@ const SUB_STATUS_LABEL: Record<string, string> = {
   BUDGET_LOW: "Budget Low",
   PROPOSAL_SENT: "Proposal Sent",
   WARM_LEAD: "Warm Lead",
+  TEXTED: "Texted",
   BLANK: "Blank",
 };
 
@@ -55,6 +56,7 @@ const SUB_STATUS_STYLES: Record<string, string> = {
   BUDGET_LOW: "bg-red-50 text-red-600 border border-red-100",
   PROPOSAL_SENT: "bg-blue-50 text-blue-600 border border-blue-100",
   WARM_LEAD: "bg-orange-50 text-orange-600 border border-orange-100",
+  TEXTED: "bg-cyan-50 text-cyan-600 border border-cyan-100",
   BLANK: "bg-slate-50 text-slate-400 border border-slate-100",
 };
 

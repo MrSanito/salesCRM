@@ -30,6 +30,7 @@ const SUB_STATUSES = [
   { id: "PROPOSAL_SENT", label: "Proposal Sent" },
   { id: "BUDGET_LOW", label: "Budget Low" },
   { id: "NO_REQUIREMENT", label: "No Requirement" },
+  { id: "TEXTED", label: "Texted" },
 ];
 
 const PRIORITIES = [
