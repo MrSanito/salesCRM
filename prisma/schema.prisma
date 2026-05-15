@@ -573,6 +573,7 @@ enum LeadSubStatus {
   BUDGET_LOW
   PROPOSAL_SENT
   WARM_LEAD
+  TEXTED
   BLANK
 }
 
