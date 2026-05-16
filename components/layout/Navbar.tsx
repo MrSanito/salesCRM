@@ -65,6 +65,12 @@ export default function Navbar({ onMenuClick = () => {}, activeNav = "Dashboard"
         >
           <Menu size={20} />
         </button>
+        <img src="/logo.svg" alt="Logo" className="h-8 w-auto" />
+        <div className="h-6 w-[1px] bg-slate-200 mx-1 hidden sm:block" />
+        <span className="text-sm font-black text-slate-900 tracking-tighter uppercase hidden sm:block">
+          Solo <span className="text-blue-600">Sales</span>
+        </span>
+        <div className="h-4 w-[1px] bg-slate-200 mx-1" />
         <h1 className="text-lg font-semibold text-slate-800">{activeNav}</h1>
       </div>
 

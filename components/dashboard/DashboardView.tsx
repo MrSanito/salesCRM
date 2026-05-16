@@ -136,6 +136,9 @@ export default function DashboardView({ onAddLead, onAddEmployee, onLeadClick, a
         <FollowUpModal 
           isOpen={true} 
           onClose={() => setShowFollowup(false)} 
+          leadId="test-id"
+          leadName="Test Lead"
+          note="This is a test reminder triggered from the dashboard."
         />
       )}
     </div>

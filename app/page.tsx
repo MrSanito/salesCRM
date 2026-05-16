@@ -65,7 +65,7 @@ export default function AuthPage() {
               </span>
             </div>
             <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.3em] mt-3">
-              {isLogin ? "Strategic Access Portal" : "Enterprise Onboarding"}
+              {isLogin ? "Your Personalized Sales Assistant" : "Enterprise Onboarding"}
             </p>
           </div>
 

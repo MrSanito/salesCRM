@@ -5,10 +5,12 @@ import { Bell } from "lucide-react";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useRouter } from "next/navigation";
 import FollowUpModal from "@/components/dashboard/FollowupModal";
+import { useDashboard } from "./dashboard/DashboardContext";
 
 export function NotificationBell() {
   const { notifications, unreadCount, markRead, clearAll, activeModalAlert, setActiveModalAlert } = useNotifications();
   const [isOpen, setIsOpen] = useState(false);
+  const { triggerRefresh } = useDashboard();
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
@@ -114,6 +116,9 @@ export function NotificationBell() {
           onClose={() => setActiveModalAlert(null)} 
           leadName={activeModalAlert.contactName || "Unknown Lead"}
           note={activeModalAlert.body || "Follow-up required"}
+          leadId={activeModalAlert.leadId || undefined}
+          notificationId={activeModalAlert.id}
+          onActionComplete={triggerRefresh}
         />
       )}
     </div>
