@@ -125,6 +125,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       ...(data.ownerId !== undefined && { ownerId: data.ownerId }),
       ...(data.requirement !== undefined && { requirement: data.requirement || null }),
       ...(data.industry !== undefined && { industry: data.industry || null }),
+      ...(data.city !== undefined && { city: data.city || null }),
+      ...(data.state !== undefined && { state: data.state || null }),
       ...(data.subStatus !== undefined && { subStatus: data.subStatus }),
       ...(data.project !== undefined && { project: data.project || null }),
       ...(data.followUpAt !== undefined && { followUpAt: data.followUpAt ? new Date(data.followUpAt) : null }),

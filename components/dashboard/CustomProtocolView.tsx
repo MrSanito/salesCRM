@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { 
   Filter, ChevronDown, Download, Eye, MoreVertical, 
-  ChevronRight, XCircle, Edit, Trash2, Target, Sparkles, Bell, Search
+  ChevronRight, XCircle, Edit, Trash2, Target, Sparkles, Bell, Search, X
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import BulkUpdateModal from "./BulkUpdateModal";
@@ -80,6 +80,8 @@ interface DbLead {
   createdAt: string;
   owner: { name: string; initials: string };
   source: { name: string } | null;
+  city: string | null;
+  state: string | null;
 }
 
 interface CustomProtocolViewProps {
@@ -159,6 +161,8 @@ export default function CustomProtocolView({ filter, onLeadClick, refreshKey = 0
       "Source": lead.source?.name || "",
       "Requirement": lead.requirement || "",
       "Owner": lead.owner?.name || "",
+      "City": lead.city || "",
+      "State": lead.state || "",
       "Created At": new Date(lead.createdAt).toLocaleDateString("en-IN")
     }));
 
@@ -182,6 +186,20 @@ export default function CustomProtocolView({ filter, onLeadClick, refreshKey = 0
     } finally {
       setIsDeleting(false);
     }
+  };
+
+  const toggleColumnFilter = (column: string, value: string | string[]) => {
+    setColumnFilters(prev => {
+      const next = { ...prev };
+      const currentSet = new Set(next[column] || []);
+      const values = Array.isArray(value) ? value : [value];
+      const allExist = values.every(v => currentSet.has(v));
+      if (allExist) values.forEach(v => currentSet.delete(v));
+      else values.forEach(v => currentSet.add(v));
+      next[column] = currentSet;
+      return next;
+    });
+    setCurrentPage(1);
   };
 
   const toggleSelectAll = () => {
@@ -214,6 +232,8 @@ export default function CustomProtocolView({ filter, onLeadClick, refreshKey = 0
       l.industry?.toLowerCase().includes(q) ||
       l.source?.name.toLowerCase().includes(q) ||
       l.requirement?.toLowerCase().includes(q) ||
+      l.city?.toLowerCase().includes(q) ||
+      l.state?.toLowerCase().includes(q) ||
       l.owner?.name.toLowerCase().includes(q)
     );
   }).slice(0, 8) : [];
@@ -228,6 +248,8 @@ export default function CustomProtocolView({ filter, onLeadClick, refreshKey = 0
       l.industry?.toLowerCase().includes(q) ||
       l.source?.name.toLowerCase().includes(q) ||
       l.requirement?.toLowerCase().includes(q) ||
+      l.city?.toLowerCase().includes(q) ||
+      l.state?.toLowerCase().includes(q) ||
       l.owner?.name.toLowerCase().includes(q)
     );
   }
@@ -306,18 +328,6 @@ export default function CustomProtocolView({ filter, onLeadClick, refreshKey = 0
   const totalPages = Math.ceil(processedLeads.length / pageSize);
   const startIndex = (currentPage - 1) * pageSize;
   const paginatedLeads = processedLeads.slice(startIndex, startIndex + pageSize);
-
-  const toggleColumnFilter = (column: string, value: string) => {
-    setColumnFilters(prev => {
-      const next = { ...prev };
-      const currentSet = new Set(next[column] || []);
-      if (currentSet.has(value)) currentSet.delete(value);
-      else currentSet.add(value);
-      next[column] = currentSet;
-      return next;
-    });
-    setCurrentPage(1);
-  };
 
   function formatFollowUp(dateStr: string | null) {
     if (!dateStr) return "—";
@@ -518,6 +528,15 @@ export default function CustomProtocolView({ filter, onLeadClick, refreshKey = 0
               </div>
             )}
           </div>
+
+          {(Object.keys(columnFilters).length > 0 || searchQuery) && (
+            <button 
+              onClick={() => { setColumnFilters({}); setSearchQuery(""); setSortConfig(null); }}
+              className="flex items-center gap-1 text-[11px] font-black uppercase tracking-widest text-red-600 hover:bg-red-50 px-2.5 py-1.5 rounded-lg transition-all"
+            >
+              <X size={11} /> Clear Filters
+            </button>
+          )}
         </div>
       </div>
 
@@ -535,21 +554,114 @@ export default function CustomProtocolView({ filter, onLeadClick, refreshKey = 0
                     className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                   />
                 </th>
-                <th className="w-[15%] text-left text-[11px] font-bold text-slate-500 uppercase px-3 py-3 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => setSortConfig({ key: 'lead', direction: sortConfig?.direction === 'asc' ? 'desc' : 'asc' })}>
-                  Lead
+                <th className="w-[15%] text-left text-[11px] font-bold text-slate-500 uppercase px-3 py-3 cursor-pointer hover:bg-slate-100 transition-colors group" onClick={() => setSortConfig({ key: 'lead', direction: sortConfig?.direction === 'asc' ? 'desc' : 'asc' })}>
+                  <span className="flex items-center gap-1">
+                    Lead {sortConfig?.key === 'lead' ? (sortConfig.direction === 'asc' ? "↑" : "↓") : "↕"}
+                  </span>
                 </th>
-                <th className="hidden md:table-cell w-[12%] text-left text-[11px] font-bold text-slate-500 uppercase px-4 py-3">Company</th>
-                <th className="w-[10%] text-left text-[11px] font-bold text-slate-500 uppercase px-3 py-3">Status</th>
-                <th className="w-[10%] text-left text-[11px] font-bold text-slate-500 uppercase px-3 py-3">Sub-status</th>
-                <th className="hidden sm:table-cell w-[10%] text-left text-[11px] font-bold text-sidebar-foreground/40 uppercase px-3 py-3">Phone</th>
-                <th className="hidden lg:table-cell w-[10%] text-left text-[11px] font-bold text-sidebar-foreground/40 uppercase px-3 py-3">Source</th>
-                <th className="hidden lg:table-cell w-[10%] text-left text-[11px] font-bold text-sidebar-foreground/40 uppercase px-3 py-3">Owner</th>
+                <th className="hidden md:table-cell w-[12%] text-left text-[11px] font-bold text-slate-500 uppercase px-4 py-3 cursor-pointer hover:bg-slate-100 transition-colors group" onClick={() => setSortConfig({ key: 'company', direction: sortConfig?.direction === 'asc' ? 'desc' : 'asc' })}>
+                  <span className="flex items-center gap-1">
+                    Company {sortConfig?.key === 'company' ? (sortConfig.direction === 'asc' ? "↑" : "↓") : "↕"}
+                  </span>
+                </th>
+                <th className="w-[10%] text-left text-[11px] font-bold text-slate-500 uppercase px-3 py-3 cursor-pointer hover:bg-slate-100 transition-colors group" onClick={() => setSortConfig({ key: 'stage', direction: sortConfig?.direction === 'asc' ? 'desc' : 'asc' })}>
+                  <span className="flex items-center gap-1">
+                    Status {sortConfig?.key === 'stage' ? (sortConfig.direction === 'asc' ? "↑" : "↓") : "↕"}
+                  </span>
+                </th>
+                <th className="w-[10%] text-left text-[11px] font-bold text-slate-500 uppercase px-3 py-3 cursor-pointer hover:bg-slate-100 transition-colors group" onClick={() => setSortConfig({ key: 'subStatus', direction: sortConfig?.direction === 'asc' ? 'desc' : 'asc' })}>
+                  <span className="flex items-center gap-1">
+                    Sub-status {sortConfig?.key === 'subStatus' ? (sortConfig.direction === 'asc' ? "↑" : "↓") : "↕"}
+                  </span>
+                </th>
+                {/* City — filterable & sortable */}
+                <th className="hidden sm:table-cell w-[10%] text-left px-3 py-3">
+                  <div className="flex items-center gap-1">
+                    <div className="relative inline-block">
+                      <button onClick={() => setActiveColumnFilter(activeColumnFilter === 'city' ? null : 'city')}
+                        className={`text-[11px] font-bold uppercase tracking-wider flex items-center gap-0.5 transition-colors ${columnFilters['city']?.size ? "text-blue-600" : "text-slate-500 hover:text-slate-800"}`}>
+                        City <Filter size={9} />
+                      </button>
+                      {activeColumnFilter === 'city' && (
+                        <div className="absolute left-0 top-full mt-1 w-44 bg-white border border-slate-200 rounded-xl shadow-2xl z-30 overflow-hidden py-1">
+                          <div className="max-h-44 overflow-y-auto">
+                            {Array.from(new Set(leads.map(l => l.city).filter(Boolean))).sort().map(v => (
+                              <label key={v as string} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer">
+                                <input type="checkbox" checked={columnFilters['city']?.has(v as string)} onChange={() => toggleColumnFilter('city', v as string)}
+                                  className="appearance-none w-3 h-3 rounded border-2 border-slate-300 bg-white checked:bg-blue-600 checked:border-blue-600 transition-all cursor-pointer" />
+                                <span className="text-[11px] font-semibold text-slate-700 truncate">{v as string}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <button 
+                      onClick={() => setSortConfig(p => ({ key: 'city', direction: p?.key === 'city' && p.direction === 'asc' ? 'desc' : 'asc' }))}
+                      className={`p-1 rounded hover:bg-slate-100 transition-colors ${sortConfig?.key === 'city' ? 'text-blue-600 bg-blue-50' : 'text-slate-400'}`}
+                    >
+                      {sortConfig?.key === 'city' ? (sortConfig.direction === 'asc' ? "↑" : "↓") : "↕"}
+                    </button>
+                  </div>
+                </th>
+
+                {/* State — filterable & sortable */}
+                <th className="hidden sm:table-cell w-[10%] text-left px-3 py-3">
+                  <div className="flex items-center gap-1">
+                    <div className="relative inline-block">
+                      <button onClick={() => setActiveColumnFilter(activeColumnFilter === 'state' ? null : 'state')}
+                        className={`text-[11px] font-bold uppercase tracking-wider flex items-center gap-0.5 transition-colors ${columnFilters['state']?.size ? "text-blue-600" : "text-slate-500 hover:text-slate-800"}`}>
+                        State <Filter size={9} />
+                      </button>
+                      {activeColumnFilter === 'state' && (
+                        <div className="absolute left-0 top-full mt-1 w-44 bg-white border border-slate-200 rounded-xl shadow-2xl z-30 overflow-hidden py-1">
+                          <div className="max-h-44 overflow-y-auto">
+                            {Array.from(new Set(leads.map(l => l.state).filter(Boolean))).sort().map(v => (
+                              <label key={v as string} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer">
+                                <input type="checkbox" checked={columnFilters['state']?.has(v as string)} onChange={() => toggleColumnFilter('state', v as string)}
+                                  className="appearance-none w-3 h-3 rounded border-2 border-slate-300 bg-white checked:bg-blue-600 checked:border-blue-600 transition-all cursor-pointer" />
+                                <span className="text-[11px] font-semibold text-slate-700 truncate">{v as string}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <button 
+                      onClick={() => setSortConfig(p => ({ key: 'state', direction: p?.key === 'state' && p.direction === 'asc' ? 'desc' : 'asc' }))}
+                      className={`p-1 rounded hover:bg-slate-100 transition-colors ${sortConfig?.key === 'state' ? 'text-blue-600 bg-blue-50' : 'text-slate-400'}`}
+                    >
+                      {sortConfig?.key === 'state' ? (sortConfig.direction === 'asc' ? "↑" : "↓") : "↕"}
+                    </button>
+                  </div>
+                </th>
+                <th className="hidden sm:table-cell w-[10%] text-left text-[11px] font-bold text-sidebar-foreground/40 uppercase px-3 py-3 cursor-pointer hover:bg-slate-100 transition-colors group" onClick={() => setSortConfig({ key: 'phone', direction: sortConfig?.direction === 'asc' ? 'desc' : 'asc' })}>
+                  <span className="flex items-center gap-1">
+                    Phone {sortConfig?.key === 'phone' ? (sortConfig.direction === 'asc' ? "↑" : "↓") : "↕"}
+                  </span>
+                </th>
+                <th className="hidden lg:table-cell w-[10%] text-left text-[11px] font-bold text-sidebar-foreground/40 uppercase px-3 py-3 cursor-pointer hover:bg-slate-100 transition-colors group" onClick={() => setSortConfig({ key: 'source', direction: sortConfig?.direction === 'asc' ? 'desc' : 'asc' })}>
+                  <span className="flex items-center gap-1">
+                    Source {sortConfig?.key === 'source' ? (sortConfig.direction === 'asc' ? "↑" : "↓") : "↕"}
+                  </span>
+                </th>
+                <th className="hidden lg:table-cell w-[10%] text-left text-[11px] font-bold text-sidebar-foreground/40 uppercase px-3 py-3 cursor-pointer hover:bg-slate-100 transition-colors group" onClick={() => setSortConfig({ key: 'owner', direction: sortConfig?.direction === 'asc' ? 'desc' : 'asc' })}>
+                  <span className="flex items-center gap-1">
+                    Owner {sortConfig?.key === 'owner' ? (sortConfig.direction === 'asc' ? "↑" : "↓") : "↕"}
+                  </span>
+                </th>
                 <th className="hidden lg:table-cell w-[10%] text-left px-3 py-3">
                   <div className="relative inline-block">
-                    <button onClick={() => setActiveColumnFilter(activeColumnFilter === 'createdAt' ? null : 'createdAt')}
-                      className={`text-[11px] font-bold uppercase tracking-wider flex items-center gap-0.5 transition-colors ${columnFilters['createdAt']?.size ? "text-blue-600" : "text-slate-500 hover:text-slate-800"}`}>
-                      Created On <Filter size={9} />
-                    </button>
+                      <button onClick={(e) => { e.stopPropagation(); setActiveColumnFilter(activeColumnFilter === 'createdAt' ? null : 'createdAt'); }}
+                        className={`text-[11px] font-bold uppercase tracking-wider flex items-center gap-0.5 transition-colors ${columnFilters['createdAt']?.size ? "text-blue-600" : "text-slate-500 hover:text-slate-800"}`}>
+                        Created On <Filter size={9} />
+                      </button>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); setSortConfig(p => ({ key: 'createdAt', direction: p?.key === 'createdAt' && p.direction === 'asc' ? 'desc' : 'asc' })); }}
+                        className={`p-1 rounded hover:bg-slate-200 transition-colors ${sortConfig?.key === 'createdAt' ? 'text-blue-600' : 'text-slate-400'}`}
+                      >
+                        {sortConfig?.key === 'createdAt' ? (sortConfig.direction === 'asc' ? "↑" : "↓") : "↕"}
+                      </button>
                     <FilterDropdown column="createdAt">
                       <div className="max-h-44 overflow-y-auto">
                         {uniqueDates.map(([iso, display]) => (
@@ -599,6 +711,16 @@ export default function CustomProtocolView({ filter, onLeadClick, refreshKey = 0
                     <td className="px-3 py-3">
                       <span className={`px-2 py-0.5 rounded-lg text-[9px] font-bold whitespace-nowrap border ${SUB_STATUS_STYLES[lead.subStatus] ?? "bg-slate-50 text-slate-400 border-slate-100"}`}>
                         {SUB_STATUS_LABEL[lead.subStatus] || lead.subStatus}
+                      </span>
+                    </td>
+                    <td className="hidden sm:table-cell px-3 py-3">
+                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-tight truncate block">
+                        {lead.city || "—"}
+                      </span>
+                    </td>
+                    <td className="hidden sm:table-cell px-3 py-3">
+                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-tight truncate block">
+                        {lead.state || "—"}
                       </span>
                     </td>
                     <td className="hidden sm:table-cell px-3 py-3 text-slate-600 text-[11px] font-mono">{lead.phone || "—"}</td>

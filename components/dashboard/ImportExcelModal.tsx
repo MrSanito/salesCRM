@@ -12,7 +12,7 @@ interface ImportExcelModalProps {
 const EXPECTED_HEADERS = [
   "Person Name", "Company Name", "Primary Phone", "Secondary Phone",
   "Primary Email", "Secondary Email", "Requirement", "Internal Notes",
-  "Industry", "Source"
+  "Industry", "Source", "City", "State"
 ];
 
 const REQUIRED_FIELDS = ["Person Name", "Company Name", "Primary Phone"];
@@ -122,6 +122,8 @@ export default function ImportExcelModal({ onClose, onImportSuccess }: ImportExc
               notes: l["Internal Notes"] || l.notes || null,
               industry: l["Industry"] || l.industry || null,
               source: l["Source"] || l.source || null,
+              city: l["City"] || l.city || null,
+              state: l["State"] || l.state || null,
               stage: "NEW",
               subStatus: "BLANK"
             }))

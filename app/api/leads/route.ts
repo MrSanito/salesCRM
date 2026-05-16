@@ -165,6 +165,8 @@ export async function POST(req: Request) {
         email2,
         requirement,
         industry,
+        city: body.city || null,
+        state: body.state || null,
         sourceId,
         subStatus: body.subStatus || "CHATTING",
         dealValueInr: (value || 0).toString(),

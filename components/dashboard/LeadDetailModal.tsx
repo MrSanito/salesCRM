@@ -49,6 +49,8 @@ export interface DbLead {
   priority: string;
   dealValueInr: string;
   requirement: string | null;
+  city: string | null;
+  state: string | null;
   followUpAt: string | null;
   createdAt: string;
   ownerId: string;
@@ -90,6 +92,8 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
   const [email2, setEmail2] = useState("");
   const [phone, setPhone] = useState("");
   const [phone2, setPhone2] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
   
   const [context, setContext] = useState({
     wholeSummary: "", requirement: "", useCase: "", scope: "",
@@ -133,6 +137,8 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
         setEmail2(leadData.email2 || "");
         setPhone(leadData.phone || "");
         setPhone2(leadData.phone2 || "");
+        setCity(leadData.city || "");
+        setState(leadData.state || "");
         setContext(prev => ({
           ...prev,
           requirement: leadData.requirement || "",
@@ -261,6 +267,8 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
         email2,
         phone,
         phone2,
+        city,
+        state,
       };
 
       const res = await fetch(`/api/leads/${leadId}`, {
@@ -417,6 +425,27 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                         onBlur={() => handleUpdate()}
                         className="bg-transparent border-none outline-none font-bold w-32 placeholder:text-slate-300"
                         placeholder="Set Industry"
+                      />
+                    </div>
+                    <div className="h-4 w-[1px] bg-slate-200" />
+                    <div className="flex items-center gap-1.5 bg-slate-50 px-3 py-1 rounded-lg text-[11px] text-slate-900 border border-slate-200">
+                      <span className="font-bold uppercase tracking-widest text-[9px] text-slate-500">Location:</span>
+                      <input 
+                        type="text" 
+                        value={city}
+                        onChange={e => setCity(e.target.value)}
+                        onBlur={() => handleUpdate()}
+                        className="bg-transparent border-none outline-none font-bold w-20 placeholder:text-slate-300"
+                        placeholder="City"
+                      />
+                      <span className="text-slate-300">/</span>
+                      <input 
+                        type="text" 
+                        value={state}
+                        onChange={e => setState(e.target.value)}
+                        onBlur={() => handleUpdate()}
+                        className="bg-transparent border-none outline-none font-bold w-20 placeholder:text-slate-300"
+                        placeholder="State"
                       />
                     </div>
                   </div>
@@ -634,6 +663,12 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                       </p>
                     </div>
                     <div>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Location</p>
+                      <p className="text-[14px] font-bold text-slate-700">
+                        {city || state ? `${city}${city && state ? ", " : ""}${state}` : "—"}
+                      </p>
+                    </div>
+                    <div>
                       <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Last Edited</p>
                       <p className="text-[14px] font-bold text-slate-700">
                         {new Date(lead.updatedAt).toLocaleString("en-IN", { 
@@ -838,7 +873,14 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                     </div>
                   </div>
 
-                  {notesSummary && (
+                  {isSummarizing && (
+                    <div className="mb-6 p-8 bg-purple-50/50 border border-purple-100 rounded-xl flex flex-col items-center justify-center gap-3 animate-pulse">
+                      <div className="w-8 h-8 border-2 border-purple-600 border-t-transparent rounded-full animate-spin" />
+                      <p className="text-[10px] font-bold text-purple-600 uppercase tracking-[0.2em]">AI is analyzing notes...</p>
+                    </div>
+                  )}
+
+                  {notesSummary && !isSummarizing && (
                     <div className="mb-6 p-4 bg-purple-50 border border-purple-100 rounded-xl relative animate-in fade-in zoom-in-95 duration-200">
                       <button 
                         onClick={() => setNotesSummary(null)} 

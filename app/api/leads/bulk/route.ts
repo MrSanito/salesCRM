@@ -215,6 +215,8 @@ export async function POST(req: Request) {
       ownerId: user.id,
       createdById: user.id,
       sourceId: l.source ? sourceMap.get(l.source) : null,
+      city: l.city || null,
+      state: l.state || null,
     }));
 
     const createdLeads = await prisma.lead.createManyAndReturn({

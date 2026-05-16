@@ -28,6 +28,8 @@ export default function AddLeadModal({ onClose, onSuccess }: AddLeadModalProps) 
     ownerId: "",
     subStatus: "BLANK",
     source: "",
+    city: "",
+    state: "",
   });
   const [activeTab, setActiveTab] = useState<'manual' | 'import'>('manual');
   const [importPreview, setImportPreview] = useState<{ headers: string[]; missing: string[]; extra: string[] } | null>(null);
@@ -36,7 +38,7 @@ export default function AddLeadModal({ onClose, onSuccess }: AddLeadModalProps) 
 
   const REQUIRED_HEADERS = [
     "Person Name", "Company Name", "Industry", "Primary Phone", "Secondary Phone", 
-    "Primary Email", "Secondary Email", "Requirement", "Internal Notes", "Source"
+    "Primary Email", "Secondary Email", "Requirement", "Internal Notes", "Source", "City", "State"
   ];
 
   const handleCommenceImport = async () => {
@@ -81,6 +83,8 @@ export default function AddLeadModal({ onClose, onSuccess }: AddLeadModalProps) 
           requirement: l["Requirement"] || null,
           notes: l["Internal Notes"] || null,
           source: l["Source"] || null,
+          city: l["City"] || null,
+          state: l["State"] || null,
         }))
       });
 
@@ -325,6 +329,35 @@ export default function AddLeadModal({ onClose, onSuccess }: AddLeadModalProps) 
                     className="w-full border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-sm font-bold text-slate-800 focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 bg-slate-50 outline-none transition-all" 
                     placeholder="e.g. Technology, Healthcare" 
                   />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">City</label>
+                  <div className="relative">
+                    <Building size={14} className="absolute left-4 top-3.5 text-slate-400" />
+                    <input 
+                      type="text" 
+                      value={formData.city}
+                      onChange={e => setFormData({ ...formData, city: e.target.value })}
+                      className="w-full border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-sm font-bold text-slate-800 focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 bg-slate-50 outline-none transition-all" 
+                      placeholder="e.g. Mumbai" 
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">State</label>
+                  <div className="relative">
+                    <Globe size={14} className="absolute left-4 top-3.5 text-slate-400" />
+                    <input 
+                      type="text" 
+                      value={formData.state}
+                      onChange={e => setFormData({ ...formData, state: e.target.value })}
+                      className="w-full border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-sm font-bold text-slate-800 focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 bg-slate-50 outline-none transition-all" 
+                      placeholder="e.g. Maharashtra" 
+                    />
+                  </div>
                 </div>
               </div>
 

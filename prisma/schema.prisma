@@ -138,6 +138,8 @@ model Lead {
   updatedAt          DateTime           @updatedAt
   requirement        String?
   industry           String?
+  city               String?
+  state              String?
   subStatus          LeadSubStatus      @default(BLANK)
   project            String?
   lastCommunicatedAt DateTime?

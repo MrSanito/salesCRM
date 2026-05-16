@@ -1,7 +1,7 @@
 "use client"
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Filter, ChevronDown, Download, Eye, MoreVertical, ChevronRight, XCircle, Edit, Trash2 } from "lucide-react";
+import { Search, Filter, ChevronDown, Download, Eye, MoreVertical, ChevronRight, XCircle, Edit, Trash2, X } from "lucide-react";
 import * as XLSX from "xlsx";
 import BulkUpdateModal from "./BulkUpdateModal";
 import BulkDeleteModal from "./BulkDeleteModal";
@@ -76,6 +76,8 @@ interface DbLead {
   phone2: string | null;
   email: string | null;
   email2: string | null;
+  city: string | null;
+  state: string | null;
   followUpAt: string | null;
   requirement: string | null;
   createdAt: string;
@@ -139,6 +141,8 @@ export default function LeadsTable({
       "Industry": lead.industry || "",
       "Source": lead.source?.name || "",
       "Stage": STAGE_LABEL[lead.stage] || lead.stage,
+      "City": lead.city || "",
+      "State": lead.state || "",
       "Primary Phone": lead.phone || "",
       "Secondary Phone": lead.phone2 || "",
       "Primary Email": lead.email || "",
@@ -191,12 +195,10 @@ export default function LeadsTable({
   }, [searchQuery]);
 
   const optimisticLeads = useMemo(() => {
-    // If not loading/refreshing, always show the source of truth
     if (!loading && !isRefreshing) return leads;
     
     let result = [...leads];
     
-    // Apply local search for immediate feedback
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       result = result.filter(l => 
@@ -207,7 +209,6 @@ export default function LeadsTable({
       );
     }
     
-    // Apply local column filters for immediate feedback
     Object.entries(columnFilters).forEach(([key, values]) => {
       if (values.size > 0) {
         if (key === 'stage') {
@@ -223,9 +224,6 @@ export default function LeadsTable({
       }
     });
     
-    // If optimistic filtering would leave us with 0 leads but we HAD leads, 
-    // keep showing the previous leads to avoid a "flash of empty state" 
-    // while the server fetches the actual results for the new filter.
     if (result.length === 0 && leads.length > 0 && isRefreshing) {
       return leads;
     }
@@ -243,7 +241,6 @@ export default function LeadsTable({
     if (isFirstRun.current && !initialData && !sidebarFilter) return;
     isFirstRun.current = false;
     
-    // Only show full loading spinner if we have NO leads
     if (leadsRef.current.length === 0) setLoading(true);
     setIsRefreshing(true);
 
@@ -258,8 +255,6 @@ export default function LeadsTable({
         if (values.size > 0) params.set(`filter_${key}`, Array.from(values).join(","));
       });
 
-      // Optimization: Only include stats on the first page or if explicitly needed
-      // This makes pagination much faster
       if (currentPage === 1) {
         params.set("includeStats", "true");
       }
@@ -341,7 +336,7 @@ export default function LeadsTable({
   }
 
   const uniqueDates = useMemo(() => {
-    const dates = new Map<string, string>(); // YYYY-MM-DD -> Display Name
+    const dates = new Map<string, string>();
     leads.forEach(l => {
       const d = new Date(l.createdAt);
       const iso = d.toISOString().split('T')[0];
@@ -357,7 +352,6 @@ export default function LeadsTable({
     return Array.from(values).sort();
   };
 
-  // Shared dropdown filter panel
   const FilterDropdown = ({ column, children }: { column: string; children: React.ReactNode }) => (
     activeColumnFilter === column ? (
       <div className="absolute left-0 top-full mt-1 min-w-[160px] bg-white border border-slate-200 rounded-xl shadow-2xl z-30 py-1 overflow-hidden">
@@ -392,9 +386,9 @@ export default function LeadsTable({
       )}
 
       {/* ── Toolbar ── */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 gap-3 flex-shrink-0">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-4 py-3 border-b border-slate-100 gap-2.5 flex-shrink-0">
         {/* Left: Title */}
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-2 min-w-0 flex-shrink-0">
           <div className="min-w-0">
             <h2 className="text-[13px] font-black text-slate-900 flex items-center gap-1.5 leading-tight truncate">
               {sidebarFilter ? `🔍 ${sidebarFilter.name}` : activeNav === "New Leads" ? "New Leads" : activeNav === "Alerts" ? "High Priority" : "All Leads"}
@@ -408,10 +402,10 @@ export default function LeadsTable({
           </div>
         </div>
 
-        {/* Right: Controls */}
-        <div className="flex items-center gap-2 flex-shrink-0">
+        {/* Right: Controls — wrap on small screens */}
+        <div className="flex items-center gap-2 flex-wrap">
           {/* Search */}
-          <div className="relative">
+          <div className="relative flex-1 sm:flex-none">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={12} />
             <input
               type="text"
@@ -419,7 +413,7 @@ export default function LeadsTable({
               value={searchQuery}
               onFocus={() => setShowSearchDropdown(true)}
               onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); setShowSearchDropdown(true); }}
-              className="w-44 pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[11px] font-bold text-slate-700 placeholder:text-slate-400 placeholder:font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-300 transition-all"
+              className="w-full sm:w-44 pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[11px] font-bold text-slate-700 placeholder:text-slate-400 placeholder:font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-300 transition-all"
             />
             {showSearchDropdown && searchResults.length > 0 && (
               <>
@@ -452,12 +446,17 @@ export default function LeadsTable({
             )}
           </div>
 
-          {/* Show count */}
-          <div className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg">
+          {/* Show count — bigger input */}
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg">
             <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Show</span>
-            <input type="number" min="1" max="100" value={pageSize}
+            <input
+              type="number"
+              min="1"
+              max="100"
+              value={pageSize}
               onChange={(e) => { const val = parseInt(e.target.value); if (!isNaN(val) && val > 0) { setPageSize(val); setCurrentPage(1); } }}
-              className="w-7 bg-transparent text-[11px] font-black text-slate-700 outline-none text-center" />
+              className="w-10 bg-transparent text-[12px] font-black text-slate-700 outline-none text-center"
+            />
           </div>
 
           {/* Filter */}
@@ -492,6 +491,15 @@ export default function LeadsTable({
             )}
           </div>
 
+          {(Object.keys(columnFilters).length > 0 || searchQuery) && (
+            <button
+              onClick={() => { setColumnFilters({}); setSearchQuery(""); setSortConfig(null); }}
+              className="flex items-center gap-1 text-[11px] font-black uppercase tracking-widest text-red-600 hover:bg-red-50 px-2.5 py-1.5 rounded-lg transition-all"
+            >
+              <X size={11} /> Clear
+            </button>
+          )}
+
           {/* Bulk actions */}
           {selectedLeads.size > 0 && (
             <div className="flex items-center gap-1.5">
@@ -509,285 +517,360 @@ export default function LeadsTable({
         </div>
       </div>
 
-      {/* ── Table ── */}
+      {/* ── Table — horizontally scrollable on mobile ── */}
       <div className="flex-1 overflow-auto relative">
         {(loading || isRefreshing) && leads.length > 0 && (
           <div className="absolute top-0 left-0 right-0 h-0.5 bg-blue-500/10 z-20 overflow-hidden">
             <div className="h-full bg-blue-600 animate-pulse w-full" />
           </div>
         )}
-        <table className="w-full text-[12px]" style={{ tableLayout: "fixed" }}>
-          <colgroup>
-            <col style={{ width: 36 }} />          {/* checkbox */}
-            <col style={{ width: "17%" }} />        {/* lead */}
-            <col style={{ width: "13%" }} />        {/* company */}
-            <col style={{ width: "9%" }} />         {/* stage */}
-            <col style={{ width: "10%" }} />        {/* sub-status */}
-            <col style={{ width: "11%" }} />        {/* phone */}
-            <col style={{ width: "9%" }} />         {/* source */}
-            <col style={{ width: "8%" }} />         {/* owner */}
-            <col style={{ width: "9%" }} />         {/* follow-up */}
-            <col style={{ width: "7%" }} />         {/* value */}
-            <col style={{ width: 36 }} />           {/* actions */}
-          </colgroup>
+        <div className="min-w-[900px]">
+          <table className="w-full text-[12px]" style={{ tableLayout: "fixed" }}>
+            <colgroup>
+              <col style={{ width: 36 }} />
+              <col style={{ width: "11%" }} />
+              <col style={{ width: "11%" }} />
+              <col style={{ width: "8%" }} />
+              <col style={{ width: "8%" }} />
+              <col style={{ width: "8%" }} />
+              <col style={{ width: "8%" }} />
+              <col style={{ width: "9%" }} />
+              <col style={{ width: "7%" }} />
+              <col style={{ width: "7%" }} />
+              <col style={{ width: "8%" }} />
+              <col style={{ width: "8%" }} />
+              <col style={{ width: "5%" }} />
+              <col style={{ width: 36 }} />
+            </colgroup>
 
-          <thead className="sticky top-0 z-10 bg-slate-50 border-b border-slate-100">
-            <tr>
-              <th className="px-2 py-2">
-                <input type="checkbox" checked={selectedLeads.size > 0 && selectedLeads.size === displayedLeads.length} onChange={toggleSelectAll}
-                  className="appearance-none w-3.5 h-3.5 rounded border-2 border-slate-300 bg-white checked:bg-blue-600 checked:border-blue-600 transition-all cursor-pointer relative checked:after:content-['✓'] checked:after:absolute checked:after:text-white checked:after:text-[8px] checked:after:font-black checked:after:left-[1px] checked:after:top-[-2px]" />
-              </th>
+            <thead className="sticky top-0 z-10 bg-slate-50 border-b border-slate-100">
+              <tr>
+                <th className="px-2 py-2">
+                  <input type="checkbox" checked={selectedLeads.size > 0 && selectedLeads.size === displayedLeads.length} onChange={toggleSelectAll}
+                    className="appearance-none w-3.5 h-3.5 rounded border-2 border-slate-300 bg-white checked:bg-blue-600 checked:border-blue-600 transition-all cursor-pointer relative checked:after:content-['✓'] checked:after:absolute checked:after:text-white checked:after:text-[8px] checked:after:font-black checked:after:left-[1px] checked:after:top-[-2px]" />
+                </th>
 
-              {/* Lead — sortable */}
-              <th className="text-left px-2 py-2 cursor-pointer select-none group" onClick={() => setSortConfig(p => ({ key: 'lead', direction: p?.key === 'lead' && p.direction === 'asc' ? 'desc' : 'asc' }))}>
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider group-hover:text-slate-800 transition-colors">
-                  Lead {sortConfig?.key === 'lead' ? (sortConfig.direction === 'asc' ? "↑" : "↓") : ""}
-                </span>
-              </th>
+                <th className="text-left px-2 py-2 cursor-pointer select-none group" onClick={() => setSortConfig(p => ({ key: 'lead', direction: p?.key === 'lead' && p.direction === 'asc' ? 'desc' : 'asc' }))}>
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider group-hover:text-slate-800 transition-colors flex items-center gap-1">
+                    Lead {sortConfig?.key === 'lead' ? (sortConfig.direction === 'asc' ? "↑" : "↓") : "↕"}
+                  </span>
+                </th>
 
-              {/* Company — sortable */}
-              <th className="text-left px-2 py-2 cursor-pointer select-none group" onClick={() => setSortConfig(p => ({ key: 'company', direction: p?.key === 'company' && p.direction === 'asc' ? 'desc' : 'asc' }))}>
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider group-hover:text-slate-800 transition-colors">
-                  Company {sortConfig?.key === 'company' ? (sortConfig.direction === 'asc' ? "↑" : "↓") : ""}
-                </span>
-              </th>
+                <th className="text-left px-2 py-2 cursor-pointer select-none group" onClick={() => setSortConfig(p => ({ key: 'company', direction: p?.key === 'company' && p.direction === 'asc' ? 'desc' : 'asc' }))}>
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider group-hover:text-slate-800 transition-colors flex items-center gap-1">
+                    Company {sortConfig?.key === 'company' ? (sortConfig.direction === 'asc' ? "↑" : "↓") : "↕"}
+                  </span>
+                </th>
 
-              {/* Stage — filterable */}
-              <th className="text-left px-2 py-2">
-                <div className="relative inline-block">
-                  <button onClick={() => setActiveColumnFilter(activeColumnFilter === 'stage' ? null : 'stage')}
-                    className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-0.5 transition-colors ${columnFilters['stage']?.size ? "text-blue-600" : "text-slate-500 hover:text-slate-800"}`}>
-                    Status <Filter size={9} />
-                  </button>
-                  <FilterDropdown column="stage">
-                    {["NEW", "CONTACTED", "COLD", "MEETING_SET", "NEGOTIATION", "CLIENT", "NOT_INTERESTED"].map(v => (
-                      <label key={v} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer">
-                        <input type="checkbox" checked={columnFilters['stage']?.has(v)} onChange={() => toggleColumnFilter('stage', v === 'COLD' ? ['COLD', 'CHATTING'] : v)}
-                          className="appearance-none w-3 h-3 rounded border-2 border-slate-300 bg-white checked:bg-blue-600 checked:border-blue-600 transition-all cursor-pointer relative checked:after:content-['✓'] checked:after:absolute checked:after:text-white checked:after:text-[8px] checked:after:font-black checked:after:left-[0.5px] checked:after:top-[-2px]" />
-                        <span className="text-[11px] font-semibold text-slate-700">{v === 'COLD' ? 'Cold/Chatting' : STAGE_LABEL[v]}</span>
-                      </label>
-                    ))}
-                  </FilterDropdown>
-                </div>
-              </th>
-
-              {/* Sub-status — filterable */}
-              <th className="text-left px-2 py-2">
-                <div className="relative inline-block">
-                  <button onClick={() => setActiveColumnFilter(activeColumnFilter === 'subStatus' ? null : 'subStatus')}
-                    className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-0.5 transition-colors ${columnFilters['subStatus']?.size ? "text-blue-600" : "text-slate-500 hover:text-slate-800"}`}>
-                    Sub-status <Filter size={9} />
-                  </button>
-                  <FilterDropdown column="subStatus">
-                    {Object.keys(SUB_STATUS_LABEL).map(v => (
-                      <label key={v} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer">
-                        <input type="checkbox" checked={columnFilters['subStatus']?.has(v)} onChange={() => toggleColumnFilter('subStatus', v)}
-                          className="appearance-none w-3 h-3 rounded border-2 border-slate-300 bg-white checked:bg-blue-600 checked:border-blue-600 transition-all cursor-pointer relative checked:after:content-['✓'] checked:after:absolute checked:after:text-white checked:after:text-[8px] checked:after:font-black checked:after:left-[0.5px] checked:after:top-[-2px]" />
-                        <span className="text-[11px] font-semibold text-slate-700">{SUB_STATUS_LABEL[v]}</span>
-                      </label>
-                    ))}
-                  </FilterDropdown>
-                </div>
-              </th>
-
-              {/* Phone */}
-              <th className="text-left px-2 py-2">
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Phone</span>
-              </th>
-
-              {/* Source — filterable */}
-              <th className="text-left px-2 py-2">
-                <div className="relative inline-block">
-                  <button onClick={() => setActiveColumnFilter(activeColumnFilter === 'source' ? null : 'source')}
-                    className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-0.5 transition-colors ${columnFilters['source']?.size ? "text-blue-600" : "text-slate-500 hover:text-slate-800"}`}>
-                    Source <Filter size={9} />
-                  </button>
-                  <FilterDropdown column="source">
-                    <div className="max-h-44 overflow-y-auto">
-                      {Array.from(new Set(leads.map(l => l.source?.name).filter(Boolean))).sort().map(v => (
-                        <label key={v as string} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer">
-                          <input type="checkbox" checked={columnFilters['source']?.has(v as string)} onChange={() => toggleColumnFilter('source', v as string)}
-                            className="appearance-none w-3 h-3 rounded border-2 border-slate-300 bg-white checked:bg-blue-600 checked:border-blue-600 transition-all cursor-pointer" />
-                          <span className="text-[11px] font-semibold text-slate-700 truncate">{v as string}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </FilterDropdown>
-                </div>
-              </th>
-
-              {/* Owner */}
-              <th className="text-left px-2 py-2">
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Owner</span>
-              </th>
-
-              {/* Created On — filterable */}
-              <th className="text-left px-2 py-2">
-                <div className="relative inline-block">
-                  <button onClick={() => setActiveColumnFilter(activeColumnFilter === 'createdAt' ? null : 'createdAt')}
-                    className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-0.5 transition-colors ${columnFilters['createdAt']?.size ? "text-blue-600" : "text-slate-500 hover:text-slate-800"}`}>
-                    Created On <Filter size={9} />
-                  </button>
-                  <FilterDropdown column="createdAt">
-                    <div className="max-h-44 overflow-y-auto">
-                      {uniqueDates.map(([iso, display]) => (
-                        <label key={iso} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer">
-                          <input type="checkbox" checked={columnFilters['createdAt']?.has(iso)} onChange={() => toggleColumnFilter('createdAt', iso)}
+                <th className="text-left px-2 py-2">
+                  <div className="relative inline-block">
+                    <button onClick={() => setActiveColumnFilter(activeColumnFilter === 'stage' ? null : 'stage')}
+                      className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-0.5 transition-colors ${columnFilters['stage']?.size ? "text-blue-600" : "text-slate-500 hover:text-slate-800"}`}>
+                      Status <Filter size={9} />
+                    </button>
+                    <button
+                      onClick={() => setSortConfig(p => ({ key: 'stage', direction: p?.key === 'stage' && p.direction === 'asc' ? 'desc' : 'asc' }))}
+                      className={`p-1 rounded hover:bg-slate-100 transition-colors ${sortConfig?.key === 'stage' ? 'text-blue-600 bg-blue-50' : 'text-slate-400'}`}
+                    >
+                      {sortConfig?.key === 'stage' ? (sortConfig.direction === 'asc' ? "↑" : "↓") : "↕"}
+                    </button>
+                    <FilterDropdown column="stage">
+                      {["NEW", "CONTACTED", "COLD", "MEETING_SET", "NEGOTIATION", "CLIENT", "NOT_INTERESTED"].map(v => (
+                        <label key={v} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer">
+                          <input type="checkbox" checked={columnFilters['stage']?.has(v)} onChange={() => toggleColumnFilter('stage', v === 'COLD' ? ['COLD', 'CHATTING'] : v)}
                             className="appearance-none w-3 h-3 rounded border-2 border-slate-300 bg-white checked:bg-blue-600 checked:border-blue-600 transition-all cursor-pointer relative checked:after:content-['✓'] checked:after:absolute checked:after:text-white checked:after:text-[8px] checked:after:font-black checked:after:left-[0.5px] checked:after:top-[-2px]" />
-                          <span className="text-[11px] font-semibold text-slate-700 whitespace-nowrap">{display}</span>
+                          <span className="text-[11px] font-semibold text-slate-700">{v === 'COLD' ? 'Cold/Chatting' : STAGE_LABEL[v]}</span>
                         </label>
                       ))}
-                    </div>
-                  </FilterDropdown>
-                </div>
-              </th>
+                    </FilterDropdown>
+                  </div>
+                </th>
 
-              {/* Follow-up — filterable */}
-              <th className="text-left px-2 py-2">
-                <div className="relative inline-block">
-                  <button onClick={() => setActiveColumnFilter(activeColumnFilter === 'followup' ? null : 'followup')}
-                    className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-0.5 transition-colors ${columnFilters['followup']?.size ? "text-blue-600" : "text-slate-500 hover:text-slate-800"}`}>
-                    Follow-up <Filter size={9} />
-                  </button>
-                  {activeColumnFilter === 'followup' && (
-                    <div className="absolute left-0 top-full mt-1 w-36 bg-white border border-slate-200 rounded-xl shadow-2xl z-30 overflow-hidden">
-                      <button onClick={() => { toggleColumnFilter('followup', 'OVERDUE'); setActiveColumnFilter(null); }} className="w-full text-left px-3 py-2 text-[11px] font-bold text-red-600 hover:bg-red-50 transition-colors">Overdue</button>
-                      <button onClick={() => { toggleColumnFilter('followup', 'TODAY'); setActiveColumnFilter(null); }} className="w-full text-left px-3 py-2 text-[11px] font-bold text-blue-600 hover:bg-blue-50 transition-colors border-t border-slate-50">Today</button>
-                      <button onClick={() => { setColumnFilters(prev => ({ ...prev, followup: new Set() })); setActiveColumnFilter(null); }} className="w-full text-left px-3 py-2 text-[11px] font-bold text-slate-400 hover:bg-slate-50 transition-colors border-t border-slate-100">Clear</button>
-                    </div>
-                  )}
-                </div>
-              </th>
+                <th className="text-left px-2 py-2">
+                  <div className="relative inline-block">
+                    <button onClick={() => setActiveColumnFilter(activeColumnFilter === 'subStatus' ? null : 'subStatus')}
+                      className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-0.5 transition-colors ${columnFilters['subStatus']?.size ? "text-blue-600" : "text-slate-500 hover:text-slate-800"}`}>
+                      Sub-status <Filter size={9} />
+                    </button>
+                    <button
+                      onClick={() => setSortConfig(p => ({ key: 'subStatus', direction: p?.key === 'subStatus' && p.direction === 'asc' ? 'desc' : 'asc' }))}
+                      className={`p-1 rounded hover:bg-slate-100 transition-colors ${sortConfig?.key === 'subStatus' ? 'text-blue-600 bg-blue-50' : 'text-slate-400'}`}
+                    >
+                      {sortConfig?.key === 'subStatus' ? (sortConfig.direction === 'asc' ? "↑" : "↓") : "↕"}
+                    </button>
+                    <FilterDropdown column="subStatus">
+                      {Object.keys(SUB_STATUS_LABEL).map(v => (
+                        <label key={v} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer">
+                          <input type="checkbox" checked={columnFilters['subStatus']?.has(v)} onChange={() => toggleColumnFilter('subStatus', v)}
+                            className="appearance-none w-3 h-3 rounded border-2 border-slate-300 bg-white checked:bg-blue-600 checked:border-blue-600 transition-all cursor-pointer relative checked:after:content-['✓'] checked:after:absolute checked:after:text-white checked:after:text-[8px] checked:after:font-black checked:after:left-[0.5px] checked:after:top-[-2px]" />
+                          <span className="text-[11px] font-semibold text-slate-700">{SUB_STATUS_LABEL[v]}</span>
+                        </label>
+                      ))}
+                    </FilterDropdown>
+                  </div>
+                </th>
 
-              {/* Value — sortable */}
-              <th className="text-left px-2 py-2 cursor-pointer select-none group" onClick={() => setSortConfig(p => ({ key: 'dealValueInr', direction: p?.key === 'dealValueInr' && p.direction === 'asc' ? 'desc' : 'asc' }))}>
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider group-hover:text-slate-800 transition-colors">
-                  Value {sortConfig?.key === 'dealValueInr' ? (sortConfig.direction === 'asc' ? "↑" : "↓") : ""}
-                </span>
-              </th>
-
-              <th className="px-2 py-2" />
-            </tr>
-          </thead>
-
-          <tbody className="divide-y divide-slate-50">
-            {(loading || isRefreshing) && leads.length === 0 && (
-              <tr>
-                <td colSpan={11} className="text-center py-16">
-                  <div className="inline-block w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mb-2" />
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Loading pipeline…</p>
-                </td>
-              </tr>
-            )}
-            {!loading && !isRefreshing && displayedLeads.length === 0 && (
-              <tr>
-                <td colSpan={11} className="text-center py-16 text-[12px] font-semibold text-slate-400">No leads match current filters</td>
-              </tr>
-            )}
-
-            {displayedLeads.map((lead) => {
-              const isOverdue = lead.followUpAt && new Date(lead.followUpAt) < new Date();
-              return (
-                <tr key={lead.id} onClick={() => onLeadClick(lead.id, displayedLeads.map(l => l.id))}
-                  className={`group hover:bg-slate-50/80 transition-colors cursor-pointer ${selectedLeads.has(lead.id) ? "bg-blue-50/40" : ""}`}>
-
-                  {/* Checkbox */}
-                  <td className="px-2 py-2" onClick={(e) => toggleSelectLead(lead.id, e)}>
-                    <input type="checkbox" checked={selectedLeads.has(lead.id)} onChange={() => {}}
-                      className="appearance-none w-3.5 h-3.5 rounded border-2 border-slate-300 bg-white checked:bg-blue-600 checked:border-blue-600 transition-all cursor-pointer relative checked:after:content-['✓'] checked:after:absolute checked:after:text-white checked:after:text-[8px] checked:after:font-black checked:after:left-[1px] checked:after:top-[-2px]" />
-                  </td>
-
-                  {/* Lead name + avatar */}
-                  <td className="px-2 py-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-[9px] font-black text-slate-600 flex-shrink-0 group-hover:bg-white group-hover:border group-hover:border-slate-200 transition-all">
-                        {lead.contactName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
-                      </div>
-                      <span className="font-bold text-[12px] text-slate-900 truncate group-hover:text-blue-600 transition-colors leading-tight">{lead.contactName}</span>
-                    </div>
-                  </td>
-
-                  {/* Company */}
-                  <td className="px-2 py-2">
-                    <span className="text-[11px] font-semibold text-slate-600 truncate block">{lead.company}</span>
-                  </td>
-
-                  {/* Stage badge */}
-                  <td className="px-2 py-2">
-                    <span className={`inline-block px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-tight whitespace-nowrap ${STAGE_STYLES[lead.stage] ?? "bg-slate-100 text-slate-500"}`}>
-                      {STAGE_LABEL[lead.stage] || lead.stage}
-                    </span>
-                  </td>
-
-                  {/* Sub-status badge */}
-                  <td className="px-2 py-2">
-                    <span className={`inline-block px-1.5 py-0.5 rounded-md text-[9px] font-bold whitespace-nowrap border ${SUB_STATUS_STYLES[lead.subStatus] ?? "bg-slate-50 text-slate-400 border-slate-100"}`}>
-                      {SUB_STATUS_LABEL[lead.subStatus] || lead.subStatus}
-                    </span>
-                  </td>
-
-                  {/* Phone */}
-                  <td className="px-2 py-2">
-                    <span className="text-[11px] font-bold text-slate-600 font-mono tracking-tight">{lead.phone || "—"}</span>
-                  </td>
-
-                  {/* Source */}
-                  <td className="px-2 py-2">
-                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-tight truncate block">{lead.source?.name || "—"}</span>
-                  </td>
-
-                  {/* Owner */}
-                  <td className="px-2 py-2">
-                    <span className="text-[11px] font-semibold text-slate-500 truncate block">{lead.owner?.name.split(" ")[0] || "—"}</span>
-                  </td>
-
-                  {/* Created On — Date & Time */}
-                  <td className="px-2 py-2">
-                    <span className="text-[11px] font-semibold text-slate-500 whitespace-nowrap block">
-                      {new Date(lead.createdAt).toLocaleDateString("en-IN", { day: 'numeric', month: 'short' })} {new Date(lead.createdAt).toLocaleTimeString("en-IN", { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase()}
-                    </span>
-                  </td>
-
-                  {/* Follow-up */}
-                  <td className="px-2 py-2">
-                    <span className={`text-[11px] font-bold whitespace-nowrap ${isOverdue ? "text-red-500" : "text-slate-400"}`}>
-                      {formatFollowUp(lead.followUpAt)}
-                    </span>
-                  </td>
-
-                  {/* Value + priority dot */}
-                  <td className="px-2 py-2">
-                    <div className="flex items-center gap-1.5">
-                      <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${lead.priority === "HIGH" ? "bg-red-500" : lead.priority === "MEDIUM" ? "bg-amber-400" : "bg-green-400"}`} />
-                      <span className="text-[11px] font-black text-slate-800">{formatValue(lead.dealValueInr)}</span>
-                    </div>
-                  </td>
-
-                  {/* Actions */}
-                  <td className="px-2 py-2" onClick={(e) => e.stopPropagation()}>
-                    <div className="relative flex justify-end">
-                      <button onClick={() => setActiveLeadMenu(activeLeadMenu === lead.id ? null : lead.id)}
-                        className={`p-1 rounded-lg transition-all ${activeLeadMenu === lead.id ? "bg-slate-900 text-white" : "text-slate-300 hover:text-slate-600 hover:bg-slate-100"}`}>
-                        <MoreVertical size={13} />
+                <th className="text-left px-2 py-2">
+                  <div className="flex items-center gap-1">
+                    <div className="relative inline-block">
+                      <button onClick={() => setActiveColumnFilter(activeColumnFilter === 'city' ? null : 'city')}
+                        className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-0.5 transition-colors ${columnFilters['city']?.size ? "text-blue-600" : "text-slate-500 hover:text-slate-800"}`}>
+                        City <Filter size={9} />
                       </button>
-                      {activeLeadMenu === lead.id && (
-                        <div className="absolute right-0 top-full mt-1 w-36 bg-white border border-slate-200 rounded-xl shadow-2xl z-30 overflow-hidden">
-                          <button onClick={() => onLeadClick(lead.id, displayedLeads.map(l => l.id))} className="w-full text-left px-3 py-2 text-[11px] font-bold text-slate-700 hover:bg-slate-50 transition-colors">View Details</button>
-                          <button onClick={() => router.push(`/lead/${lead.id}/edit`)} className="w-full text-left px-3 py-2 text-[11px] font-bold text-slate-700 hover:bg-slate-50 transition-colors border-t border-slate-50">Edit Lead</button>
-                          <button onClick={() => setShowDeleteConfirm(lead.id)} className="w-full text-left px-3 py-2 text-[11px] font-black text-red-500 hover:bg-red-50 transition-colors border-t border-slate-100 uppercase tracking-wider">Delete</button>
+                      <FilterDropdown column="city">
+                        <div className="max-h-44 overflow-y-auto">
+                          {Array.from(new Set(leads.map(l => l.city).filter(Boolean))).sort().map(v => (
+                            <label key={v as string} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer">
+                              <input type="checkbox" checked={columnFilters['city']?.has(v as string)} onChange={() => toggleColumnFilter('city', v as string)}
+                                className="appearance-none w-3 h-3 rounded border-2 border-slate-300 bg-white checked:bg-blue-600 checked:border-blue-600 transition-all cursor-pointer" />
+                              <span className="text-[11px] font-semibold text-slate-700 truncate">{v as string}</span>
+                            </label>
+                          ))}
                         </div>
-                      )}
+                      </FilterDropdown>
                     </div>
+                    <button
+                      onClick={() => setSortConfig(p => ({ key: 'city', direction: p?.key === 'city' && p.direction === 'asc' ? 'desc' : 'asc' }))}
+                      className={`p-1 rounded hover:bg-slate-100 transition-colors ${sortConfig?.key === 'city' ? 'text-blue-600 bg-blue-50' : 'text-slate-400'}`}
+                    >
+                      {sortConfig?.key === 'city' ? (sortConfig.direction === 'asc' ? "↑" : "↓") : "↕"}
+                    </button>
+                  </div>
+                </th>
+
+                <th className="text-left px-2 py-2">
+                  <div className="flex items-center gap-1">
+                    <div className="relative inline-block">
+                      <button onClick={() => setActiveColumnFilter(activeColumnFilter === 'state' ? null : 'state')}
+                        className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-0.5 transition-colors ${columnFilters['state']?.size ? "text-blue-600" : "text-slate-500 hover:text-slate-800"}`}>
+                        State <Filter size={9} />
+                      </button>
+                      <FilterDropdown column="state">
+                        <div className="max-h-44 overflow-y-auto">
+                          {Array.from(new Set(leads.map(l => l.state).filter(Boolean))).sort().map(v => (
+                            <label key={v as string} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer">
+                              <input type="checkbox" checked={columnFilters['state']?.has(v as string)} onChange={() => toggleColumnFilter('state', v as string)}
+                                className="appearance-none w-3 h-3 rounded border-2 border-slate-300 bg-white checked:bg-blue-600 checked:border-blue-600 transition-all cursor-pointer" />
+                              <span className="text-[11px] font-semibold text-slate-700 truncate">{v as string}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </FilterDropdown>
+                    </div>
+                    <button
+                      onClick={() => setSortConfig(p => ({ key: 'state', direction: p?.key === 'state' && p.direction === 'asc' ? 'desc' : 'asc' }))}
+                      className={`p-1 rounded hover:bg-slate-100 transition-colors ${sortConfig?.key === 'state' ? 'text-blue-600 bg-blue-50' : 'text-slate-400'}`}
+                    >
+                      {sortConfig?.key === 'state' ? (sortConfig.direction === 'asc' ? "↑" : "↓") : "↕"}
+                    </button>
+                  </div>
+                </th>
+
+                <th className="text-left px-2 py-2">
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Phone</span>
+                </th>
+
+                <th className="text-left px-2 py-2">
+                  <div className="relative inline-block">
+                    <button onClick={() => setActiveColumnFilter(activeColumnFilter === 'source' ? null : 'source')}
+                      className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-0.5 transition-colors ${columnFilters['source']?.size ? "text-blue-600" : "text-slate-500 hover:text-slate-800"}`}>
+                      Source <Filter size={9} />
+                    </button>
+                    <button
+                      onClick={() => setSortConfig(p => ({ key: 'source', direction: p?.key === 'source' && p.direction === 'asc' ? 'desc' : 'asc' }))}
+                      className={`p-1 rounded hover:bg-slate-100 transition-colors ${sortConfig?.key === 'source' ? 'text-blue-600 bg-blue-50' : 'text-slate-400'}`}
+                    >
+                      {sortConfig?.key === 'source' ? (sortConfig.direction === 'asc' ? "↑" : "↓") : "↕"}
+                    </button>
+                    <FilterDropdown column="source">
+                      <div className="max-h-44 overflow-y-auto">
+                        {Array.from(new Set(leads.map(l => l.source?.name).filter(Boolean))).sort().map(v => (
+                          <label key={v as string} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" checked={columnFilters['source']?.has(v as string)} onChange={() => toggleColumnFilter('source', v as string)}
+                              className="appearance-none w-3 h-3 rounded border-2 border-slate-300 bg-white checked:bg-blue-600 checked:border-blue-600 transition-all cursor-pointer" />
+                            <span className="text-[11px] font-semibold text-slate-700 truncate">{v as string}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </FilterDropdown>
+                  </div>
+                </th>
+
+                <th className="text-left px-2 py-2">
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Owner</span>
+                </th>
+
+                <th className="text-left px-2 py-2">
+                  <div className="relative inline-block">
+                    <button onClick={() => setActiveColumnFilter(activeColumnFilter === 'createdAt' ? null : 'createdAt')}
+                      className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-0.5 transition-colors ${columnFilters['createdAt']?.size ? "text-blue-600" : "text-slate-500 hover:text-slate-800"}`}>
+                      Created On <Filter size={9} />
+                    </button>
+                    <button
+                      onClick={() => setSortConfig(p => ({ key: 'createdAt', direction: p?.key === 'createdAt' && p.direction === 'asc' ? 'desc' : 'asc' }))}
+                      className={`p-1 rounded hover:bg-slate-100 transition-colors ${sortConfig?.key === 'createdAt' ? 'text-blue-600 bg-blue-50' : 'text-slate-400'}`}
+                    >
+                      {sortConfig?.key === 'createdAt' ? (sortConfig.direction === 'asc' ? "↑" : "↓") : "↕"}
+                    </button>
+                    <FilterDropdown column="createdAt">
+                      <div className="max-h-44 overflow-y-auto">
+                        {uniqueDates.map(([iso, display]) => (
+                          <label key={iso} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" checked={columnFilters['createdAt']?.has(iso)} onChange={() => toggleColumnFilter('createdAt', iso)}
+                              className="appearance-none w-3 h-3 rounded border-2 border-slate-300 bg-white checked:bg-blue-600 checked:border-blue-600 transition-all cursor-pointer relative checked:after:content-['✓'] checked:after:absolute checked:after:text-white checked:after:text-[8px] checked:after:font-black checked:after:left-[0.5px] checked:after:top-[-2px]" />
+                            <span className="text-[11px] font-semibold text-slate-700 whitespace-nowrap">{display}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </FilterDropdown>
+                  </div>
+                </th>
+
+                <th className="text-left px-2 py-2">
+                  <div className="relative inline-block">
+                    <button onClick={() => setActiveColumnFilter(activeColumnFilter === 'followup' ? null : 'followup')}
+                      className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-0.5 transition-colors ${columnFilters['followup']?.size ? "text-blue-600" : "text-slate-500 hover:text-slate-800"}`}>
+                      Follow-up <Filter size={9} />
+                    </button>
+                    {activeColumnFilter === 'followup' && (
+                      <div className="absolute left-0 top-full mt-1 w-36 bg-white border border-slate-200 rounded-xl shadow-2xl z-30 overflow-hidden">
+                        <button onClick={() => { toggleColumnFilter('followup', 'OVERDUE'); setActiveColumnFilter(null); }} className="w-full text-left px-3 py-2 text-[11px] font-bold text-red-600 hover:bg-red-50 transition-colors">Overdue</button>
+                        <button onClick={() => { toggleColumnFilter('followup', 'TODAY'); setActiveColumnFilter(null); }} className="w-full text-left px-3 py-2 text-[11px] font-bold text-blue-600 hover:bg-blue-50 transition-colors border-t border-slate-50">Today</button>
+                        <button onClick={() => { setColumnFilters(prev => ({ ...prev, followup: new Set() })); setActiveColumnFilter(null); }} className="w-full text-left px-3 py-2 text-[11px] font-bold text-slate-400 hover:bg-slate-50 transition-colors border-t border-slate-100">Clear</button>
+                      </div>
+                    )}
+                  </div>
+                </th>
+
+                <th className="text-left px-2 py-2 cursor-pointer select-none group" onClick={() => setSortConfig(p => ({ key: 'dealValueInr', direction: p?.key === 'dealValueInr' && p.direction === 'asc' ? 'desc' : 'asc' }))}>
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider group-hover:text-slate-800 transition-colors flex items-center gap-1">
+                    Value {sortConfig?.key === 'dealValueInr' ? (sortConfig.direction === 'asc' ? "↑" : "↓") : "↕"}
+                  </span>
+                </th>
+
+                <th className="px-2 py-2" />
+              </tr>
+            </thead>
+
+            <tbody className="divide-y divide-slate-50">
+              {(loading || isRefreshing) && leads.length === 0 && (
+                <tr>
+                  <td colSpan={14} className="text-center py-16">
+                    <div className="inline-block w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mb-2" />
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Loading pipeline…</p>
                   </td>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
+              )}
+              {!loading && !isRefreshing && displayedLeads.length === 0 && (
+                <tr>
+                  <td colSpan={14} className="text-center py-16 text-[12px] font-semibold text-slate-400">No leads match current filters</td>
+                </tr>
+              )}
+
+              {displayedLeads.map((lead) => {
+                const isOverdue = lead.followUpAt && new Date(lead.followUpAt) < new Date();
+                return (
+                  <tr key={lead.id} onClick={() => onLeadClick(lead.id, displayedLeads.map(l => l.id))}
+                    className={`group hover:bg-slate-50/80 transition-colors cursor-pointer ${selectedLeads.has(lead.id) ? "bg-blue-50/40" : ""}`}>
+
+                    <td className="px-2 py-2" onClick={(e) => toggleSelectLead(lead.id, e)}>
+                      <input type="checkbox" checked={selectedLeads.has(lead.id)} onChange={() => {}}
+                        className="appearance-none w-3.5 h-3.5 rounded border-2 border-slate-300 bg-white checked:bg-blue-600 checked:border-blue-600 transition-all cursor-pointer relative checked:after:content-['✓'] checked:after:absolute checked:after:text-white checked:after:text-[8px] checked:after:font-black checked:after:left-[1px] checked:after:top-[-2px]" />
+                    </td>
+
+                    <td className="px-2 py-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-[9px] font-black text-slate-600 flex-shrink-0 group-hover:bg-white group-hover:border group-hover:border-slate-200 transition-all">
+                          {lead.contactName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
+                        </div>
+                        <span className="font-bold text-[12px] text-slate-900 truncate group-hover:text-blue-600 transition-colors leading-tight">{lead.contactName}</span>
+                      </div>
+                    </td>
+
+                    <td className="px-2 py-2">
+                      <span className="text-[11px] font-semibold text-slate-600 truncate block">{lead.company}</span>
+                    </td>
+
+                    <td className="px-2 py-2">
+                      <span className={`inline-block px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-tight whitespace-nowrap ${STAGE_STYLES[lead.stage] ?? "bg-slate-100 text-slate-500"}`}>
+                        {STAGE_LABEL[lead.stage] || lead.stage}
+                      </span>
+                    </td>
+
+                    <td className="px-2 py-2">
+                      <span className={`inline-block px-1.5 py-0.5 rounded-md text-[9px] font-bold whitespace-nowrap border ${SUB_STATUS_STYLES[lead.subStatus] ?? "bg-slate-50 text-slate-400 border-slate-100"}`}>
+                        {SUB_STATUS_LABEL[lead.subStatus] || lead.subStatus}
+                      </span>
+                    </td>
+
+                    <td className="px-2 py-2">
+                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-tight truncate block">
+                        {lead.city || "—"}
+                      </span>
+                    </td>
+
+                    <td className="px-2 py-2">
+                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-tight truncate block">
+                        {lead.state || "—"}
+                      </span>
+                    </td>
+
+                    <td className="px-2 py-2">
+                      <span className="text-[11px] font-bold text-slate-600 font-mono tracking-tight">{lead.phone || "—"}</span>
+                    </td>
+
+                    <td className="px-2 py-2">
+                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-tight truncate block">{lead.source?.name || "—"}</span>
+                    </td>
+
+                    <td className="px-2 py-2">
+                      <span className="text-[11px] font-semibold text-slate-500 truncate block">{lead.owner?.name.split(" ")[0] || "—"}</span>
+                    </td>
+
+                    <td className="px-2 py-2">
+                      <span className="text-[11px] font-semibold text-slate-500 whitespace-nowrap block">
+                        {new Date(lead.createdAt).toLocaleDateString("en-IN", { day: 'numeric', month: 'short' })} {new Date(lead.createdAt).toLocaleTimeString("en-IN", { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase()}
+                      </span>
+                    </td>
+
+                    <td className="px-2 py-2">
+                      <span className={`text-[11px] font-bold whitespace-nowrap ${isOverdue ? "text-red-500" : "text-slate-400"}`}>
+                        {formatFollowUp(lead.followUpAt)}
+                      </span>
+                    </td>
+
+                    <td className="px-2 py-2">
+                      <div className="flex items-center gap-1.5">
+                        <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${lead.priority === "HIGH" ? "bg-red-500" : lead.priority === "MEDIUM" ? "bg-amber-400" : "bg-green-400"}`} />
+                        <span className="text-[11px] font-black text-slate-800">{formatValue(lead.dealValueInr)}</span>
+                      </div>
+                    </td>
+
+                    <td className="px-2 py-2" onClick={(e) => e.stopPropagation()}>
+                      <div className="relative flex justify-end">
+                        <button onClick={() => setActiveLeadMenu(activeLeadMenu === lead.id ? null : lead.id)}
+                          className={`p-1 rounded-lg transition-all ${activeLeadMenu === lead.id ? "bg-slate-900 text-white" : "text-slate-300 hover:text-slate-600 hover:bg-slate-100"}`}>
+                          <MoreVertical size={13} />
+                        </button>
+                        {activeLeadMenu === lead.id && (
+                          <div className="absolute right-0 top-full mt-1 w-36 bg-white border border-slate-200 rounded-xl shadow-2xl z-30 overflow-hidden">
+                            <button onClick={() => onLeadClick(lead.id, displayedLeads.map(l => l.id))} className="w-full text-left px-3 py-2 text-[11px] font-bold text-slate-700 hover:bg-slate-50 transition-colors">View Details</button>
+                            <button onClick={() => router.push(`/lead/${lead.id}/edit`)} className="w-full text-left px-3 py-2 text-[11px] font-bold text-slate-700 hover:bg-slate-50 transition-colors border-t border-slate-50">Edit Lead</button>
+                            <button onClick={() => setShowDeleteConfirm(lead.id)} className="w-full text-left px-3 py-2 text-[11px] font-black text-red-500 hover:bg-red-50 transition-colors border-t border-slate-100 uppercase tracking-wider">Delete</button>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* ── Pagination ── */}
-      <div className="flex items-center justify-between px-4 py-2.5 border-t border-slate-100 bg-slate-50/40 rounded-b-xl flex-shrink-0">
+      <div className="flex items-center justify-between px-4 py-2.5 border-t border-slate-100 bg-slate-50/40 rounded-b-xl flex-shrink-0 gap-2 flex-wrap">
         <div className="flex items-center gap-3">
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
             {startIndex + 1}–{Math.min(startIndex + pageSize, totalCount)} of {totalCount.toLocaleString()}

@@ -62,6 +62,8 @@ export async function GET(req: Request) {
         { email: { contains: search, mode: 'insensitive' } },
         { phone: { contains: search, mode: 'insensitive' } },
         { industry: { contains: search, mode: 'insensitive' } },
+        { city: { contains: search, mode: 'insensitive' } },
+        { state: { contains: search, mode: 'insensitive' } },
       ];
     }
 
@@ -75,6 +77,10 @@ export async function GET(req: Request) {
           queryWhere.stage = { in: values };
         } else if (field === "subStatus") {
           queryWhere.subStatus = { in: values };
+        } else if (field === "city") {
+          queryWhere.city = { in: values };
+        } else if (field === "state") {
+          queryWhere.state = { in: values };
         } else if (field === "source") {
           queryWhere.source = { name: { in: values } };
         } else if (field === "followup") {
@@ -125,6 +131,8 @@ export async function GET(req: Request) {
             followUpAt: true,
             createdAt: true,
             industry: true,
+            city: true,
+            state: true,
             project: true,
             lastCommunicatedAt: true,
             requirement: true,
@@ -206,6 +214,8 @@ export async function GET(req: Request) {
             followUpAt: true,
             createdAt: true,
             industry: true,
+            city: true,
+            state: true,
             project: true,
             lastCommunicatedAt: true,
             requirement: true,
