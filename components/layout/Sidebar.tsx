@@ -93,11 +93,12 @@ const COLOR_BG_MAP: Record<string, string> = {
 interface CustomFilter {
   id: string;
   name: string;
-  status: string | null;
-  subStatus: string | null;
+  statuses: string[];
+  subStatuses: string[];
   dealSizeMin: string | null;
   dealSizeMax: string | null;
-  industry: string | null;
+  industries: string[];
+  sources: string[];
   alphabet: string | null;
   color: string;
   orderIndex: number;

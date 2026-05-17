@@ -332,7 +332,7 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-transparent backdrop-blur-[2px] animate-in fade-in duration-300" onClick={onClose} />
 
-      <div className="relative bg-white w-full max-w-4xl h-[90vh] rounded-2xl shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] overflow-hidden animate-in zoom-in-95 fade-in duration-300 border border-slate-100 flex flex-col">
+      <div className="relative bg-white w-full max-w-4xl h-[90vh] rounded-2xl shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] overflow-hidden animate-in zoom-in-95 fade-in duration-300 border border-slate-100 flex flex-col mx-auto">
 
         {/* Header */}
         <div className="h-16 bg-white border-b border-slate-50 flex items-center justify-between px-4 sm:px-8 flex-shrink-0 z-20">
@@ -401,10 +401,10 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                       value={contactName}
                       onChange={e => setContactName(e.target.value)}
                       onBlur={() => handleUpdate()}
-                      className="text-3xl font-bold text-slate-900 tracking-tight bg-transparent border-none outline-none focus:ring-2 focus:ring-blue-100 rounded px-1 -ml-1 w-full sm:w-auto"
+                      className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight bg-transparent border-none outline-none focus:ring-2 focus:ring-blue-100 rounded px-1 -ml-1 w-full"
                     />
                   </div>
-                  <div className="flex items-center gap-4 text-slate-500">
+                  <div className="flex flex-wrap items-center gap-3 md:gap-4 text-slate-500">
                     <div className="flex items-center gap-2">
                       <Building2 size={16} className="text-slate-400" />
                       <input
@@ -412,7 +412,7 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                         value={company}
                         onChange={e => setCompany(e.target.value)}
                         onBlur={() => handleUpdate()}
-                        className="text-base font-semibold text-slate-700 bg-transparent border-none outline-none focus:ring-2 focus:ring-blue-100 rounded px-1 -ml-1 w-48"
+                        className="text-base font-semibold text-slate-700 bg-transparent border-none outline-none focus:ring-2 focus:ring-blue-100 rounded px-1 -ml-1 w-full max-w-[12rem]"
                       />
                     </div>
                     <div className="h-4 w-[1px] bg-slate-200" />
@@ -423,11 +423,10 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                         value={industry}
                         onChange={e => setIndustry(e.target.value)}
                         onBlur={() => handleUpdate()}
-                        className="bg-transparent border-none outline-none font-bold w-32 placeholder:text-slate-300"
+                        className="bg-transparent border-none outline-none font-bold w-full max-w-[8rem] placeholder:text-slate-300"
                         placeholder="Set Industry"
                       />
                     </div>
-                    <div className="h-4 w-[1px] bg-slate-200" />
                     <div className="flex items-center gap-1.5 bg-slate-50 px-3 py-1 rounded-lg text-[11px] text-slate-900 border border-slate-200">
                       <span className="font-bold uppercase tracking-widest text-[9px] text-slate-500">Location:</span>
                       <input 
@@ -435,7 +434,7 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                         value={city}
                         onChange={e => setCity(e.target.value)}
                         onBlur={() => handleUpdate()}
-                        className="bg-transparent border-none outline-none font-bold w-20 placeholder:text-slate-300"
+                        className="bg-transparent border-none outline-none font-bold w-full max-w-[5rem] placeholder:text-slate-300"
                         placeholder="City"
                       />
                       <span className="text-slate-300">/</span>
@@ -444,7 +443,7 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                         value={state}
                         onChange={e => setState(e.target.value)}
                         onBlur={() => handleUpdate()}
-                        className="bg-transparent border-none outline-none font-bold w-20 placeholder:text-slate-300"
+                        className="bg-transparent border-none outline-none font-bold w-full max-w-[5rem] placeholder:text-slate-300"
                         placeholder="State"
                       />
                     </div>
@@ -492,7 +491,7 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
               </div>
 
               {/* Contact & Metrics Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-10 mb-12">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 lg:gap-x-12 gap-y-10 mb-12">
                 <div className="space-y-4">
                   <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] border-b border-slate-50 pb-2">Contact Protocol</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
@@ -700,7 +699,7 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
 
               {/* Action Layer */}
               <div className="space-y-6">
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                   <a 
                     href={`tel:${lead.phone}`} 
                     onClick={() => logInteraction("CALL")}

@@ -49,6 +49,7 @@ export async function GET(req: Request) {
         if (sf.sources && sf.sources.length > 0) baseWhere.source = { name: { in: sf.sources } };
         if (sf.dealSizeMin) baseWhere.dealValueInr = { gte: sf.dealSizeMin };
         if (sf.dealSizeMax) baseWhere.dealValueInr = { ...baseWhere.dealValueInr, lte: sf.dealSizeMax };
+        if (sf.alphabet) baseWhere.contactName = { startsWith: sf.alphabet, mode: 'insensitive' };
       }
     }
 

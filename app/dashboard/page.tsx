@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import DashboardView from "@/components/dashboard/DashboardView";
 import CustomProtocolView from "@/components/dashboard/CustomProtocolView";
@@ -23,7 +23,7 @@ export interface SidebarFilterConfig {
 
 import { useDashboard } from "@/components/dashboard/DashboardContext";
 
-export default function DashboardPage() {
+function DashboardPageContent() {
   const searchParams = useSearchParams();
   const sfId = searchParams.get("sf");
   const { filters: customFilters, refreshKey, triggerRefresh } = useDashboard();
@@ -125,5 +125,13 @@ export default function DashboardPage() {
         <AddEmployeeModal onClose={() => setIsAddEmployeeModalOpen(false)} />
       )}
     </>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen text-slate-400 font-bold uppercase tracking-widest text-[10px] animate-pulse">Loading CRM Dashboard...</div>}>
+      <DashboardPageContent />
+    </Suspense>
   );
 }

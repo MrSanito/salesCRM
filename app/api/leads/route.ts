@@ -68,6 +68,8 @@ export async function GET(req: Request) {
         organizationId: true,
         ownerId: true,
         sourceId: true,
+        city: true,
+        state: true,
         owner: {
           select: { name: true, initials: true }
         },
