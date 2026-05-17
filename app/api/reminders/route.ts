@@ -101,18 +101,6 @@ export async function POST(req: NextRequest) {
         data: { followUpAt: new Date(scheduledAt) }
       });
 
-      // Create Alert
-      await tx.alert.create({
-        data: {
-          userId: user.id,
-          organizationId: user.organizationId,
-          leadId,
-          type: "FOLLOW_UP_DUE",
-          title: "Follow-up Scheduled",
-          body: `${type} with ${r.lead.contactName} scheduled for ${new Date(scheduledAt).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}`,
-        }
-      });
-
       // Create Audit Log
       await createAuditLog({
         organizationId: user.organizationId,

@@ -29,6 +29,7 @@ export async function GET(req: Request) {
   const userId = decoded.userId;
   console.log(`[SSE Route] ✅ Connection attempt: User ${userId}`);
 
+  const encoder = new TextEncoder();
   let streamController: ReadableStreamDefaultController;
   let heartbeatInterval: NodeJS.Timeout;
 
@@ -39,7 +40,7 @@ export async function GET(req: Request) {
 
       heartbeatInterval = setInterval(() => {
         try {
-          controller.enqueue(": heartbeat\n\n");
+          controller.enqueue(encoder.encode(": heartbeat\n\n"));
         } catch (e) {
           clearInterval(heartbeatInterval);
         }
@@ -67,7 +68,7 @@ export async function GET(req: Request) {
             contactName: alert.lead?.contactName,
             createdAt: alert.createdAt
           }));
-          controller.enqueue(`data: ${JSON.stringify(payload)}\n\n`);
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
         }
       } catch (err) {
         console.error("Error fetching unread alerts for SSE", err);
