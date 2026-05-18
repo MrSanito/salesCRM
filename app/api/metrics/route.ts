@@ -1,6 +1,6 @@
 // app/api/metrics/route.ts  (App Router)
 import { NextResponse } from 'next/server';
-import { registry } from '@/lib/metrics';
+import { registry, updateDynamicBusinessMetrics } from '@/lib/metrics';
 
 // Protect this endpoint!
 export async function GET(req: Request) {
@@ -8,6 +8,9 @@ export async function GET(req: Request) {
   if (authHeader !== `Bearer ${process.env.METRICS_SECRET}`) {
     return new NextResponse('Unauthorized', { status: 401 });
   }
+
+  // Refresh premium CRM metrics from the database
+  await updateDynamicBusinessMetrics();
 
   const metrics = await registry.metrics();
   return new NextResponse(metrics, {

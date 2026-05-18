@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { registry } from '@/lib/metrics';
+import { registry, updateDynamicBusinessMetrics } from '@/lib/metrics';
 import { pushTimeseries } from 'prometheus-remote-write';
 
 export const dynamic = 'force-dynamic';
@@ -16,8 +16,12 @@ export async function GET(req: Request) {
   }
 
   try {
+    // Refresh premium CRM metrics from the database
+    await updateDynamicBusinessMetrics();
+
     const jsonMetrics = await registry.getMetricsAsJSON();
     const timeseries: any[] = [];
+    const timestamp = Date.now(); // Standard practice: Millisecond timestamp representation
 
     for (const metric of jsonMetrics) {
       for (const val of metric.values) {
@@ -35,7 +39,10 @@ export async function GET(req: Request) {
 
         timeseries.push({
           labels,
-          samples: [{ value: Number(val.value) || 0 }]
+          samples: [{ 
+            value: Number(val.value) || 0,
+            timestamp // High-fidelity millisecond timestamp for correct time alignment
+          }]
         });
       }
     }
