@@ -3,11 +3,14 @@ import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import DashboardView from "@/components/dashboard/DashboardView";
 import CustomProtocolView from "@/components/dashboard/CustomProtocolView";
-import LeadDetailModal from "@/components/dashboard/LeadDetailModal";
-import AddLeadModal from "@/components/dashboard/AddLeadModal";
-import AddEmployeeModal from "@/components/dashboard/AddEmployeeModal";
-import AddLeadChoiceModal from "@/components/dashboard/AddLeadChoiceModal";
-import ImportExcelModal from "@/components/dashboard/ImportExcelModal";
+import dynamic from "next/dynamic";
+
+// Lazy-load heavy modal components to reduce initial JS bundle
+const LeadDetailModal = dynamic(() => import("@/components/dashboard/LeadDetailModal"), { ssr: false });
+const AddLeadModal = dynamic(() => import("@/components/dashboard/AddLeadModal"), { ssr: false });
+const AddEmployeeModal = dynamic(() => import("@/components/dashboard/AddEmployeeModal"), { ssr: false });
+const AddLeadChoiceModal = dynamic(() => import("@/components/dashboard/AddLeadChoiceModal"), { ssr: false });
+const ImportExcelModal = dynamic(() => import("@/components/dashboard/ImportExcelModal"), { ssr: false });
 
 export interface SidebarFilterConfig {
   id: string;

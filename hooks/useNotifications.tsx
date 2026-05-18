@@ -18,49 +18,62 @@ export function useNotifications() {
   const [activeModalAlert, setActiveModalAlert] = useState<AlertPayload | null>(null);
 
   useEffect(() => {
-    const es = new EventSource("/api/notifications/stream");
+    let es: EventSource;
+    let reconnectDelay = 1000;
+    let reconnectTimer: ReturnType<typeof setTimeout>;
 
-    es.onmessage = (event) => {
-      try {
-        const payload = JSON.parse(event.data);
-        console.log("SSE Message received:", payload);
-        
-        const processAlert = (alert: AlertPayload) => {
-          setNotifications((prev) => {
-            if (prev.some(p => p.id === alert.id)) return prev;
-            return [alert, ...prev];
-          });
+    function connect() {
+      es = new EventSource("/api/notifications/stream");
+
+      es.onopen = () => {
+        reconnectDelay = 1000; // Reset backoff on successful connection
+      };
+
+      es.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data);
           
-          if (alert.type === "FOLLOW_UP_DUE" || alert.type === "REMINDER_DUE") {
-            console.log("Triggering modal for alert:", alert);
-            setActiveModalAlert(alert);
+          const processAlert = (alert: AlertPayload) => {
+            setNotifications((prev) => {
+              if (prev.some(p => p.id === alert.id)) return prev;
+              return [alert, ...prev];
+            });
+            
+            if (alert.type === "FOLLOW_UP_DUE" || alert.type === "REMINDER_DUE") {
+              setActiveModalAlert(alert);
+            }
+            
+            toast((t) => (
+              <div className="flex flex-col gap-1">
+                <span className="font-semibold text-sm">{alert.title}</span>
+                {alert.body && <span className="text-xs text-gray-600">{alert.body}</span>}
+              </div>
+            ));
+          };
+
+          if (Array.isArray(payload)) {
+            payload.forEach(processAlert);
+          } else if (payload && payload.id) {
+            processAlert(payload);
           }
-          
-          toast((t) => (
-            <div className="flex flex-col gap-1">
-              <span className="font-semibold text-sm">{alert.title}</span>
-              {alert.body && <span className="text-xs text-gray-600">{alert.body}</span>}
-            </div>
-          ));
-        };
-
-        if (Array.isArray(payload)) {
-          payload.forEach(processAlert);
-        } else if (payload && payload.id) {
-          processAlert(payload);
+        } catch (err) {
+          // Ignore heartbeat
         }
-      } catch (err) {
-        // Ignore heartbeat
-      }
-    };
+      };
 
-    es.onerror = (err) => {
-      console.error("EventSource error", err);
-      // Optional: es.close() and reconnect logic
-    };
+      es.onerror = () => {
+        es.close();
+        // Reconnect with exponential backoff (max 30s)
+        reconnectTimer = setTimeout(connect, reconnectDelay);
+        reconnectDelay = Math.min(reconnectDelay * 2, 30000);
+      };
+    }
+
+    connect();
 
     return () => {
-      es.close();
+      es?.close();
+      clearTimeout(reconnectTimer);
     };
   }, []);
 
@@ -78,11 +91,8 @@ export function useNotifications() {
   }, []);
 
   const clearAll = useCallback(async () => {
-    // Optionally fire API to mark all as read. 
-    // Here we just clear local state per basic requirements or loop markRead.
-    for (const notif of notifications) {
-      await markRead(notif.id);
-    }
+    // Batch clear all notifications in parallel instead of sequential awaits
+    await Promise.all(notifications.map(n => markRead(n.id)));
   }, [notifications, markRead]);
 
   return {

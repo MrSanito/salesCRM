@@ -10,7 +10,9 @@ const connectionString = process.env.NODE_ENV === "production"
 // Prisma 7 requires an adapter or accelerateUrl if url is missing from schema
 const pool = new pg.Pool({ 
   connectionString,
-  max: 15,
+  max: 5,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
   ssl: { rejectUnauthorized: false }
 })
 

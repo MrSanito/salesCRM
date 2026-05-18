@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import { usePathname } from "next/navigation";
 
 interface DashboardStats {
@@ -45,15 +45,15 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [filters, setFilters] = useState<CustomFilter[]>([]);
   const [loading, setLoading] = useState(true);
-  const [lastFetch, setLastFetch] = useState(0);
+  const lastFetchRef = useRef(0);
   const [refreshKey, setRefreshKey] = useState(0);
   const pathname = usePathname();
 
   const fetchData = useCallback(async (force = false) => {
     const now = Date.now();
-    if (!force && now - lastFetch < 10000) return; // Throttled to 10s
+    if (!force && now - lastFetchRef.current < 10000) return; // Throttled to 10s
 
-    setLastFetch(now);
+    lastFetchRef.current = now;
     try {
       const [statsRes, filtersRes] = await Promise.all([
         fetch("/api/dashboard/stats"),
@@ -70,11 +70,11 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [lastFetch]);
+  }, []);
 
   useEffect(() => {
     fetchData();
-  }, [pathname, refreshKey]);
+  }, [fetchData, pathname, refreshKey]);
 
   const triggerRefresh = useCallback(() => {
     setRefreshKey(prev => prev + 1);
