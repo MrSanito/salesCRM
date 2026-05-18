@@ -14,16 +14,17 @@ export async function POST(req: Request) {
 
     if (httpRequestsTotal) {
       httpRequestsTotal.inc({
-        method: method || 'GET',
         path: path || '/',
-        status: status || '200',
+        method: method || 'GET',
+        status: String(status || '200'),
       });
     }
 
     if (httpRequestDurationSeconds && typeof duration === 'number') {
       httpRequestDurationSeconds.observe({
-        method: method || 'GET',
         path: path || '/',
+        method: method || 'GET',
+        status: String(status || '200'),
       }, duration);
     }
 

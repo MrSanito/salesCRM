@@ -13,8 +13,12 @@ export const registry =
 
 // Only register default system metrics once to prevent duplicate registration crashes
 if (!globalForMetrics.defaultMetricsRegistered) {
-  client.collectDefaultMetrics({ register: registry });
-  globalForMetrics.defaultMetricsRegistered = true;
+  try {
+    client.collectDefaultMetrics({ register: registry });
+    globalForMetrics.defaultMetricsRegistered = true;
+  } catch (err) {
+    console.warn('Default metrics already collected, skipping registration.');
+  }
 }
 
 // HMR-safe metric builders that lookup or register dynamically
@@ -42,9 +46,14 @@ export function getOrCreateHistogram(name: string, help: string, labelNames: str
   });
 }
 
-// Register standard HTTP telemetry endpoints safely
-getOrCreateCounter('http_requests_total', 'Total HTTP requests', ['method', 'path', 'status']);
-getOrCreateHistogram('http_request_duration_seconds', 'HTTP request duration in seconds', ['method', 'path']);
+// Register standard HTTP telemetry endpoints safely with exact requested labels and buckets
+getOrCreateCounter('http_requests_total', 'Total HTTP requests', ['path', 'method', 'status']);
+getOrCreateHistogram(
+  'http_request_duration_seconds',
+  'HTTP request duration in seconds',
+  ['path', 'method', 'status'],
+  [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10]
+);
 
 /**
  * Dynamically fetch current CRM state from Prisma and update Prometheus Gauge metrics.
