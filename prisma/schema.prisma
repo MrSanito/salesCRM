@@ -29,6 +29,7 @@ model Organization {
   sidebarFilters    SidebarFilter[]
   teams             Team[]
   users             User[]
+  proposals         Proposal[]
 
   @@map("organizations")
 }
@@ -62,6 +63,7 @@ model User {
   securityIncidents         SecurityEWS[]
   sidebarFilters            SidebarFilter[] @relation("SidebarFilterCreator")
   managedTeam               Team?           @relation("TeamManager")
+  proposals                 Proposal[]      @relation("ProposalCreator")
   customRole                CustomRole?     @relation("UserCustomRole", fields: [customRoleId], references: [id])
   manager                   User?           @relation("UserHierarchy", fields: [managerId], references: [id])
   subordinates              User[]          @relation("UserHierarchy")
@@ -156,6 +158,7 @@ model Lead {
   notes              Note[]
   reminders          Reminder[]
   securityIncidents  SecurityEWS[]
+  proposals          Proposal[]
 
   @@index([organizationId])
   @@index([ownerId])
@@ -608,4 +611,38 @@ enum PermissionKey {
 enum SenderType {
   LEAD
   USER
+}
+
+model Proposal {
+  id                      String       @id @default(uuid())
+  clientCompanyName       String
+  proposalDate            String
+  industry                String
+  contactPerson           String
+  teamSize                String
+  currentTools            String
+  businessModel           String
+  painPoints              String       @db.Text
+  desiredOutcomes         String       @db.Text
+  scopeOfWork             String       @db.Text
+  recommendedAutomations  String       @db.Text
+  deploymentTimeline      String
+  packageName             String
+  pricing                 String
+  addons                  String
+  supportDuration         String
+  fileUrl                 String
+  cloudinaryPublicId      String?
+  leadId                  String
+  createdById             String
+  organizationId          String
+  createdAt               DateTime     @default(now())
+  
+  lead                    Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  createdBy               User         @relation("ProposalCreator", fields: [createdById], references: [id])
+  organization            Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([leadId])
+  @@index([organizationId])
+  @@map("proposals")
 }

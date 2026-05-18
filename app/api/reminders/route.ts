@@ -14,7 +14,7 @@ async function getAuthUser(req: NextRequest) {
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     return await prisma.user.findUnique({
       where: { id: decoded.userId },
-      select: { id: true, organizationId: true, role: true, name: true },
+      select: { id: true, organizationId: true, role: true, name: true, email: true },
     });
   } catch { return null; }
 }
@@ -25,11 +25,13 @@ export async function GET(req: NextRequest) {
     const user = await getAuthUser(req);
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+    const isSuperAdmin = user.email === "sb.solobuild@gmail.com";
+
     const reminders = await prisma.reminder.findMany({
       where: {
         organizationId: user.organizationId,
         status: { in: ["PENDING", "SNOOZED"] },
-        ...(user.role === "SALES_REP" ? { userId: user.id } : {}),
+        ...(!isSuperAdmin ? { userId: user.id } : {}),
       },
       select: {
         id: true,
@@ -50,7 +52,9 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(reminders, {
       headers: {
-        'Cache-Control': 'private, max-age=300, stale-while-revalidate=60'
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
       }
     });
   } catch (error) {

@@ -21,21 +21,23 @@ async function getUser() {
   }
 }
 
-// GET — all users in the org can read sidebar filters
+// GET — fetch user-specific sidebar filters
 export async function GET() {
   try {
     const user = await getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const filters = await prisma.sidebarFilter.findMany({
-      where: { organizationId: user.organizationId },
+      where: { createdById: user.id },
       orderBy: { orderIndex: "asc" },
       include: { createdBy: { select: { name: true } } },
     });
 
     return NextResponse.json(filters, {
       headers: {
-        'Cache-Control': 'private, max-age=120, stale-while-revalidate=30'
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
       }
     });
   } catch (error: any) {
@@ -43,14 +45,11 @@ export async function GET() {
   }
 }
 
-// POST — only ORG_ADMIN can create
+// POST — allow any authorized user to create their own sidebar filters
 export async function POST(req: Request) {
   try {
     const user = await getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    if (user.role !== "ORG_ADMIN" && user.role !== "CEO") {
-      return NextResponse.json({ error: "Only the CEO can configure sidebar filters." }, { status: 403 });
-    }
 
     const body = await req.json();
     const { name, statuses, subStatuses, industries, sources, dealSizeMin, dealSizeMax, alphabet, icon, color } = body;
@@ -59,9 +58,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
 
-    // Get current max orderIndex
+    // Get current max orderIndex for this user's filters
     const existing = await prisma.sidebarFilter.findMany({
-      where: { organizationId: user.organizationId },
+      where: { createdById: user.id },
       orderBy: { orderIndex: "desc" },
       take: 1,
     });
@@ -104,14 +103,11 @@ export async function POST(req: Request) {
   }
 }
 
-// DELETE — only ORG_ADMIN can delete
+// DELETE — allow users to delete their own sidebar filters
 export async function DELETE(req: Request) {
   try {
     const user = await getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    if (user.role !== "ORG_ADMIN" && user.role !== "CEO") {
-      return NextResponse.json({ error: "Only the CEO can delete sidebar filters." }, { status: 403 });
-    }
 
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
@@ -119,7 +115,7 @@ export async function DELETE(req: Request) {
 
     // Verify ownership
     const filter = await prisma.sidebarFilter.findFirst({
-      where: { id, organizationId: user.organizationId },
+      where: { id, createdById: user.id },
     });
     if (!filter) return NextResponse.json({ error: "Filter not found" }, { status: 404 });
 

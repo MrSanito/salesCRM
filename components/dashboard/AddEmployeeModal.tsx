@@ -186,7 +186,9 @@ export default function AddEmployeeModal({ onClose, preselectedManagerId, presel
               >
                 <option value="">Select a Manager...</option>
                 {managers.map(m => (
-                  <option key={m.id} value={m.id}>{m.name} ({m.role})</option>
+                  <option key={m.id} value={m.id}>
+                    {m.name} ({m.role === 'CEO' ? 'CEO' : m.role === 'ORG_ADMIN' ? 'Org Admin' : m.role === 'MANAGER' ? 'Supervisor' : 'Specialist'})
+                  </option>
                 ))}
               </select>
               <div className="absolute right-4 top-4 pointer-events-none text-slate-400">

@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { User, Mail, Shield, Save, ArrowLeft, Camera, Fingerprint, Plus, Trash2, LayoutPanelLeft, Filter, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthContext";
+import { useDashboard } from "@/components/dashboard/DashboardContext";
 import toast from "react-hot-toast";
 
 const STATUS_OPTIONS = [
@@ -67,6 +68,7 @@ interface SidebarFilterItem {
 
 export default function SettingsView() {
   const { user, checkUser } = useAuth();
+  const { triggerRefresh } = useDashboard();
   const router = useRouter();
   const [name, setName] = useState(user?.name || "");
   const [email, setEmail] = useState(user?.email || "");
@@ -99,7 +101,7 @@ export default function SettingsView() {
 
   // Fetch sidebar filters
   useEffect(() => {
-    if (user?.role === "ORG_ADMIN" || user?.role === "CEO") {
+    if (user) {
       setFiltersLoading(true);
       fetch("/api/sidebar-filters")
         .then((r) => r.json())
@@ -191,6 +193,7 @@ export default function SettingsView() {
         setNewFilter({ name: "", statuses: [], subStatuses: [], industries: [], sources: [], dealSize: "", alphabet: "", color: "blue" });
         setShowAddForm(false);
         toast.success(`"${created.name}" added to sidebar`);
+        triggerRefresh();
       } else {
         const data = await res.json();
         toast.error(data.error || "Failed to create filter");
@@ -208,6 +211,7 @@ export default function SettingsView() {
       if (res.ok) {
         setSidebarFilters((prev) => prev.filter((f) => f.id !== id));
         toast.success(`"${filterName}" removed from sidebar`);
+        triggerRefresh();
       } else {
         const data = await res.json();
         toast.error(data.error || "Failed to delete filter");
@@ -333,7 +337,7 @@ export default function SettingsView() {
           </form>
 
           {/* ────── Sidebar Customization (CEO Only) ────── */}
-          {(user?.role === "ORG_ADMIN" || user?.role === "CEO") && (
+          {user && (
             <div id="sidebar-filters" className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/50 overflow-hidden scroll-mt-6">
               <div className="p-6 sm:p-10 border-b border-slate-50 bg-slate-50/30">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -646,7 +650,7 @@ export default function SettingsView() {
 
                         <button
                           onClick={() => handleDeleteFilter(f.id, f.name)}
-                          className="opacity-0 group-hover:opacity-100 w-8 h-8 rounded-lg flex items-center justify-center text-red-400 hover:bg-red-50 hover:text-red-600 transition-all active:scale-90"
+                          className="w-8 h-8 rounded-lg flex items-center justify-center text-red-400 hover:bg-red-50 hover:text-red-600 transition-all active:scale-90 opacity-60 hover:opacity-100"
                           title="Remove filter"
                         >
                           <Trash2 size={14} />

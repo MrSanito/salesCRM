@@ -50,7 +50,7 @@ export default function TeamView({ defaultView = "graph" }: TeamViewProps) {
 
   const renderMemberNode = (member: TeamMember, level: number = 0) => {
     const subordinates = members.filter(m => m.managerId === member.id);
-    const isOrgAdmin = member.role === "ORG_ADMIN";
+    const isOrgAdmin = member.role === "ORG_ADMIN" || member.role === "CEO";
     const isManager = member.role === "MANAGER";
     
     // Mock lead activity for the "graph form" requirement
@@ -100,7 +100,7 @@ export default function TeamView({ defaultView = "graph" }: TeamViewProps) {
                         ? 'bg-blue-600/10 text-blue-600' 
                         : 'bg-slate-200/50 text-slate-500'
                   }`}>
-                    {isOrgAdmin ? 'Org Director' : isManager ? 'Team Leader' : 'Sales Representative'}
+                    {member.role === 'CEO' ? 'CEO' : isOrgAdmin ? 'Org Director' : isManager ? 'Team Leader' : 'Sales Representative'}
                   </p>
                 </div>
               </div>
@@ -243,8 +243,16 @@ export default function TeamView({ defaultView = "graph" }: TeamViewProps) {
                 <div className={`w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center text-xl font-black shadow-inner`}>
                   {member.initials}
                 </div>
-                <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full ${member.role === 'MANAGER' ? 'bg-blue-50 text-blue-600' : 'bg-slate-50 text-slate-500'}`}>
-                  {member.role === 'MANAGER' ? 'Supervisor' : 'Specialist'}
+                <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full ${
+                  member.role === 'CEO' 
+                    ? 'bg-amber-100 text-amber-800' 
+                    : member.role === 'ORG_ADMIN' 
+                      ? 'bg-purple-100 text-purple-800' 
+                      : member.role === 'MANAGER' 
+                        ? 'bg-blue-50 text-blue-600' 
+                        : 'bg-slate-50 text-slate-500'
+                }`}>
+                  {member.role === 'CEO' ? 'CEO' : member.role === 'ORG_ADMIN' ? 'Org Admin' : member.role === 'MANAGER' ? 'Supervisor' : 'Specialist'}
                 </span>
               </div>
 

@@ -16,17 +16,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
-      select: { id: true, organizationId: true, role: true, name: true },
+      select: { id: true, organizationId: true, role: true, name: true, email: true },
     });
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { id } = await params;
+    const isSuperAdmin = user.email === "sb.solobuild@gmail.com";
 
     const reminder = await prisma.reminder.findFirst({
       where: {
         id,
         organizationId: user.organizationId,
-        ...(user.role === "SALES_REP" ? { userId: user.id } : {}),
+        ...(!isSuperAdmin ? { userId: user.id } : {}),
       },
     });
 

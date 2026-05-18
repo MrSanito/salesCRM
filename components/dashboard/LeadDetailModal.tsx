@@ -1,7 +1,7 @@
 "use client"
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { X, ChevronLeft, ChevronRight, Building2, Phone, Mail, CalendarCheck, ChevronDown, MessageCircle, ShieldAlert, Target, CalendarClock, Info, Pencil, Sparkles } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Building2, Phone, Mail, CalendarCheck, ChevronDown, MessageCircle, ShieldAlert, Target, CalendarClock, Info, Pencil, Sparkles, Trash2, Download, FileText, Plus } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthContext";
 import toast from "react-hot-toast";
 
@@ -9,6 +9,7 @@ import EngagementStream from "./lead-detail/EngagementStream";
 import IntelligenceDossier from "./lead-detail/IntelligenceDossier";
 import GatekeeperProtocol from "./lead-detail/GatekeeperProtocol";
 import ScheduleFollowupModal from "./lead-detail/ScheduleFollowupModal";
+import CreateProposalModal from "./CreateProposalModal";
 
 const STAGE_LABEL: Record<string, string> = {
   NEW: "New", 
@@ -83,6 +84,9 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
   const [team, setTeam] = useState<any[]>([]);
   const [updating, setUpdating] = useState(false);
   const [showSchedule, setShowSchedule] = useState(false);
+  const [showProposalForm, setShowProposalForm] = useState(false);
+  const [proposals, setProposals] = useState<any[]>([]);
+  const [proposalsLoading, setProposalsLoading] = useState(false);
   const [isDossierOpen, setIsDossierOpen] = useState(true);
   const [expandedField, setExpandedField] = useState<string | null>("wholeSummary");
   
@@ -113,6 +117,39 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
   const [isUpdatingNote, setIsUpdatingNote] = useState(false);
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [notesSummary, setNotesSummary] = useState<string | null>(null);
+
+  const fetchProposals = async () => {
+    setProposalsLoading(true);
+    try {
+      const res = await fetch(`/api/proposals?leadId=${leadId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setProposals(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch proposals:", err);
+    } finally {
+      setProposalsLoading(false);
+    }
+  };
+
+  const handleDeleteProposal = async (id: string) => {
+    if (!confirm("Are you sure you want to permanently delete this proposal? This will remove the Cloudinary asset too.")) return;
+    try {
+      const res = await fetch(`/api/proposals?id=${id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        toast.success("Proposal deleted successfully!");
+        fetchProposals();
+      } else {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to delete proposal");
+      }
+    } catch (err: any) {
+      toast.error(err.message);
+    }
+  };
 
   const fetchData = async (showLoading = true) => {
     if (showLoading) setLoading(true);
@@ -165,6 +202,7 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
   useEffect(() => {
     if (!leadId) return;
     fetchData();
+    fetchProposals();
   }, [leadId, canChangeOwner]);
 
   const handleCompleteFollowup = async (reminderId: string) => {
@@ -248,6 +286,7 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
       toast.error("Network error");
     } finally {
       setIsUpdatingNote(false);
+
     }
   };
 
@@ -471,7 +510,7 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                           >
                             {team.map((member) => (
                               <option key={member.id} value={member.id}>
-                                {member.name}
+                                {member.name} ({member.role === 'CEO' ? 'CEO' : member.role === 'ORG_ADMIN' ? 'Org Admin' : member.role === 'MANAGER' ? 'Supervisor' : 'Specialist'})
                               </option>
                             ))}
                           </select>
@@ -699,7 +738,7 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
 
               {/* Action Layer */}
               <div className="space-y-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                   <a 
                     href={`tel:${lead.phone}`} 
                     onClick={() => logInteraction("CALL")}
@@ -743,6 +782,19 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                       <p className="text-[11px] font-black text-slate-700 tracking-tight uppercase">Open Chat</p>
                     </div>
                   </a>
+
+                  <button
+                    onClick={() => setShowProposalForm(true)}
+                    className="flex-1 bg-white border border-slate-100 rounded-2xl px-6 py-4 flex items-center justify-center gap-3 group hover:border-indigo-200 hover:bg-indigo-50 transition-all active:scale-[0.98] shadow-sm"
+                  >
+                    <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100 group-hover:scale-110 transition-transform">
+                      <FileText size={14} strokeWidth={2.5} />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-[8px] font-bold text-slate-400 uppercase tracking-[0.2em] leading-none mb-1">Proposal</p>
+                      <p className="text-[11px] font-black text-slate-700 tracking-tight uppercase">Create Proposal</p>
+                    </div>
+                  </button>
 
                   <button
                     onClick={() => !activeReminder && setShowSchedule(true)}
@@ -961,6 +1013,75 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                   </div>
                 </div>
 
+                {/* Proposal Vault Section */}
+                <div className="pt-8 border-t border-slate-100">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] flex items-center gap-1.5">
+                      <FileText size={12} strokeWidth={2.5} /> Proposal Vault
+                    </h3>
+                    <button
+                      onClick={() => setShowProposalForm(true)}
+                      className="bg-indigo-50 border border-indigo-100 text-indigo-600 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100 transition-all active:scale-95 flex items-center gap-1"
+                    >
+                      <Plus size={12} strokeWidth={3} /> New Proposal
+                    </button>
+                  </div>
+
+                  <div className="space-y-3 mb-10 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                    {proposalsLoading ? (
+                      <div className="flex flex-col items-center justify-center py-6 gap-2">
+                        <div className="w-5 h-5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Accessing Vault...</span>
+                      </div>
+                    ) : proposals.length === 0 ? (
+                      <div className="text-center py-8 bg-slate-50/50 border border-slate-100 border-dashed rounded-2xl flex flex-col items-center justify-center gap-2">
+                        <FileText className="text-slate-300" size={24} />
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">No proposals generated</p>
+                      </div>
+                    ) : (
+                      proposals.map((prop) => (
+                        <div key={prop.id} className="bg-slate-50 border border-slate-100 p-4 rounded-xl flex items-center justify-between gap-4 relative group/prop hover:border-indigo-100 transition-all">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 text-indigo-600 flex items-center justify-center shadow-sm">
+                              <FileText size={18} />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-[12px] font-black text-slate-800 truncate leading-none mb-1">
+                                {prop.clientCompanyName} Proposal
+                              </p>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">
+                                {prop.packageName} – {prop.pricing}
+                              </p>
+                              <p className="text-[8px] font-bold text-indigo-400 uppercase tracking-widest mt-1">
+                                Prepared by {prop.createdBy?.name || "System"} on {new Date(prop.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <a
+                              href={prop.fileUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-500 hover:text-indigo-600 hover:border-indigo-200 flex items-center justify-center shadow-sm transition-all active:scale-95"
+                              title="Download Word Proposal"
+                            >
+                              <Download size={14} />
+                            </a>
+                            <button
+                              onClick={() => handleDeleteProposal(prop.id)}
+                              className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-red-600 hover:border-red-200 flex items-center justify-center shadow-sm transition-all active:scale-95"
+                              title="Delete Proposal"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
                 {/* Context Summary Section (Restored to original Dossier style) */}
                 <div className="pt-8 border-t border-slate-100 pb-12">
                   <IntelligenceDossier
@@ -990,6 +1111,13 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
         leadId={lead?.id || ""}
         leadName={lead?.contactName}
         onSaved={() => fetchData(false)}
+      />
+
+      <CreateProposalModal
+        isOpen={showProposalForm}
+        onClose={() => setShowProposalForm(false)}
+        lead={lead}
+        onGenerated={fetchProposals}
       />
     </div>
   );

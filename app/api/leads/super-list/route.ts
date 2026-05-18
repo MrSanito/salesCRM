@@ -23,7 +23,7 @@ export async function GET(req: Request) {
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
-      select: { id: true, organizationId: true, role: true, name: true }
+      select: { id: true, organizationId: true, role: true, name: true, email: true }
     });
 
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -32,8 +32,10 @@ export async function GET(req: Request) {
       organizationId: user.organizationId,
     };
 
+    const isSuperAdmin = user.email === "sb.solobuild@gmail.com";
+
     // Role-based access
-    if (user.role === "SALES_REP") {
+    if (!isSuperAdmin) {
       baseWhere.ownerId = user.id;
     } else if (searchParams.get("ownerId")) {
       baseWhere.ownerId = searchParams.get("ownerId");
@@ -179,7 +181,7 @@ export async function GET(req: Request) {
             where: {
               organizationId: user.organizationId,
               status: { in: ["PENDING", "SNOOZED"] },
-              ...(user.role === "SALES_REP" ? { userId: user.id } : {}),
+              ...(!isSuperAdmin ? { userId: user.id } : {}),
             },
             include: {
               lead: { select: { contactName: true, company: true } },
@@ -194,7 +196,7 @@ export async function GET(req: Request) {
           prisma.reminder.count({
             where: {
               organizationId: user.organizationId,
-              ...(user.role === "SALES_REP" ? { userId: user.id } : {}),
+              ...(!isSuperAdmin ? { userId: user.id } : {}),
               status: "PENDING",
             }
           }),
@@ -305,7 +307,9 @@ export async function GET(req: Request) {
       stats
     }, {
       headers: {
-        'Cache-Control': 'private, max-age=30, stale-while-revalidate=10'
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
       }
     });
 

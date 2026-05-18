@@ -17,11 +17,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     // Optimized user fetch: get organizationId once
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
-      select: { organizationId: true, role: true, id: true, name: true },
+      select: { organizationId: true, role: true, id: true, name: true, email: true },
     });
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     const { id } = await params;
+    const isSuperAdmin = user.email === "sb.solobuild@gmail.com";
 
     // Fetch Lead, Notes, and Team in parallel to minimize latency
     const [lead, team] = await Promise.all([
@@ -29,7 +30,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         where: {
           id,
           organizationId: user.organizationId,
-          ...(user.role === "SALES_REP" ? { ownerId: user.id } : {}),
+          ...(!isSuperAdmin ? { ownerId: user.id } : {}),
         },
         include: {
           owner: { select: { name: true, initials: true } },
@@ -71,7 +72,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       team_members: team // Inject team directly into response to save a separate call
     }, {
       headers: {
-        'Cache-Control': 'private, max-age=10, stale-while-revalidate=5'
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
       }
     });
   } catch (error) {
@@ -88,12 +91,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
-      select: { organizationId: true, role: true, id: true, name: true },
+      select: { organizationId: true, role: true, id: true, name: true, email: true },
     });
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     const { id } = await params;
     const data = await req.json();
+    const isSuperAdmin = user.email === "sb.solobuild@gmail.com";
 
     // Check if lead exists and belongs to org
     const existingLead = await prisma.lead.findFirst({
@@ -102,13 +106,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     if (!existingLead) return NextResponse.json({ error: "Lead not found" }, { status: 404 });
 
-    // Authorization: Workers can only update stage/value of their own leads
-    if (user.role === "SALES_REP" && existingLead.ownerId !== user.id) {
+    // Authorization: Workers (non-super-admins) can only update stage/value of their own leads
+    if (!isSuperAdmin && existingLead.ownerId !== user.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Role-based restrictions: Only ORG_ADMIN and MANAGER can change owner
-    if (data.ownerId && (user.role !== "ORG_ADMIN" && user.role !== "MANAGER" && user.role !== "CEO")) {
+    // Role-based restrictions: Only super-admin can change owner
+    if (data.ownerId && !isSuperAdmin) {
       delete data.ownerId;
     }
 
@@ -229,12 +233,14 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
-      select: { organizationId: true, role: true, id: true, name: true },
+      select: { organizationId: true, role: true, id: true, name: true, email: true },
     });
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-    // Only ORG_ADMIN and MANAGER can delete
-    if (user.role !== "ORG_ADMIN" && user.role !== "MANAGER" && user.role !== "CEO") {
+    const isSuperAdmin = user.email === "sb.solobuild@gmail.com";
+
+    // Only super-admin can delete
+    if (!isSuperAdmin) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

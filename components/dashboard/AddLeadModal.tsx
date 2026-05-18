@@ -372,7 +372,9 @@ export default function AddLeadModal({ onClose, onSuccess }: AddLeadModalProps) 
                       className="w-full border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-sm font-bold text-slate-800 focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 bg-slate-50 outline-none transition-all appearance-none"
                     >
                       {team.map(m => (
-                        <option key={m.id} value={m.id}>{m.name}</option>
+                        <option key={m.id} value={m.id}>
+                          {m.name} ({m.role === 'CEO' ? 'CEO' : m.role === 'ORG_ADMIN' ? 'Org Admin' : m.role === 'MANAGER' ? 'Supervisor' : 'Specialist'})
+                        </option>
                       ))}
                     </select>
                     <div className="absolute right-4 top-3.5 text-slate-400 pointer-events-none">

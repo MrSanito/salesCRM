@@ -15,7 +15,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
-      select: { id: true, organizationId: true, name: true, role: true },
+      select: { id: true, organizationId: true, name: true, role: true, email: true },
     });
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
@@ -36,8 +36,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ error: "Note not found" }, { status: 404 });
     }
 
-    // Authorization check: User can edit their own notes, or MANAGER/ORG_ADMIN can edit any note
-    if (existingNote.userId !== user.id && user.role !== "ORG_ADMIN" && user.role !== "MANAGER" && user.role !== "CEO") {
+    const isSuperAdmin = user.email === "sb.solobuild@gmail.com";
+
+    // Authorization check: User can edit their own notes, or super admin can edit any note
+    if (existingNote.userId !== user.id && !isSuperAdmin) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -78,7 +80,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
-      select: { id: true, organizationId: true, name: true, role: true },
+      select: { id: true, organizationId: true, name: true, role: true, email: true },
     });
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
@@ -92,8 +94,10 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       return NextResponse.json({ error: "Note not found" }, { status: 404 });
     }
 
-    // Authorization check: User can delete their own notes, or MANAGER/ORG_ADMIN can delete any note
-    if (existingNote.userId !== user.id && user.role !== "ORG_ADMIN" && user.role !== "MANAGER" && user.role !== "CEO") {
+    const isSuperAdmin = user.email === "sb.solobuild@gmail.com";
+
+    // Authorization check: User can delete their own notes, or super admin can delete any note
+    if (existingNote.userId !== user.id && !isSuperAdmin) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

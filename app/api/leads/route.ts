@@ -25,21 +25,23 @@ export async function GET(req: Request) {
     // Fetch user to get organizationId
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
-      select: { id: true, organizationId: true, role: true, name: true }
+      select: { id: true, organizationId: true, role: true, name: true, email: true }
     });
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    const isSuperAdmin = user.email === "sb.solobuild@gmail.com";
+
     // Role-based filtering:
-    // SALES_REP: only their own leads
-    // MANAGER/ORG_ADMIN: all leads in organization
+    // Super Admin: all leads in organization
+    // All other users: only their own leads
     const whereClause: any = {
       organizationId: user.organizationId,
     };
 
-    if (user.role === "SALES_REP") {
+    if (!isSuperAdmin) {
       whereClause.ownerId = decoded.userId;
     }
 

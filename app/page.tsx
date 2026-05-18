@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useAuth } from "@/components/auth/AuthContext";
 import toast from "react-hot-toast";
-import { LogIn, UserPlus, Mail, Lock, User as UserIcon } from "lucide-react";
+import { LogIn, UserPlus, Mail, Lock, User as UserIcon, ShieldAlert } from "lucide-react";
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -12,6 +12,8 @@ export default function AuthPage() {
     password: "",
     organizationName: "solosales"
   });
+  const [otpSent, setOtpSent] = useState(false);
+  const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
 
@@ -19,27 +21,58 @@ export default function AuthPage() {
     e.preventDefault();
     setLoading(true);
 
-    const endpoint = isLogin ? "/api/auth/login" : "/api/auth/register";
-    
     try {
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
+      if (isLogin) {
+        if (!otpSent) {
+          // Step 1: Request OTP
+          const res = await fetch("/api/auth/email-login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: formData.email }),
+          });
 
-      const data = await res.json();
+          const data = await res.json();
 
-      if (res.ok) {
-        if (isLogin) {
-          toast.success("Login Successful!");
-          login(data.user);
+          if (res.ok && data.otpSent) {
+            setOtpSent(true);
+            toast.success("OTP sent to your email!");
+          } else {
+            toast.error(data.error || "Failed to send OTP");
+          }
         } else {
-          toast.success("Registration Successful! Please Login.");
-          setIsLogin(true);
+          // Step 2: Verify OTP and Login
+          const res = await fetch("/api/auth/email-login/verify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: formData.email, otp }),
+          });
+
+          const data = await res.json();
+
+          if (res.ok && data.success) {
+            toast.success("Login Successful!");
+            login(data.user);
+          } else {
+            toast.error(data.error || "Invalid OTP");
+          }
         }
       } else {
-        toast.error(data.error || "Something went wrong");
+        // Register Flow
+        const res = await fetch("/api/auth/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(formData),
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          toast.success("Registration Successful! Please Login.");
+          setIsLogin(true);
+          setOtpSent(false);
+        } else {
+          toast.error(data.error || "Something went wrong");
+        }
       }
     } catch (error) {
       toast.error("Connection error");
@@ -111,40 +144,74 @@ export default function AuthPage() {
                 <input
                   type="email"
                   required
+                  disabled={isLogin && otpSent}
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-100 rounded-2xl pl-12 pr-4 py-3.5 text-sm font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all placeholder:text-slate-300"
+                  className="w-full bg-slate-50 border border-slate-100 rounded-2xl pl-12 pr-4 py-3.5 text-sm font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all placeholder:text-slate-300 disabled:opacity-60 disabled:cursor-not-allowed"
                   placeholder="admin@solosales.com"
                 />
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Security Key</label>
-              <div className="relative">
-                <span className="absolute left-4 top-3.5 text-slate-400"><Lock size={18} /></span>
-                <input
-                  type="password"
-                  required
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-100 rounded-2xl pl-12 pr-4 py-3.5 text-sm font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all placeholder:text-slate-300"
-                  placeholder="••••••••"
-                />
+            {/* Show Password Field only for Registration */}
+            {!isLogin && (
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Security Key (Password)</label>
+                <div className="relative">
+                  <span className="absolute left-4 top-3.5 text-slate-400"><Lock size={18} /></span>
+                  <input
+                    type="password"
+                    required
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl pl-12 pr-4 py-3.5 text-sm font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all placeholder:text-slate-300"
+                    placeholder="••••••••"
+                  />
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* Show OTP Field only for Login when OTP has been sent */}
+            {isLogin && otpSent && (
+              <div className="space-y-1.5 animate-fadeIn">
+                <label className="text-[10px] font-black text-blue-600 uppercase tracking-widest px-1">Enter Verification Code (OTP)</label>
+                <div className="relative">
+                  <span className="absolute left-4 top-3.5 text-blue-600"><Lock size={18} /></span>
+                  <input
+                    type="text"
+                    required
+                    maxLength={6}
+                    pattern="\d{6}"
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+                    className="w-full bg-blue-50/30 border border-blue-100 rounded-2xl pl-12 pr-4 py-3.5 text-sm font-bold tracking-[0.25em] text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all placeholder:text-slate-300"
+                    placeholder="123456"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOtpSent(false);
+                    setOtp("");
+                  }}
+                  className="text-[9px] font-bold text-slate-400 hover:text-slate-500 transition-colors uppercase tracking-widest mt-1 block pl-1"
+                >
+                  ← Change Email Address
+                </button>
+              </div>
+            )}
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-slate-900 text-white rounded-2xl py-4.5 text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-slate-200 hover:bg-slate-800 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2 group"
+              className="w-full bg-slate-900 text-white rounded-2xl py-4.5 text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-slate-200 hover:bg-slate-800 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2 group cursor-pointer"
             >
               {loading ? (
                 <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
               ) : (
                 <>
                   {isLogin ? <LogIn size={14} className="group-hover:translate-x-0.5 transition-transform" /> : <UserPlus size={14} className="group-hover:scale-110 transition-transform" />}
-                  {isLogin ? "Authenticate" : "Initialize Account"}
+                  {isLogin ? (otpSent ? "Verify & Log In" : "Send OTP Verification") : "Initialize Account"}
                 </>
               )}
             </button>
@@ -152,8 +219,12 @@ export default function AuthPage() {
 
           <div className="mt-10 pt-8 border-t border-slate-50 text-center">
             <button
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:text-blue-700 transition-colors"
+              onClick={() => {
+                setIsLogin(!isLogin);
+                setOtpSent(false);
+                setOtp("");
+              }}
+              className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:text-blue-700 transition-colors cursor-pointer"
             >
               {isLogin ? "Establish New Company Profile" : "Existing account? Return to portal"}
             </button>

@@ -48,7 +48,9 @@ export async function GET() {
 
     return NextResponse.json(users, {
       headers: {
-        'Cache-Control': 'private, max-age=300, stale-while-revalidate=60'
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
       }
     });
   } catch (error) {

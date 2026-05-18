@@ -15,12 +15,14 @@ export async function GET() {
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
-      select: { organizationId: true, role: true, id: true, name: true },
+      select: { organizationId: true, role: true, id: true, name: true, email: true },
     });
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
+    const isSuperAdmin = user.email === "sb.solobuild@gmail.com";
+
     const baseWhere: any = { organizationId: user.organizationId };
-    if (user.role === "SALES_REP") baseWhere.ownerId = user.id;
+    if (!isSuperAdmin) baseWhere.ownerId = user.id;
 
     const now = new Date();
     const startOfWeek = new Date(now);
@@ -46,7 +48,7 @@ export async function GET() {
       prisma.reminder.count({
         where: {
           organizationId: user.organizationId,
-          ...(user.role === "SALES_REP" ? { userId: user.id } : {}),
+          ...(!isSuperAdmin ? { userId: user.id } : {}),
           status: "PENDING",
           scheduledAt: {
             gte: new Date(new Date().setHours(0, 0, 0, 0)),
@@ -69,7 +71,7 @@ export async function GET() {
       prisma.reminder.count({
         where: {
           organizationId: user.organizationId,
-          ...(user.role === "SALES_REP" ? { userId: user.id } : {}),
+          ...(!isSuperAdmin ? { userId: user.id } : {}),
           status: "PENDING",
         },
       }),
@@ -123,7 +125,9 @@ export async function GET() {
       pipeline,
     }, {
       headers: {
-        'Cache-Control': 'private, max-age=60, stale-while-revalidate=15'
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
       }
     });
   } catch (error) {

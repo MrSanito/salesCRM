@@ -177,7 +177,9 @@ export default function BulkUpdateModal({ isOpen, onClose, selectedIds, onSucces
             >
               <option value="">Keep Current Owners</option>
               {users.map(u => (
-                <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
+                <option key={u.id} value={u.id}>
+                  {u.name} ({u.role === 'CEO' ? 'CEO' : u.role === 'ORG_ADMIN' ? 'Org Admin' : u.role === 'MANAGER' ? 'Supervisor' : 'Specialist'})
+                </option>
               ))}
             </select>
           </div>
