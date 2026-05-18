@@ -21,12 +21,21 @@ export async function GET(req: Request) {
 
     for (const metric of jsonMetrics) {
       for (const val of metric.values) {
+        const labels: Record<string, string> = {
+          __name__: String(metric.name),
+        };
+        
+        if (val.labels) {
+          for (const [k, v] of Object.entries(val.labels)) {
+            if (v !== undefined && v !== null) {
+              labels[k] = String(v);
+            }
+          }
+        }
+
         timeseries.push({
-          labels: {
-            __name__: metric.name,
-            ...(val.labels || {})
-          },
-          samples: [{ value: val.value }]
+          labels,
+          samples: [{ value: Number(val.value) || 0 }]
         });
       }
     }
