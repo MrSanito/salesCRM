@@ -8,7 +8,17 @@ jobs:
   push:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping metrics endpoint
+      - name: Trigger metrics push
         run: |
-          curl -X GET "${{ secrets.APP_URL }}/api/push-metrics" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "x-metrics-token: ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/push-metrics")
+          
+          echo "Response: $STATUS"
+          
+          if [ "$STATUS" != "200" ]; then
+            echo "❌ Push failed with status $STATUS"
+            exit 1
+          fi
+          
+          echo "✅ Metrics pushed successfully"

@@ -32,6 +32,7 @@ console.log('⏳ Dispatching GET request...');
 fetch(`${appUrl}/api/push-metrics`, {
   method: 'GET',
   headers: {
+    'x-metrics-token': secret,
     Authorization: `Bearer ${secret}`,
   },
 })
@@ -42,7 +43,7 @@ fetch(`${appUrl}/api/push-metrics`, {
     try {
       const json = JSON.parse(text);
       console.log('Response Payload:', JSON.stringify(json, null, 2));
-      if (res.ok && json.success) {
+      if (res.ok && (json.success || json.ok)) {
         console.log('\n✅ SUCCESS: Telemetry was successfully registered and pushed to Grafana!');
       } else {
         console.log('\n❌ FAILED: The server rejected the push trigger.');
