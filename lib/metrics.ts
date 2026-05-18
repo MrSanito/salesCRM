@@ -162,4 +162,50 @@ export async function updateDynamicBusinessMetrics() {
   } catch (error) {
     console.error('Failed to update dynamic business metrics:', error);
   }
+}
+
+/**
+ * High-fidelity wrapper to measure and record exact request durations (in seconds)
+ * and correct HTTP response status codes directly inside Next.js API routes.
+ */
+export function withRouteTelemetry(handler: Function) {
+  return async function (req: Request, ...args: any[]) {
+    const start = Date.now();
+    const urlObj = new URL(req.url);
+    const path = urlObj.pathname;
+    const method = req.method;
+
+    try {
+      const response = await handler(req, ...args);
+      const duration = (Date.now() - start) / 1000;
+      const status = String(response?.status || 200);
+
+      const httpRequestsTotal = registry.getSingleMetric('http_requests_total') as client.Counter<string>;
+      const httpRequestDurationSeconds = registry.getSingleMetric('http_request_duration_seconds') as client.Histogram<string>;
+
+      if (httpRequestsTotal) {
+        httpRequestsTotal.inc({ path, method, status });
+      }
+      if (httpRequestDurationSeconds) {
+        httpRequestDurationSeconds.observe({ path, method, status }, duration);
+      }
+
+      return response;
+    } catch (err: any) {
+      const duration = (Date.now() - start) / 1000;
+      const status = String(err?.status || 500);
+
+      const httpRequestsTotal = registry.getSingleMetric('http_requests_total') as client.Counter<string>;
+      const httpRequestDurationSeconds = registry.getSingleMetric('http_request_duration_seconds') as client.Histogram<string>;
+
+      if (httpRequestsTotal) {
+        httpRequestsTotal.inc({ path, method, status });
+      }
+      if (httpRequestDurationSeconds) {
+        httpRequestDurationSeconds.observe({ path, method, status }, duration);
+      }
+
+      throw err;
+    }
+  };
 }
