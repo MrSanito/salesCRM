@@ -23,6 +23,7 @@ type TabType = "global" | "local" | "integration";
 
 export default function AuditReportPage() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [allUserNames, setAllUserNames] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<TabType>("global");
@@ -32,7 +33,15 @@ export default function AuditReportPage() {
     fetch("/api/reports/audit")
       .then(res => res.json())
       .then(data => {
-        if (Array.isArray(data)) setLogs(data);
+        if (data && typeof data === "object" && !Array.isArray(data)) {
+          if (Array.isArray(data.logs)) setLogs(data.logs);
+          if (Array.isArray(data.users)) {
+            const names = data.users.map((u: any) => u.name).filter(Boolean);
+            setAllUserNames(names);
+          }
+        } else if (Array.isArray(data)) {
+          setLogs(data);
+        }
         setLoading(false);
       })
       .catch(err => {
@@ -41,7 +50,9 @@ export default function AuditReportPage() {
       });
   }, []);
 
-  const actors = Array.from(new Set(logs.map(l => l.actorName).filter(Boolean))) as string[];
+  const actors = allUserNames.length > 0
+    ? Array.from(new Set([...allUserNames, ...logs.map(l => l.actorName).filter(Boolean)])) as string[]
+    : Array.from(new Set(logs.map(l => l.actorName).filter(Boolean))) as string[];
 
   const filteredLogs = logs.filter(log => {
     const matchesSearch = 

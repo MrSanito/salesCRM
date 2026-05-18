@@ -75,3 +75,38 @@ export const syncToGoogleCalendar = async (userId: string, eventData: {
     return null;
   }
 };
+
+export const getGoogleCalendarEvents = async (userId: string) => {
+  const { prisma } = await import('./prisma');
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { googleAccessToken: true, googleRefreshToken: true, googleCalendarSyncEnabled: true },
+  });
+
+  if (!user || !user.googleCalendarSyncEnabled || !user.googleAccessToken) {
+    return null;
+  }
+
+  const oauth2Client = createOAuth2Client();
+  oauth2Client.setCredentials({
+    access_token: user.googleAccessToken,
+    refresh_token: user.googleRefreshToken,
+  });
+
+  const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+
+  try {
+    const response = await calendar.events.list({
+      calendarId: 'primary',
+      timeMin: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), // Show past 30 days of events as well
+      maxResults: 100,
+      singleEvents: true,
+      orderBy: 'startTime',
+    });
+
+    return response.data.items || [];
+  } catch (error) {
+    console.error('Google Calendar List Error:', error);
+    return null;
+  }
+};

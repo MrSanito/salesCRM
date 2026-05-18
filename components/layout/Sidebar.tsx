@@ -61,6 +61,7 @@ const SIDEBAR_ITEMS: SidebarGroup[] = [
       { icon: Users2, label: "Users", href: "/dashboard/users" },
       { icon: Users, label: "Team", href: "/dashboard/team" },
       { icon: Puzzle, label: "Integrations", href: "/dashboard/integrations" },
+      { icon: CalendarCheck, label: "Calendar", href: "/dashboard/calendar" },
       { icon: Settings, label: "Settings", href: "/dashboard/settings" },
     ],
   },
@@ -118,6 +119,18 @@ export default function Sidebar({
   const searchParams = useSearchParams();
   const sfId = searchParams.get("sf");
   const { stats, filters: customFilters, loading: contextLoading } = useDashboard();
+  const [googleConnected, setGoogleConnected] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/integrations/google/status")
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.isConnected) {
+          setGoogleConnected(true);
+        }
+      })
+      .catch(err => console.error("Error fetching Google status:", err));
+  }, []);
   
   const counts = useMemo(() => ({
     alerts: stats?.kpis?.alertsCount || 0,
@@ -135,6 +148,7 @@ export default function Sidebar({
         if (item.label === "Follow Ups") badge = counts.followUps;
         return { ...item, badge };
       }).filter(item => {
+        if (item.label === "Calendar" && !googleConnected) return false;
         if (!item.roles) return true;
         return user?.role && item.roles.includes(user.role);
       })

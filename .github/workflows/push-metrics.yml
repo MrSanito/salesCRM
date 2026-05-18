@@ -1,0 +1,14 @@
+name: Push Metrics
+on:
+  schedule:
+    - cron: '*/5 * * * *' # every 5 minutes
+  workflow_dispatch: # Allows manual trigger from GitHub UI for easy testing
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping metrics endpoint
+        run: |
+          curl -X GET "${{ secrets.APP_URL }}/api/push-metrics" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"

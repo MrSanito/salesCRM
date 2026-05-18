@@ -39,7 +39,19 @@ export async function GET(req: NextRequest) {
       take: 500, // Limit for performance
     });
 
-    return NextResponse.json(auditLogs, {
+    const allUsers = await prisma.user.findMany({
+      where: {
+        organizationId: user.organizationId,
+      },
+      select: {
+        name: true,
+      },
+    });
+
+    return NextResponse.json({
+      logs: auditLogs,
+      users: allUsers
+    }, {
       headers: {
         'Cache-Control': 'private, max-age=120, stale-while-revalidate=30'
       }
