@@ -3,6 +3,7 @@ import { prisma } from './prisma';
 
 const globalForMetrics = global as typeof global & {
   metricsRegistry?: client.Registry;
+  defaultMetricsRegistered?: boolean;
 };
 
 // Retrieve or initialize the single global registry to persist across compilation cycles
@@ -11,8 +12,9 @@ export const registry =
   (globalForMetrics.metricsRegistry = new client.Registry());
 
 // Only register default system metrics once to prevent duplicate registration crashes
-if (registry.getMetricsAsJSON().length === 0) {
+if (!globalForMetrics.defaultMetricsRegistered) {
   client.collectDefaultMetrics({ register: registry });
+  globalForMetrics.defaultMetricsRegistered = true;
 }
 
 // HMR-safe metric builders that lookup or register dynamically
