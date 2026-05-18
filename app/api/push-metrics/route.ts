@@ -7,9 +7,14 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: Request) {
   const token = req.headers.get('x-metrics-token');
   const authHeader = req.headers.get('authorization');
+  const urlObj = new URL(req.url);
+  const querySecret = urlObj.searchParams.get('secret');
   const validSecret = process.env.CRON_SECRET || process.env.METRICS_SECRET;
   
-  const isAuthorized = token === validSecret || authHeader === `Bearer ${validSecret}`;
+  const isAuthorized = 
+    token === validSecret || 
+    authHeader === `Bearer ${validSecret}` ||
+    (validSecret && querySecret === validSecret);
 
   if (!isAuthorized) {
     return new NextResponse('Unauthorized', { status: 401 });
