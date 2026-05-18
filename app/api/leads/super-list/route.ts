@@ -82,6 +82,8 @@ export async function GET(req: Request) {
           queryWhere.city = { in: values };
         } else if (field === "state") {
           queryWhere.state = { in: values };
+        } else if (field === "industry") {
+          queryWhere.industry = { in: values };
         } else if (field === "source") {
           queryWhere.source = { name: { in: values } };
         } else if (field === "followup") {

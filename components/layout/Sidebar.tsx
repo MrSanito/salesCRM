@@ -37,8 +37,6 @@ const SIDEBAR_ITEMS: SidebarGroup[] = [
     items: [
       { icon: UserPlus, label: "New Leads", href: "/dashboard/leads", badgeColor: "bg-blue-500" },
       { icon: Phone, label: "Follow Ups", href: "/dashboard/follow-ups", badgeColor: "bg-orange-500" },
-      { icon: CheckCircle2, label: "Closed Won", href: "/dashboard/won" },
-      { icon: FileText, label: "Proposed", href: "/dashboard/proposed" },
       { icon: CalendarCheck, label: "Meeting Set", href: "/dashboard/meetings" },
       { icon: XCircle, label: "Closed", href: "/dashboard/closed" },
     ],

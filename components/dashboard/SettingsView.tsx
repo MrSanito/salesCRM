@@ -99,7 +99,7 @@ export default function SettingsView() {
 
   // Fetch sidebar filters
   useEffect(() => {
-    if (user?.role === "ORG_ADMIN") {
+    if (user?.role === "ORG_ADMIN" || user?.role === "CEO") {
       setFiltersLoading(true);
       fetch("/api/sidebar-filters")
         .then((r) => r.json())
@@ -209,10 +209,11 @@ export default function SettingsView() {
         setSidebarFilters((prev) => prev.filter((f) => f.id !== id));
         toast.success(`"${filterName}" removed from sidebar`);
       } else {
-        toast.error("Failed to delete filter");
+        const data = await res.json();
+        toast.error(data.error || "Failed to delete filter");
       }
     } catch {
-      toast.error("Failed to delete filter");
+      toast.error("Failed to delete filter due to network or server issues");
     }
   };
 
@@ -332,7 +333,7 @@ export default function SettingsView() {
           </form>
 
           {/* ────── Sidebar Customization (CEO Only) ────── */}
-          {user?.role === "ORG_ADMIN" && (
+          {(user?.role === "ORG_ADMIN" || user?.role === "CEO") && (
             <div id="sidebar-filters" className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/50 overflow-hidden scroll-mt-6">
               <div className="p-6 sm:p-10 border-b border-slate-50 bg-slate-50/30">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">

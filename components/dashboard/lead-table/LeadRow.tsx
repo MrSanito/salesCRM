@@ -51,8 +51,6 @@ export default function LeadRow({
     };
   };
 
-  const followUp = getFollowUpStatus(lead.followUpAt);
-
   return (
     <tr
       className={`hover:bg-slate-50/70 transition-all border-b border-slate-100 group ${
@@ -88,21 +86,24 @@ export default function LeadRow({
         </div>
       </td>
 
-      {/* Company & Industry column */}
+      {/* Company Column */}
       <td
         className="px-2 py-2 cursor-pointer align-middle"
         onClick={() => onLeadClick(lead.id, displayedLeads.map(l => l.id))}
       >
-        <div className="max-w-[104px]">
-          <p className="text-[11px] font-black text-slate-700 truncate max-w-[104px]">
-            {lead.company || "—"}
-          </p>
-          {lead.industry && (
-            <p className="text-[9px] text-slate-400 font-bold truncate max-w-[104px] mt-0.5 uppercase tracking-wide">
-              {lead.industry}
-            </p>
-          )}
-        </div>
+        <span className="text-[11px] font-black text-slate-700 truncate block max-w-[104px]">
+          {lead.company || "—"}
+        </span>
+      </td>
+
+      {/* Industry Column */}
+      <td
+        className="px-2 py-2 cursor-pointer align-middle"
+        onClick={() => onLeadClick(lead.id, displayedLeads.map(l => l.id))}
+      >
+        <span className="text-[11px] font-bold text-slate-600 truncate block max-w-[110px]">
+          {lead.industry || "—"}
+        </span>
       </td>
 
       {/* Stage (Status) column */}
@@ -212,15 +213,7 @@ export default function LeadRow({
         </span>
       </td>
 
-      {/* Follow-up column */}
-      <td
-        className="px-2 py-2 cursor-pointer align-middle"
-        onClick={() => onLeadClick(lead.id, displayedLeads.map(l => l.id))}
-      >
-        <span className={`text-[11px] block whitespace-nowrap ${followUp.className}`}>
-          {followUp.text}
-        </span>
-      </td>
+
 
       {/* Value column */}
       <td

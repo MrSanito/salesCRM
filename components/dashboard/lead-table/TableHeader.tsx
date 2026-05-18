@@ -16,6 +16,12 @@ interface TableHeaderProps {
   activeColumnFilter: string | null;
   setActiveColumnFilter: (col: string | null) => void;
   uniqueDates: [string, string][];
+  distinctFilters?: {
+    industries: string[];
+    sources: string[];
+    cities: string[];
+    states: string[];
+  };
 }
 
 export default function TableHeader({
@@ -31,6 +37,7 @@ export default function TableHeader({
   activeColumnFilter,
   setActiveColumnFilter,
   uniqueDates,
+  distinctFilters,
 }: TableHeaderProps) {
   
   const handleSort = (key: keyof DbLead | 'lead') => {
@@ -86,6 +93,41 @@ export default function TableHeader({
           <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider group-hover:text-slate-800 transition-colors flex items-center gap-1">
             Company {sortConfig?.key === 'company' ? (sortConfig.direction === 'asc' ? "↑" : "↓") : "↕"}
           </span>
+        </th>
+
+        {/* Industry Column */}
+        <th className="text-left px-2 py-2">
+          <div className="flex items-center gap-1">
+            <div className="relative inline-block">
+              <button
+                onClick={() => setActiveColumnFilter(activeColumnFilter === 'industry' ? null : 'industry')}
+                className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-0.5 transition-colors ${columnFilters['industry']?.size ? "text-blue-600" : "text-slate-500 hover:text-slate-800"}`}
+              >
+                Industry <Filter size={9} />
+              </button>
+              <FilterDropdown column="industry">
+                <div className="max-h-44 overflow-y-auto">
+                  {((distinctFilters?.industries && distinctFilters.industries.length > 0) ? distinctFilters.industries : Array.from(new Set(leads.map(l => l.industry).filter(Boolean))).sort()).map(v => (
+                    <label key={v as string} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={columnFilters['industry']?.has(v as string)}
+                        onChange={() => toggleColumnFilter('industry', v as string)}
+                        className="appearance-none w-3 h-3 rounded border-2 border-slate-300 bg-white checked:bg-blue-600 checked:border-blue-600 transition-all cursor-pointer relative checked:after:content-['✓'] checked:after:absolute checked:after:text-white checked:after:text-[8px] checked:after:font-black checked:after:left-[0.5px] checked:after:top-[-2px]"
+                      />
+                      <span className="text-[11px] font-semibold text-slate-700 truncate">{v as string}</span>
+                    </label>
+                  ))}
+                </div>
+              </FilterDropdown>
+            </div>
+            <button
+              onClick={() => handleSort('industry')}
+              className={`p-1 rounded hover:bg-slate-100 transition-colors flex-shrink-0 ${sortConfig?.key === 'industry' ? 'text-blue-600 bg-blue-50' : 'text-slate-400'}`}
+            >
+              {sortConfig?.key === 'industry' ? (sortConfig.direction === 'asc' ? "↑" : "↓") : "↕"}
+            </button>
+          </div>
         </th>
 
         {/* Status Column */}
@@ -166,7 +208,7 @@ export default function TableHeader({
               </button>
               <FilterDropdown column="city">
                 <div className="max-h-44 overflow-y-auto">
-                  {Array.from(new Set(leads.map(l => l.city).filter(Boolean))).sort().map(v => (
+                  {((distinctFilters?.cities && distinctFilters.cities.length > 0) ? distinctFilters.cities : Array.from(new Set(leads.map(l => l.city).filter(Boolean))).sort()).map(v => (
                     <label key={v as string} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer">
                       <input
                         type="checkbox"
@@ -201,7 +243,7 @@ export default function TableHeader({
               </button>
               <FilterDropdown column="state">
                 <div className="max-h-44 overflow-y-auto">
-                  {Array.from(new Set(leads.map(l => l.state).filter(Boolean))).sort().map(v => (
+                  {((distinctFilters?.states && distinctFilters.states.length > 0) ? distinctFilters.states : Array.from(new Set(leads.map(l => l.state).filter(Boolean))).sort()).map(v => (
                     <label key={v as string} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer">
                       <input
                         type="checkbox"
@@ -241,7 +283,7 @@ export default function TableHeader({
               </button>
               <FilterDropdown column="source">
                 <div className="max-h-44 overflow-y-auto">
-                  {Array.from(new Set(leads.map(l => l.source?.name).filter(Boolean))).sort().map(v => (
+                  {((distinctFilters?.sources && distinctFilters.sources.length > 0) ? distinctFilters.sources : Array.from(new Set(leads.map(l => l.source?.name).filter(Boolean))).sort()).map(v => (
                     <label key={v as string} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer">
                       <input
                         type="checkbox"
@@ -304,51 +346,6 @@ export default function TableHeader({
           </div>
         </th>
 
-        {/* Follow-up Column */}
-        <th className="text-left px-2 py-2">
-          <div className="relative inline-block">
-            <button
-              onClick={() => setActiveColumnFilter(activeColumnFilter === 'followup' ? null : 'followup')}
-              className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-0.5 transition-colors ${columnFilters['followup']?.size ? "text-blue-600" : "text-slate-500 hover:text-slate-800"}`}
-            >
-              Follow-up <Filter size={9} />
-            </button>
-            {activeColumnFilter === 'followup' && (
-              <>
-                <div className="fixed inset-0 z-[40]" onClick={() => setActiveColumnFilter(null)} />
-                <div className="absolute left-0 top-full mt-1 w-36 bg-white border border-slate-200 rounded-xl shadow-2xl z-[50] overflow-hidden">
-                  <button
-                    onClick={() => {
-                      toggleColumnFilter('followup', 'OVERDUE');
-                      setActiveColumnFilter(null);
-                    }}
-                    className="w-full text-left px-3 py-2 text-[11px] font-bold text-red-600 hover:bg-red-50 transition-colors"
-                  >
-                    Overdue
-                  </button>
-                  <button
-                    onClick={() => {
-                      toggleColumnFilter('followup', 'TODAY');
-                      setActiveColumnFilter(null);
-                    }}
-                    className="w-full text-left px-3 py-2 text-[11px] font-bold text-blue-600 hover:bg-blue-50 transition-colors border-t border-slate-50"
-                  >
-                    Today
-                  </button>
-                  <button
-                    onClick={() => {
-                      setColumnFilters(prev => ({ ...prev, followup: new Set() }));
-                      setActiveColumnFilter(null);
-                    }}
-                    className="w-full text-left px-3 py-2 text-[11px] font-bold text-slate-400 hover:bg-slate-50 transition-colors border-t border-slate-100"
-                  >
-                    Clear
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </th>
 
         {/* Value Column */}
         <th className="text-left px-2 py-2 cursor-pointer select-none group" onClick={() => handleSort('dealValueInr')}>

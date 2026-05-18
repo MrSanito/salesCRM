@@ -70,6 +70,12 @@ export default function LeadsTable({
   const [isDeleting, setIsDeleting] = useState(false);
   const [showBulkUpdate, setShowBulkUpdate] = useState(false);
   const [showBulkDelete, setShowBulkDelete] = useState(false);
+  const [distinctFilters, setDistinctFilters] = useState<{
+    industries: string[];
+    sources: string[];
+    cities: string[];
+    states: string[];
+  }>({ industries: [], sources: [], cities: [], states: [] });
 
   const handleExportExcel = async (dataToExport: DbLead[], filename: string) => {
     try {
@@ -157,6 +163,8 @@ export default function LeadsTable({
           });
         } else if (key === 'subStatus') {
           result = result.filter(l => values.has(l.subStatus));
+        } else if (key === 'industry') {
+          result = result.filter(l => l.industry && values.has(l.industry));
         } else if (key === 'source') {
           result = result.filter(l => l.source && values.has(l.source.name));
         }
@@ -202,6 +210,17 @@ export default function LeadsTable({
   }, [currentPage, pageSize, debouncedSearchQuery, sortConfig, columnFilters, onStatsUpdate, sidebarFilter?.id]);
 
   useEffect(() => { fetchLeads(); }, [fetchLeads, refreshKey, activeNav]);
+
+  useEffect(() => {
+    fetch("/api/leads/distinct-filters")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data && !data.error) {
+          setDistinctFilters(data);
+        }
+      })
+      .catch(console.error);
+  }, [refreshKey, activeNav]);
 
   useEffect(() => {
     if (initialData) {
@@ -323,6 +342,7 @@ export default function LeadsTable({
             <col style={{ width: "38px" }} />
             <col style={{ width: "9%" }} />
             <col style={{ width: "120px" }} />
+            <col style={{ width: "100px" }} />
             <col style={{ width: "9%" }} />
             <col style={{ width: "9%" }} />
             <col style={{ width: "7%" }} />
@@ -332,12 +352,11 @@ export default function LeadsTable({
             <col style={{ width: "11%" }} />
             <col style={{ width: "9%" }} />
             <col style={{ width: "7%" }} />
-            <col style={{ width: "7%" }} />
             <col style={{ width: "32px" }} />
           </colgroup>
 
           {/* Premium Header */}
-          <TableHeader
+           <TableHeader
             leads={leads}
             displayedLeads={displayedLeads}
             selectedLeads={selectedLeads}
@@ -350,6 +369,7 @@ export default function LeadsTable({
             activeColumnFilter={activeColumnFilter}
             setActiveColumnFilter={setActiveColumnFilter}
             uniqueDates={uniqueDates}
+            distinctFilters={distinctFilters}
           />
 
           {/* Body items */}
