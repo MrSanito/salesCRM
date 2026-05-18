@@ -26,8 +26,13 @@ export async function POST(req: Request) {
     while (attempts < 3) {
       try {
         console.log(`>>> [DEBUG] DB Attempt ${attempts + 1}`);
-        user = await prisma.user.findUnique({
-          where: { email },
+        user = await prisma.user.findFirst({
+          where: {
+            email: {
+              equals: email.trim(),
+              mode: 'insensitive'
+            }
+          },
         });
         break;
       } catch (err: any) {

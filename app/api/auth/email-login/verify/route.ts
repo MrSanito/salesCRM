@@ -15,29 +15,35 @@ export async function POST(req: Request) {
 
     const normalizedEmail = email.toLowerCase().trim();
 
-    // 1. Verify OTP in Otp table
-    const otpRecord = await prisma.otp.findUnique({
-      where: { email: normalizedEmail }
-    });
-
-    if (!otpRecord || otpRecord.code !== otp || otpRecord.expiresAt < new Date()) {
-      console.log(`>>> [DEBUG] Invalid or expired OTP for ${normalizedEmail}`);
-      return NextResponse.json({ error: "Invalid or expired OTP" }, { status: 401 });
-    }
-
-    // 2. Clear OTP record
-    await prisma.otp.delete({
-      where: { email: normalizedEmail }
-    });
-
-    // 3. Find User details
-    const user = await prisma.user.findUnique({
-      where: { email: normalizedEmail }
+    // 1. Find User by email case-insensitively to determine exact DB casing (resilient to capitalizations like Gutsqureshi@gmail.com)
+    const user = await prisma.user.findFirst({
+      where: {
+        email: {
+          equals: normalizedEmail,
+          mode: 'insensitive'
+        }
+      }
     });
 
     if (!user) {
+      console.log(`>>> [DEBUG] User record not found: ${normalizedEmail}`);
       return NextResponse.json({ error: "User record not found" }, { status: 404 });
     }
+
+    // 2. Verify OTP in Otp table using the exact user.email casing
+    const otpRecord = await prisma.otp.findUnique({
+      where: { email: user.email }
+    });
+
+    if (!otpRecord || otpRecord.code !== otp || otpRecord.expiresAt < new Date()) {
+      console.log(`>>> [DEBUG] Invalid or expired OTP for ${user.email}`);
+      return NextResponse.json({ error: "Invalid or expired OTP" }, { status: 401 });
+    }
+
+    // 3. Clear OTP record
+    await prisma.otp.delete({
+      where: { email: user.email }
+    });
 
     // 4. Generate JWT Session Token
     const token = jwt.sign(

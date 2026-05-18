@@ -13,9 +13,14 @@ export async function POST(req: Request) {
 
     const normalizedEmail = email.toLowerCase().trim();
 
-    // 1. Find User by email in database
-    const user = await prisma.user.findUnique({
-      where: { email: normalizedEmail }
+    // 1. Find User by email in database using case-insensitive lookup (resilient to capitalizations like Gutsqureshi@gmail.com)
+    const user = await prisma.user.findFirst({
+      where: {
+        email: {
+          equals: normalizedEmail,
+          mode: 'insensitive'
+        }
+      }
     });
 
     if (!user) {
@@ -27,13 +32,13 @@ export async function POST(req: Request) {
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes expiration
 
-    console.log(`>>> [DEBUG] Generated OTP for ${normalizedEmail}: ${otpCode}`);
+    console.log(`>>> [DEBUG] Generated OTP for ${user.email}: ${otpCode}`);
 
-    // 3. Upsert to Otp table
+    // 3. Upsert to Otp table using the exact user.email casing
     await prisma.otp.upsert({
-      where: { email: normalizedEmail },
+      where: { email: user.email },
       update: { code: otpCode, expiresAt },
-      create: { email: normalizedEmail, code: otpCode, expiresAt }
+      create: { email: user.email, code: otpCode, expiresAt }
     });
 
     // 4. Send Email via nodemailer
@@ -48,7 +53,7 @@ export async function POST(req: Request) {
 
       await transporter.sendMail({
         from: `"Solo Sales Portal" <${process.env.SMTP_EMAIL}>`,
-        to: normalizedEmail,
+        to: user.email,
         subject: "Your Solo Sales Login OTP Verification Code",
         html: `
           <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; padding: 40px; color: #1e293b;">
