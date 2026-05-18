@@ -181,7 +181,6 @@ export default function LeadsTable({
       setLoading(false);
       return;
     }
-    if (isFirstRun.current && !initialData && !sidebarFilter) return;
     isFirstRun.current = false;
     if (leadsRef.current.length === 0) setLoading(true);
     setIsRefreshing(true);
