@@ -7,38 +7,54 @@ export const runtime = 'nodejs';
 
 export async function GET(req: Request) {
   const authHeader = req.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  const urlObj = new URL(req.url);
+  const querySecret = urlObj.searchParams.get("secret");
+  const validSecret = process.env.CRON_SECRET || process.env.METRICS_SECRET || "your_random_secret_here";
+
+  // Flexible authorization supporting Vercel automatic bearer headers, custom headers, and query secrets for manual browser testing
+  const isAuthorized = 
+    authHeader === `Bearer ${validSecret}` || 
+    authHeader === `Bearer ${process.env.CRON_SECRET}` ||
+    querySecret === validSecret ||
+    (process.env.CRON_SECRET && querySecret === process.env.CRON_SECRET);
+
+  if (!isAuthorized) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const now = new Date();
-  const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
-  const fiftyFiveMinsAgo = new Date(now.getTime() - 55 * 60 * 1000);
-
+  const triggeredAlerts: any[] = [];
   let followUpAlertsCount = 0;
+  let reminderAlertsCount = 0;
+
   try {
-    // 1. Leads
+    // 1. Process Leads: Find all leads with overdue/pending followUpAt times
     const leads = await prisma.lead.findMany({
       where: {
-        followUpAt: { gte: now, lte: oneHourFromNow },
-        alerts: {
-          none: {
-            type: "FOLLOW_UP_DUE",
-            createdAt: { gte: fiftyFiveMinsAgo }
-          }
-        }
+        followUpAt: { lte: now }
       },
       include: {
-        owner: true
+        owner: true,
+        alerts: {
+          where: {
+            type: "FOLLOW_UP_DUE"
+          },
+          orderBy: {
+            createdAt: 'desc'
+          },
+          take: 1
+        }
       }
     });
 
-    const triggeredAlerts: any[] = [];
-    let followUpAlertsCount = 0;
-    let reminderAlertsCount = 0;
-
     for (const lead of leads) {
-      if (!lead.ownerId) continue;
+      if (!lead.ownerId || !lead.followUpAt) continue;
+
+      const lastAlert = lead.alerts[0];
+      // Skip if already alerted for this specific follow-up slot
+      if (lastAlert && lastAlert.createdAt >= lead.followUpAt) {
+        continue;
+      }
 
       const alert = await prisma.alert.create({
         data: {
@@ -47,7 +63,7 @@ export async function GET(req: Request) {
           leadId: lead.id,
           type: "FOLLOW_UP_DUE",
           title: "Follow-up Due Soon",
-          body: `Follow-up with ${lead.contactName} (${lead.company}) is due within an hour.`,
+          body: `Follow-up with ${lead.contactName} (${lead.company}) is due.`,
         }
       });
 
@@ -60,14 +76,15 @@ export async function GET(req: Request) {
         contactName: lead.contactName,
         createdAt: alert.createdAt
       }]);
+      
       followUpAlertsCount++;
       triggeredAlerts.push({ userId: lead.ownerId, leadName: lead.contactName, type: "FOLLOW_UP" });
     }
 
-    // 2. Reminders
+    // 2. Process Reminders: Find all reminders that are due/overdue
     const reminders = await prisma.reminder.findMany({
       where: {
-        scheduledAt: { gte: now, lte: oneHourFromNow },
+        scheduledAt: { lte: now },
         status: "PENDING"
       },
       include: {
@@ -76,13 +93,13 @@ export async function GET(req: Request) {
     });
 
     for (const reminder of reminders) {
-      // Check if alert exists
+      // Find if we already sent a notification alert after the scheduled date/time
       const existingAlert = await prisma.alert.findFirst({
         where: {
           userId: reminder.userId,
           leadId: reminder.leadId,
           type: "REMINDER_DUE",
-          createdAt: { gte: fiftyFiveMinsAgo }
+          createdAt: { gte: reminder.scheduledAt }
         }
       });
 
@@ -94,7 +111,7 @@ export async function GET(req: Request) {
             leadId: reminder.leadId,
             type: "REMINDER_DUE",
             title: "Reminder Due Soon",
-            body: `Reminder: ${reminder.type} with ${reminder.lead.contactName} is due within an hour.`,
+            body: `Reminder: ${reminder.type} with ${reminder.lead.contactName} is due.`,
           }
         });
 
@@ -107,6 +124,7 @@ export async function GET(req: Request) {
           contactName: reminder.lead.contactName,
           createdAt: alert.createdAt
         }]);
+
         reminderAlertsCount++;
         triggeredAlerts.push({ userId: reminder.userId, leadName: reminder.lead.contactName, type: "REMINDER" });
       }
@@ -120,14 +138,15 @@ export async function GET(req: Request) {
     });
 
     return NextResponse.json({ 
+      success: true,
       followUpAlerts: followUpAlertsCount, 
       reminderAlerts: reminderAlertsCount,
       triggeredAlerts,
       now: now.toISOString(),
       debugLeads
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Cron notification error:", error);
-    return NextResponse.json({ error: "Failed to process notifications" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to process notifications", details: error.message }, { status: 500 });
   }
 }
