@@ -6,7 +6,6 @@ import LeadsTable from "@/components/dashboard/LeadsTable";
 import { useAuth } from "@/components/auth/AuthContext";
 import { UserPlus, UserCircle2, Plus, Bell } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
-import FollowUpModal from "@/components/dashboard/FollowupModal";
 import type { SidebarFilterConfig } from "@/app/dashboard/page";
 
 interface DashboardViewProps {
@@ -20,7 +19,6 @@ interface DashboardViewProps {
 
 export default function DashboardView({ onAddLead, onAddEmployee, onLeadClick, activeNav, refreshKey = 0, sidebarFilter }: DashboardViewProps) {
   const { user } = useAuth();
-  const [showFollowup, setShowFollowup] = useState(false);
   const [dashboardStats, setDashboardStats] = useState<any>(null);
   const [fullData, setFullData] = useState<any>(null);
 
@@ -78,17 +76,11 @@ export default function DashboardView({ onAddLead, onAddEmployee, onLeadClick, a
                   );
                 })()}
 
-                <button 
-                  onClick={() => setShowFollowup(true)}
-                  className="flex items-center gap-1.5 bg-blue-50 text-blue-600 px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider hover:bg-blue-100 transition-all active:scale-95 border border-blue-100"
-                >
-                  <Bell size={10} />
-                  Test
-                </button>
-              </div>
+
             </div>
           </div>
         </div>
+      </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
           {(user?.role === "MANAGER" || user?.role === "ORG_ADMIN") && (
@@ -131,16 +123,6 @@ export default function DashboardView({ onAddLead, onAddEmployee, onLeadClick, a
         onStatsUpdate={setDashboardStats}
         initialData={fullData}
       />
-      {/* Follow Up Modal Triggered by Test Button */}
-      {showFollowup && (
-        <FollowUpModal 
-          isOpen={true} 
-          onClose={() => setShowFollowup(false)} 
-          leadId="test-id"
-          leadName="Test Lead"
-          note="This is a test reminder triggered from the dashboard."
-        />
-      )}
     </div>
   );
 }

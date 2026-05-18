@@ -17,9 +17,9 @@ interface FollowUpModalProps {
 export default function FollowUpModal({
   isOpen = true,
   onClose,
-  leadName = "Amit Sharma",
-  phone = "+91 98765 43210",
-  note = "Interested in premium plan. Need pricing and demo details.",
+  leadName = "Unknown Lead",
+  phone,
+  note = "Follow-up required",
   leadId,
   notificationId,
   reminderId,
