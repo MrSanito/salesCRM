@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import type { NextRequest, NextFetchEvent } from 'next/server';
 
-export async function proxy(req: NextRequest) {
+export async function proxy(req: NextRequest, event: NextFetchEvent) {
   const start = Date.now();
   const { pathname } = req.nextUrl;
   const method = req.method;
@@ -22,21 +22,23 @@ export async function proxy(req: NextRequest) {
     // Resolve absolute URL for the local metrics tracking API
     const trackUrl = new URL('/api/track-metric', req.url);
 
-    // Asynchronously log telemetry without blocking the client response
-    fetch(trackUrl.toString(), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        path: pathname,
-        method: method,
-        duration: duration > 0 ? duration : 0.01,
-        status: '200',
-      }),
-    }).catch((err) => {
-      console.error('Error tracking metric in proxy:', err);
-    });
+    // Keep the edge context alive for the background telemetry call
+    event.waitUntil(
+      fetch(trackUrl.toString(), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          path: pathname,
+          method: method,
+          duration: duration > 0 ? duration : 0.01,
+          status: '200',
+        }),
+      }).catch((err) => {
+        console.error('Error tracking metric in proxy:', err);
+      })
+    );
   }
 
   return response;
