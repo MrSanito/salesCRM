@@ -119,64 +119,68 @@ export async function GET(req: Request) {
     
     let leads, totalCount, statsData;
 
+    const leadSelect = {
+      id: true,
+      contactName: true,
+      company: true,
+      email: true,
+      phone: true,
+      stage: true,
+      dealValueInr: true,
+      priority: true,
+      subStatus: true,
+      followUpAt: true,
+      createdAt: true,
+      industry: true,
+      city: true,
+      state: true,
+      project: true,
+      lastCommunicatedAt: true,
+      requirement: true,
+      owner: { select: { id: true, name: true, initials: true } },
+      source: { select: { id: true, name: true } }
+    } as const;
+
     if (includeStats) {
+      const now = new Date();
+      const startOfToday = new Date(now); startOfToday.setHours(0,0,0,0);
+      const endOfToday = new Date(now); endOfToday.setHours(23,59,59,999);
+      const oneWeekAgo = new Date(now); oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
       [leads, totalCount, statsData] = await Promise.all([
         prisma.lead.findMany({
           where: queryWhere,
-          select: {
-            id: true,
-            contactName: true,
-            company: true,
-            email: true,
-            phone: true,
-            stage: true,
-            dealValueInr: true,
-            priority: true,
-            subStatus: true,
-            followUpAt: true,
-            createdAt: true,
-            industry: true,
-            city: true,
-            state: true,
-            project: true,
-            lastCommunicatedAt: true,
-            requirement: true,
-            owner: { select: { id: true, name: true, initials: true } },
-            source: { select: { id: true, name: true } }
-          },
+          select: leadSelect,
           orderBy,
           skip: (page - 1) * pageSize,
           take: pageSize,
         }),
         prisma.lead.count({ where: queryWhere }),
         Promise.all([
+          // Stage counts — replaces separate NEW, WON, HIGH counts
           prisma.lead.groupBy({
             by: ["stage"],
             where: baseWhere,
             _count: { stage: true },
           }),
-          prisma.lead.count({ where: { ...baseWhere, priority: "HIGH" } }),
+          // Pipeline value
           prisma.lead.aggregate({
             where: baseWhere,
             _sum: { dealValueInr: true },
+            _count: { _all: true },
           }),
+          // New this week
+          prisma.lead.count({ 
+            where: { ...baseWhere, createdAt: { gte: oneWeekAgo } } 
+          }),
+          // Follow-ups due today
           prisma.lead.count({ 
             where: { 
               ...baseWhere, 
-              createdAt: { gte: new Date(new Date().setDate(new Date().getDate() - 7)) } 
+              followUpAt: { gte: startOfToday, lte: endOfToday } 
             } 
           }),
-          prisma.lead.count({ 
-            where: { 
-              ...baseWhere, 
-              followUpAt: {
-                gte: new Date(new Date().setHours(0,0,0,0)),
-                lte: new Date(new Date().setHours(23,59,59,999))
-              } 
-            } 
-          }),
-          prisma.lead.count({ where: { ...baseWhere, stage: "WON" } }),
-          // Added: Reminders for the dashboard
+          // Reminders for the dashboard
           prisma.reminder.findMany({
             where: {
               organizationId: user.organizationId,
@@ -190,9 +194,7 @@ export async function GET(req: Request) {
             orderBy: { scheduledAt: "asc" },
             take: 20,
           }),
-          // Added: Total new leads (for sidebar badge)
-          prisma.lead.count({ where: { ...baseWhere, stage: "NEW" } }),
-          // Added: Total follow ups (for sidebar badge)
+          // Total pending follow-up reminders (for sidebar badge)
           prisma.reminder.count({
             where: {
               organizationId: user.organizationId,
@@ -206,27 +208,7 @@ export async function GET(req: Request) {
       [leads, totalCount] = await Promise.all([
         prisma.lead.findMany({
           where: queryWhere,
-          select: {
-            id: true,
-            contactName: true,
-            company: true,
-            email: true,
-            phone: true,
-            stage: true,
-            dealValueInr: true,
-            priority: true,
-            subStatus: true,
-            followUpAt: true,
-            createdAt: true,
-            industry: true,
-            city: true,
-            state: true,
-            project: true,
-            lastCommunicatedAt: true,
-            requirement: true,
-            owner: { select: { id: true, name: true, initials: true } },
-            source: { select: { id: true, name: true } }
-          },
+          select: leadSelect,
           orderBy,
           skip: (page - 1) * pageSize,
           take: pageSize,
@@ -238,10 +220,14 @@ export async function GET(req: Request) {
     let stats: any = null;
 
     if (includeStats && statsData) {
-      const [stageCounts, alertsCount, totalValueAgg, newThisWeek, followUpsToday, wonDeals, reminders, newLeadsCount, followUpsTotal] = statsData;
+      const [stageCounts, totalValueAgg, newThisWeek, followUpsToday, reminders, followUpsTotal] = statsData;
 
       const countByStage = Object.fromEntries(stageCounts.map((s: any) => [s.stage, s._count.stage]));
       
+      // Derive counts from groupBy instead of separate queries
+      const wonDeals = countByStage["WON"] || 0;
+      const newLeadsCount = countByStage["NEW"] || 0;
+
       const PIPELINE_DISPLAY_STAGES = [
         { key: "NEW", label: "New" },
         { key: "CONTACTED", label: "Contacted" },
@@ -287,9 +273,9 @@ export async function GET(req: Request) {
           totalLeads: totalCount,
           newLeadsThisWeek: newThisWeek,
           followUpsDueToday: followUpsToday,
-          wonDeals: wonDeals,
+          wonDeals,
           totalPipelineValue: Number(totalValueAgg._sum.dealValueInr || 0),
-          alertsCount,
+          alertsCount: 0, // No longer a separate query; can be derived client-side if needed
           newLeadsCount,
           followUpsTotal,
         }

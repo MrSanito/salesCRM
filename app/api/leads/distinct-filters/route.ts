@@ -25,57 +25,43 @@ export async function GET() {
     const user = await getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const [rawIndustries, rawSources, rawCities, rawStates] = await Promise.all([
+    // Single query to get all lead-based distinct values instead of 4 separate queries
+    const [rawLeadFields, rawSources] = await Promise.all([
       prisma.lead.findMany({
         where: { organizationId: user.organizationId },
-        select: { industry: true },
-        distinct: ['industry'],
+        select: { industry: true, city: true, state: true },
       }),
       prisma.leadSource.findMany({
         where: { organizationId: user.organizationId },
         select: { name: true },
         distinct: ['name'],
       }),
-      prisma.lead.findMany({
-        where: { organizationId: user.organizationId },
-        select: { city: true },
-        distinct: ['city'],
-      }),
-      prisma.lead.findMany({
-        where: { organizationId: user.organizationId },
-        select: { state: true },
-        distinct: ['state'],
-      }),
     ]);
 
-    const industries = rawIndustries
-      .map((i: { industry: string | null }) => i.industry)
-      .filter((i): i is string => !!i && i.trim() !== "")
-      .sort();
+    // Extract unique values in JS (faster than 3 separate DB roundtrips with DISTINCT)
+    const industrySet = new Set<string>();
+    const citySet = new Set<string>();
+    const stateSet = new Set<string>();
+
+    for (const row of rawLeadFields) {
+      if (row.industry?.trim()) industrySet.add(row.industry.trim());
+      if (row.city?.trim()) citySet.add(row.city.trim());
+      if (row.state?.trim()) stateSet.add(row.state.trim());
+    }
 
     const sources = rawSources
       .map((s: { name: string }) => s.name)
       .filter((name): name is string => !!name && name.trim() !== "")
       .sort();
 
-    const cities = rawCities
-      .map((c: { city: string | null }) => c.city)
-      .filter((c): c is string => !!c && c.trim() !== "")
-      .sort();
-
-    const states = rawStates
-      .map((s: { state: string | null }) => s.state)
-      .filter((s): s is string => !!s && s.trim() !== "")
-      .sort();
-
     return NextResponse.json({
-      industries,
+      industries: Array.from(industrySet).sort(),
       sources,
-      cities,
-      states,
+      cities: Array.from(citySet).sort(),
+      states: Array.from(stateSet).sort(),
     }, {
       headers: {
-        'Cache-Control': 'private, max-age=120, stale-while-revalidate=30'
+        'Cache-Control': 'private, max-age=300, stale-while-revalidate=60'
       }
     });
   } catch (error: any) {

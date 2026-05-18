@@ -54,8 +54,9 @@ export async function GET(req: Request) {
             isRead: false,
             createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }
           },
-          include: { lead: true },
-          orderBy: { createdAt: "desc" }
+          include: { lead: { select: { contactName: true } } },
+          orderBy: { createdAt: "desc" },
+          take: 25
         });
 
         if (unreadAlerts.length > 0) {

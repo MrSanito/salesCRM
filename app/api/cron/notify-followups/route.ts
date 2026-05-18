@@ -92,58 +92,61 @@ export async function GET(req: Request) {
       }
     });
 
+    // Batch-fetch existing REMINDER_DUE alerts to avoid N+1 queries
+    const existingReminderAlerts = reminders.length > 0 
+      ? await prisma.alert.findMany({
+          where: {
+            type: "REMINDER_DUE",
+            OR: reminders.map(r => ({
+              userId: r.userId,
+              leadId: r.leadId,
+              createdAt: { gte: r.scheduledAt }
+            }))
+          },
+          select: { userId: true, leadId: true }
+        })
+      : [];
+
+    // Build a lookup set for O(1) duplicate checking
+    const alertedSet = new Set(
+      existingReminderAlerts.map(a => `${a.userId}:${a.leadId}`)
+    );
+
     for (const reminder of reminders) {
-      // Find if we already sent a notification alert after the scheduled date/time
-      const existingAlert = await prisma.alert.findFirst({
-        where: {
+      const key = `${reminder.userId}:${reminder.leadId}`;
+      if (alertedSet.has(key)) continue;
+
+      const alert = await prisma.alert.create({
+        data: {
           userId: reminder.userId,
+          organizationId: reminder.organizationId,
           leadId: reminder.leadId,
           type: "REMINDER_DUE",
-          createdAt: { gte: reminder.scheduledAt }
+          title: "Reminder Due Soon",
+          body: `Reminder: ${reminder.type} with ${reminder.lead.contactName} is due.`,
         }
       });
 
-      if (!existingAlert) {
-        const alert = await prisma.alert.create({
-          data: {
-            userId: reminder.userId,
-            organizationId: reminder.organizationId,
-            leadId: reminder.leadId,
-            type: "REMINDER_DUE",
-            title: "Reminder Due Soon",
-            body: `Reminder: ${reminder.type} with ${reminder.lead.contactName} is due.`,
-          }
-        });
+      pushToUser(reminder.userId, [{
+        id: alert.id,
+        type: alert.type,
+        title: alert.title,
+        body: alert.body,
+        leadId: alert.leadId,
+        contactName: reminder.lead.contactName,
+        createdAt: alert.createdAt
+      }]);
 
-        pushToUser(reminder.userId, [{
-          id: alert.id,
-          type: alert.type,
-          title: alert.title,
-          body: alert.body,
-          leadId: alert.leadId,
-          contactName: reminder.lead.contactName,
-          createdAt: alert.createdAt
-        }]);
-
-        reminderAlertsCount++;
-        triggeredAlerts.push({ userId: reminder.userId, leadName: reminder.lead.contactName, type: "REMINDER" });
-      }
+      reminderAlertsCount++;
+      triggeredAlerts.push({ userId: reminder.userId, leadName: reminder.lead.contactName, type: "REMINDER" });
     }
-
-    const debugLeads = await prisma.lead.findMany({
-      where: { followUpAt: { not: null } },
-      select: { contactName: true, followUpAt: true, ownerId: true },
-      take: 5,
-      orderBy: { followUpAt: 'asc' }
-    });
 
     return NextResponse.json({ 
       success: true,
       followUpAlerts: followUpAlertsCount, 
       reminderAlerts: reminderAlertsCount,
       triggeredAlerts,
-      now: now.toISOString(),
-      debugLeads
+      now: now.toISOString()
     });
   } catch (error: any) {
     console.error("Cron notification error:", error);

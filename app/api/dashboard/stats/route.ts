@@ -125,9 +125,7 @@ export async function GET() {
       pipeline,
     }, {
       headers: {
-        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0'
+        'Cache-Control': 'private, max-age=10, stale-while-revalidate=30'
       }
     });
   } catch (error) {
