@@ -33,25 +33,28 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     if (!reminder) return NextResponse.json({ error: "Reminder not found" }, { status: 404 });
 
-    await prisma.reminder.update({
-      where: { id },
-      data: { status: "DONE", completedAt: new Date() },
-    });
+    await prisma.$transaction(async (tx) => {
+      await tx.reminder.update({
+        where: { id },
+        data: { status: "DONE", completedAt: new Date() },
+      });
 
-    // Fire-and-forget: don't block response for audit logging
-    createAuditLog({
-      organizationId: user.organizationId,
-      leadId: reminder.leadId,
-      actorType: "USER",
-      actorId: user.id,
-      actorName: user.name,
-      action: "COMPLETE_REMINDER",
-      field: "status",
-      beforeValue: reminder.status,
-      afterValue: "DONE",
-      note: `Successfully completed and closed the ${reminder.type.toLowerCase()} follow-up task originally scheduled for ${new Date(reminder.scheduledAt).toLocaleString("en-IN", { day: "numeric", month: "short" })}.`,
-      source: "UI",
-    }).catch(console.error);
+      await tx.auditLog.create({
+        data: {
+          organizationId: user.organizationId,
+          leadId: reminder.leadId,
+          actorType: "USER",
+          actorId: user.id,
+          actorName: user.name,
+          action: "COMPLETE_REMINDER",
+          field: "status",
+          beforeValue: reminder.status,
+          afterValue: "DONE",
+          note: `Successfully completed and closed the ${reminder.type.toLowerCase()} follow-up task originally scheduled for ${new Date(reminder.scheduledAt).toLocaleString("en-IN", { day: "numeric", month: "short" })}.`,
+          source: "UI",
+        }
+      });
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

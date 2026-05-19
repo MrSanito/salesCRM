@@ -35,20 +35,31 @@ export function useNotifications() {
           
           const processAlert = (alert: AlertPayload) => {
             setNotifications((prev) => {
-              if (prev.some(p => p.id === alert.id)) return prev;
+              const exists = prev.some(p => p.id === alert.id);
+              if (exists) return prev;
+              
+              // Prevent modal & toast spam for historical unread alerts or reconnection updates
+              // Only trigger visual prompts for alerts created in the last 15 seconds
+              const alertAgeMs = Date.now() - new Date(alert.createdAt).getTime();
+              const isRecent = alertAgeMs < 15000;
+              
+              if (isRecent) {
+                setTimeout(() => {
+                  if (alert.type === "FOLLOW_UP_DUE" || alert.type === "REMINDER_DUE") {
+                    setActiveModalAlert(alert);
+                  }
+                  
+                  toast((t) => (
+                    <div className="flex flex-col gap-1">
+                      <span className="font-semibold text-sm">{alert.title}</span>
+                      {alert.body && <span className="text-xs text-gray-600">{alert.body}</span>}
+                    </div>
+                  ));
+                }, 0);
+              }
+              
               return [alert, ...prev];
             });
-            
-            if (alert.type === "FOLLOW_UP_DUE" || alert.type === "REMINDER_DUE") {
-              setActiveModalAlert(alert);
-            }
-            
-            toast((t) => (
-              <div className="flex flex-col gap-1">
-                <span className="font-semibold text-sm">{alert.title}</span>
-                {alert.body && <span className="text-xs text-gray-600">{alert.body}</span>}
-              </div>
-            ));
           };
 
           if (Array.isArray(payload)) {

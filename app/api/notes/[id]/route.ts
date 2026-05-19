@@ -43,25 +43,31 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const updatedNote = await prisma.note.update({
-      where: { id },
-      data: { content: content.trim() },
-      include: { user: { select: { name: true, initials: true, role: true } } },
-    });
+    const updatedNote = await prisma.$transaction(async (tx) => {
+      const note = await tx.note.update({
+        where: { id },
+        data: { content: content.trim() },
+        include: { user: { select: { name: true, initials: true, role: true } } },
+      });
 
-    // Create Audit Log
-    await createAuditLog({
-      organizationId: user.organizationId,
-      leadId: existingNote.leadId,
-      actorType: "USER",
-      actorId: user.id,
-      actorName: user.name || "Unknown User",
-      action: "UPDATE_NOTE",
-      field: "content",
-      beforeValue: existingNote.content,
-      afterValue: content,
-      note: `Updated intelligence note: "${content.substring(0, 50)}${content.length > 50 ? '...' : ''}"`,
-      source: "UI",
+      // Create Audit Log inside transaction
+      await tx.auditLog.create({
+        data: {
+          organizationId: user.organizationId,
+          leadId: existingNote.leadId,
+          actorType: "USER",
+          actorId: user.id,
+          actorName: user.name || "Unknown User",
+          action: "UPDATE_NOTE",
+          field: "content",
+          beforeValue: existingNote.content,
+          afterValue: content,
+          note: `Updated intelligence note: "${content.substring(0, 50)}${content.length > 50 ? '...' : ''}"`,
+          source: "UI",
+        }
+      });
+
+      return note;
     });
 
     return NextResponse.json(updatedNote);
@@ -101,20 +107,24 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    await prisma.note.delete({
-      where: { id }
-    });
+    await prisma.$transaction(async (tx) => {
+      await tx.note.delete({
+        where: { id }
+      });
 
-    // Create Audit Log
-    await createAuditLog({
-      organizationId: user.organizationId,
-      leadId: existingNote.leadId,
-      actorType: "USER",
-      actorId: user.id,
-      actorName: user.name || "Unknown User",
-      action: "DELETE_NOTE",
-      note: `Deleted an intelligence note from the lead dossier.`,
-      source: "UI",
+      // Create Audit Log inside transaction
+      await tx.auditLog.create({
+        data: {
+          organizationId: user.organizationId,
+          leadId: existingNote.leadId,
+          actorType: "USER",
+          actorId: user.id,
+          actorName: user.name || "Unknown User",
+          action: "DELETE_NOTE",
+          note: `Deleted an intelligence note from the lead dossier.`,
+          source: "UI",
+        }
+      });
     });
 
     return NextResponse.json({ success: true });

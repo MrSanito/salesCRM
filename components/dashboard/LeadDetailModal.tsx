@@ -85,6 +85,8 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
   const [updating, setUpdating] = useState(false);
   const [showSchedule, setShowSchedule] = useState(false);
   const [showProposalForm, setShowProposalForm] = useState(false);
+  const [isSelectingNoteForProposal, setIsSelectingNoteForProposal] = useState(false);
+  const [selectedNoteIdForProposal, setSelectedNoteIdForProposal] = useState<string>("");
   const [proposals, setProposals] = useState<any[]>([]);
   const [proposalsLoading, setProposalsLoading] = useState(false);
   const [isDossierOpen, setIsDossierOpen] = useState(true);
@@ -117,6 +119,7 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
   const [isUpdatingNote, setIsUpdatingNote] = useState(false);
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [notesSummary, setNotesSummary] = useState<string | null>(null);
+  const [generatingProposalNoteId, setGeneratingProposalNoteId] = useState<string | null>(null);
 
   const fetchProposals = async () => {
     setProposalsLoading(true);
@@ -240,6 +243,140 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
       toast.error("Failed to add note");
     } finally {
       setIsAddingNote(false);
+    }
+  };
+
+  const getParsedNotePreview = (content: string) => {
+    const getField = (field: string) => {
+      const escapedField = field.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+      const regex = new RegExp(`\\*\\*${escapedField}\\*\\*\\s*:\\s*(.*)`, 'i');
+      const match = content.match(regex);
+      return match ? match[1].trim() : "";
+    };
+
+    return {
+      clientCompanyName: getField("Client Company Name"),
+      contactPerson: getField("Contact Person"),
+      proposalDate: getField("Proposal Date"),
+      industry: getField("Industry"),
+      teamSize: getField("Team Size"),
+      currentTooling: getField("Current Tooling"),
+      businessModel: getField("Business Model"),
+      painPoints: getField("Pain Points"),
+      desiredOutcomes: getField("Desired Outcomes"),
+      scopeOfWork: getField("Scope of Work"),
+      automationsRecommended: getField("Automations Recommended"),
+      deploymentTimeline: getField("Deployment Timeline"),
+      packageSelected: getField("Package Selected"),
+      totalPricing: getField("Total Pricing"),
+      optionalAddons: getField("Optional Addons"),
+      supportDuration: getField("Support Duration"),
+    };
+  };
+
+  const handleCopyTemplate = () => {
+    if (!lead) return;
+    const formatTemplate = `### Proposal Specifications
+- **Client Company Name**: ${lead.company || "Client Company"}
+- **Contact Person**: ${lead.contactName || "Contact Person"}
+- **Proposal Date**: ${new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+- **Industry**: ${lead.industry || "General Services"}
+- **Team Size**: 10
+- **Current Tooling**: Excel & Manual Sheets
+- **Business Model**: B2B Services
+- **Pain Points**: Manual lead tracking, delayed customer communication
+- **Desired Outcomes**: Accelerated pipelines, structured team hierarchy
+- **Scope of Work**: Setup CRM platform, dynamic supervisor mapping
+- **Automations Recommended**: Automated reminder notifications, shared team calendar
+- **Deployment Timeline**: 2 weeks
+- **Package Selected**: Enterprise Growth
+- **Total Pricing**: INR 45,000
+- **Optional Addons**: 3 Months Premium Support
+- **Support Duration**: Hypercare Phase`;
+
+    navigator.clipboard.writeText(formatTemplate);
+    toast.success("Proposal template format copied to clipboard!");
+  };
+
+  const handleAutoFillTemplate = () => {
+    if (!lead) return;
+    const formatTemplate = `### Proposal Specifications
+- **Client Company Name**: ${lead.company || "Client Company"}
+- **Contact Person**: ${lead.contactName || "Contact Person"}
+- **Proposal Date**: ${new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+- **Industry**: ${lead.industry || "General Services"}
+- **Team Size**: 10
+- **Current Tooling**: Excel & Manual Sheets
+- **Business Model**: B2B Services
+- **Pain Points**: Manual lead tracking, delayed customer communication
+- **Desired Outcomes**: Accelerated pipelines, structured team hierarchy
+- **Scope of Work**: Setup CRM platform, dynamic supervisor mapping
+- **Automations Recommended**: Automated reminder notifications, shared team calendar
+- **Deployment Timeline**: 2 weeks
+- **Package Selected**: Enterprise Growth
+- **Total Pricing**: INR 45,000
+- **Optional Addons**: 3 Months Premium Support
+- **Support Duration**: Hypercare Phase`;
+
+    setNoteInput(formatTemplate);
+    toast.success("Proposal template pasted into note field!");
+  };
+
+  const handleGenerateProposalFromNote = async (noteId: string, noteContent: string) => {
+    if (!lead) return;
+    setGeneratingProposalNoteId(noteId);
+    
+    const getField = (field: string) => {
+      const escapedField = field.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+      const regex = new RegExp(`\\\\*\\\\*${escapedField}\\\\*\\\\*\\\\s*:\\\\s*(.*)`, 'i');
+      const match = noteContent.match(regex);
+      return match ? match[1].trim() : "";
+    };
+
+    const clientName = getField("Client Company Name") || lead.company;
+    const contactPerson = getField("Contact Person") || lead.contactName;
+
+    const proposalPayload = {
+      leadId: lead.id,
+      client_company_name: clientName,
+      proposal_date: getField("Proposal Date") || new Date().toLocaleDateString("en-IN"),
+      industry: getField("Industry") || lead.industry || "",
+      contact_person: contactPerson,
+      team_size: getField("Team Size") || "10",
+      current_tools: getField("Current Tooling") || "Excel",
+      business_model: getField("Business Model") || "B2B",
+      pain_points: getField("Pain Points") || "Manual overhead",
+      desired_outcomes: getField("Desired Outcomes") || "Automation",
+      scope_of_work: getField("Scope of Work") || "CRM Setup",
+      recommended_automations: getField("Automations Recommended") || "Workflow alerts",
+      deployment_timeline: getField("Deployment Timeline") || "2 weeks",
+      package_name: getField("Package Selected") || "Growth Plan",
+      pricing: getField("Total Pricing") || "INR 45,000",
+      addons: getField("Optional Addons") || "None",
+      support_duration: getField("Support Duration") || "3 Months",
+    };
+
+    try {
+      const res = await fetch("/api/proposals/generate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(proposalPayload),
+      });
+
+      if (res.ok) {
+        toast.success("Proposal successfully compiled and generated in Vault!");
+        fetchProposals();
+      } else {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to generate proposal");
+      }
+    } catch (err: any) {
+      console.error("Proposal creation error:", err);
+      toast.error(err.message || "Failed to compile proposal");
+    } finally {
+      setGeneratingProposalNoteId(null);
     }
   };
 
@@ -896,7 +1033,23 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
 
                 {/* Notes Section */}
                 <div className="pt-8 border-t border-slate-100">
-                  <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-4">Add a Note</h3>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                    <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Add a Note</h3>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={handleCopyTemplate}
+                        className="bg-slate-100 text-slate-700 hover:bg-slate-200 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all active:scale-95 flex items-center gap-1"
+                      >
+                        📋 Copy Proposal Template
+                      </button>
+                      <button
+                        onClick={handleAutoFillTemplate}
+                        className="bg-indigo-50 border border-indigo-100 text-indigo-700 hover:bg-indigo-100 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all active:scale-95 flex items-center gap-1"
+                      >
+                        ✍️ Auto-Fill Template
+                      </button>
+                    </div>
+                  </div>
                   <div className="flex flex-col gap-3 mb-6">
                     <textarea
                       value={noteInput}
@@ -996,6 +1149,30 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                           ) : (
                             <>
                               <p className="text-sm text-slate-700 font-medium leading-relaxed pr-8 whitespace-pre-wrap">{note.content}</p>
+                              {note.content?.includes("### Proposal Specifications") && (
+                                <div className="mt-3 pt-3 border-t border-slate-200/60 flex flex-wrap items-center justify-between gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                  <span className="text-[9px] font-black text-emerald-700 bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded-lg uppercase tracking-wider flex items-center gap-1">
+                                    ✨ Valid Proposal Format
+                                  </span>
+                                  <button
+                                    onClick={() => handleGenerateProposalFromNote(note.id, note.content)}
+                                    disabled={generatingProposalNoteId !== null}
+                                    className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-200 text-white disabled:text-slate-400 px-3.5 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all active:scale-95 flex items-center gap-1.5"
+                                  >
+                                    {generatingProposalNoteId === note.id ? (
+                                      <>
+                                        <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                        Compiling...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <FileText size={12} strokeWidth={3} />
+                                        Generate Proposal
+                                      </>
+                                    )}
+                                  </button>
+                                </div>
+                              )}
                               <button 
                                 onClick={() => {
                                   setEditingNoteId(note.id);
@@ -1020,12 +1197,143 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                       <FileText size={12} strokeWidth={2.5} /> Proposal Vault
                     </h3>
                     <button
-                      onClick={() => setShowProposalForm(true)}
-                      className="bg-indigo-50 border border-indigo-100 text-indigo-600 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100 transition-all active:scale-95 flex items-center gap-1"
+                      onClick={() => {
+                        setIsSelectingNoteForProposal(!isSelectingNoteForProposal);
+                        setSelectedNoteIdForProposal("");
+                      }}
+                      className={`${isSelectingNoteForProposal ? "bg-red-50 text-red-600 border border-red-100" : "bg-indigo-50 border border-indigo-100 text-indigo-600"} px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100/50 transition-all active:scale-95 flex items-center gap-1`}
                     >
-                      <Plus size={12} strokeWidth={3} /> New Proposal
+                      {isSelectingNoteForProposal ? (
+                        <>Cancel Selection</>
+                      ) : (
+                        <>
+                          <Plus size={12} strokeWidth={3} /> New Proposal
+                        </>
+                      )}
                     </button>
                   </div>
+
+                  {isSelectingNoteForProposal && (
+                    <div className="mb-6 p-5 bg-indigo-50/40 border border-indigo-100/80 rounded-2xl animate-in fade-in slide-in-from-top-2 duration-300">
+                      <div className="flex justify-between items-center mb-3">
+                        <h4 className="text-[9px] font-black text-indigo-700 uppercase tracking-widest flex items-center gap-1.5">
+                          📋 Select Source Note for Proposal
+                        </h4>
+                      </div>
+
+                      {notes.filter(n => n.content?.includes("### Proposal Specifications")).length === 0 ? (
+                        <div className="p-4 bg-white border border-slate-100 rounded-xl text-center">
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                            No Template-Filled Notes Found
+                          </p>
+                          <p className="text-xs text-slate-500 leading-relaxed max-w-sm mx-auto">
+                            Please use the <strong>"Auto-Fill Template"</strong> option in the Notes section above to write and save a note pre-formatted with the Proposal specifications first.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          <div>
+                            <label className="block text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 px-1">
+                              Choose Note
+                            </label>
+                            <select
+                              value={selectedNoteIdForProposal}
+                              onChange={(e) => setSelectedNoteIdForProposal(e.target.value)}
+                              className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer pr-10"
+                            >
+                              <option value="">-- Select a note containing specifications template --</option>
+                              {notes
+                                .filter(n => n.content?.includes("### Proposal Specifications"))
+                                .map(n => (
+                                  <option key={n.id} value={n.id}>
+                                    Note by {n.user?.name} on {new Date(n.updatedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                                  </option>
+                                ))
+                              }
+                            </select>
+                          </div>
+
+                          {selectedNoteIdForProposal && (() => {
+                            const selNote = notes.find(n => n.id === selectedNoteIdForProposal);
+                            if (!selNote) return null;
+                            const parsed = getParsedNotePreview(selNote.content);
+                            
+                            const isCompanyValid = !!parsed.clientCompanyName;
+                            const isPriceValid = !!parsed.totalPricing;
+                            const isContactValid = !!parsed.contactPerson;
+                            const isValid = isCompanyValid && isPriceValid && isContactValid;
+
+                            return (
+                              <div className="bg-white border border-slate-100 rounded-xl p-4 space-y-4 animate-in fade-in duration-200">
+                                <h5 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-50 pb-1.5">
+                                  🔎 Proposal Parameter Validation Preview
+                                </h5>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                                  <div>
+                                    <span className="block text-[8px] font-bold text-slate-400 uppercase tracking-wider">Client Company</span>
+                                    <span className={`text-[11px] font-black ${isCompanyValid ? "text-slate-800" : "text-red-500"}`}>
+                                      {parsed.clientCompanyName || "[Missing client company name]"}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className="block text-[8px] font-bold text-slate-400 uppercase tracking-wider">Contact Person</span>
+                                    <span className={`text-[11px] font-black ${isContactValid ? "text-slate-800" : "text-red-500"}`}>
+                                      {parsed.contactPerson || "[Missing contact person]"}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className="block text-[8px] font-bold text-slate-400 uppercase tracking-wider">Package / Pricing</span>
+                                    <span className={`text-[11px] font-black ${isPriceValid ? "text-slate-800" : "text-red-500"}`}>
+                                      {parsed.packageSelected || "General"} – {parsed.totalPricing || "[Missing pricing]"}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className="block text-[8px] font-bold text-slate-400 uppercase tracking-wider">Timeline / Support</span>
+                                    <span className="text-[11px] font-black text-slate-800">
+                                      {parsed.deploymentTimeline || "2 weeks"} ({parsed.supportDuration || "Hypercare"})
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div className="pt-2.5 border-t border-slate-50 flex items-center justify-between">
+                                  <div className="text-[9px] font-bold">
+                                    {isValid ? (
+                                      <span className="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
+                                        ✓ Validation Successful
+                                      </span>
+                                    ) : (
+                                      <span className="text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-100">
+                                        ⚠ Missing Fields Detected (will fallback to lead data)
+                                      </span>
+                                    )}
+                                  </div>
+                                  <button
+                                    onClick={async () => {
+                                      await handleGenerateProposalFromNote(selNote.id, selNote.content);
+                                      setIsSelectingNoteForProposal(false);
+                                      setSelectedNoteIdForProposal("");
+                                    }}
+                                    disabled={generatingProposalNoteId !== null}
+                                    className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 text-white disabled:text-slate-400 px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all active:scale-95 flex items-center gap-1.5"
+                                  >
+                                    {generatingProposalNoteId === selNote.id ? (
+                                      <>
+                                        <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                        Generating...
+                                      </>
+                                    ) : (
+                                      "Confirm & Create Proposal"
+                                    )}
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <div className="space-y-3 mb-10 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                     {proposalsLoading ? (
@@ -1111,13 +1419,6 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
         leadId={lead?.id || ""}
         leadName={lead?.contactName}
         onSaved={() => fetchData(false)}
-      />
-
-      <CreateProposalModal
-        isOpen={showProposalForm}
-        onClose={() => setShowProposalForm(false)}
-        lead={lead}
-        onGenerated={fetchProposals}
       />
     </div>
   );

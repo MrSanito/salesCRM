@@ -1,9 +1,13 @@
 "use client"
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useDashboard } from "@/components/dashboard/DashboardContext";
 import { Puzzle, Calendar, CheckCircle2, AlertCircle, Loader2, Link2, ExternalLink, XCircle } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function IntegrationsView() {
+  const router = useRouter();
+  const { setGoogleConnected, triggerRefresh } = useDashboard();
   const [loading, setLoading] = useState(true);
   const [isConnected, setIsConnected] = useState(false);
   const [connecting, setConnecting] = useState(false);
@@ -12,12 +16,22 @@ export default function IntegrationsView() {
     checkStatus();
   }, []);
 
-  const checkStatus = async () => {
+  const checkStatus = async (isPopupCallback = false) => {
     try {
       const res = await fetch("/api/integrations/google/status");
       if (res.ok) {
         const data = await res.json();
         setIsConnected(data.isConnected);
+        setGoogleConnected(data.isConnected);
+        
+        if (data.isConnected && isPopupCallback) {
+          toast.success("Google account linked successfully!");
+          triggerRefresh();
+          // Wait a brief moment then navigate to show the calendar
+          setTimeout(() => {
+            router.push("/dashboard/calendar");
+          }, 800);
+        }
       }
     } catch (error) {
       console.error("Failed to check status", error);
@@ -49,7 +63,7 @@ export default function IntegrationsView() {
         const checkPopup = setInterval(() => {
           if (!popup || popup.closed) {
             clearInterval(checkPopup);
-            checkStatus();
+            checkStatus(true);
             setConnecting(false);
           }
         }, 1000);
@@ -71,6 +85,8 @@ export default function IntegrationsView() {
       const res = await fetch("/api/integrations/google/disconnect", { method: "POST" });
       if (res.ok) {
         setIsConnected(false);
+        setGoogleConnected(false);
+        triggerRefresh();
         toast.success("Google Calendar disconnected");
       } else {
         toast.error("Failed to disconnect");

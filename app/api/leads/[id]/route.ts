@@ -137,85 +137,165 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       ...(data.closedAt !== undefined && { closedAt: data.closedAt ? new Date(data.closedAt) : null }),
     };
 
-    if (data.source !== undefined) {
-      if (!data.source) {
-        updateData.sourceId = null;
-      } else {
-        const leadSource = await prisma.leadSource.upsert({
-          where: {
-            name_organizationId: {
+    const auditLogs: any[] = [];
+
+    // Run the entire series of database writes inside a single transaction to minimize latency and round-trips
+    const updatedLead = await prisma.$transaction(async (tx) => {
+      // 1. Handle source tracking changes
+      if (data.source !== undefined) {
+        if (!data.source) {
+          updateData.sourceId = null;
+        } else {
+          const leadSource = await tx.leadSource.upsert({
+            where: {
+              name_organizationId: {
+                name: data.source,
+                organizationId: user.organizationId
+              }
+            },
+            update: {},
+            create: {
               name: data.source,
               organizationId: user.organizationId
             }
-          },
-          update: {},
-          create: {
-            name: data.source,
-            organizationId: user.organizationId
-          }
-        });
-        updateData.sourceId = leadSource.id;
+          });
+          updateData.sourceId = leadSource.id;
+        }
       }
-    }
 
-    if (data.notes !== undefined) {
-      const existingNote = await prisma.note.findFirst({
-        where: { leadId: id },
-        orderBy: { createdAt: 'asc' },
-        select: { id: true, content: true, leadId: true, userId: true, organizationId: true }
-      });
-      
-      if (existingNote) {
-        await prisma.note.update({
-          where: { id: existingNote.id },
-          data: { content: data.notes || "" }
+      // 2. Handle missing action checks & audit logs for note updates
+      if (data.notes !== undefined) {
+        const existingNote = await tx.note.findFirst({
+          where: { leadId: id },
+          orderBy: { createdAt: 'asc' },
+          select: { id: true, content: true }
         });
-      } else if (data.notes) {
-        await prisma.note.create({
-          data: {
-            content: data.notes,
+        
+        if (existingNote) {
+          if (existingNote.content !== data.notes) {
+            await tx.note.update({
+              where: { id: existingNote.id },
+              data: { content: data.notes || "" }
+            });
+            auditLogs.push({
+              organizationId: user.organizationId,
+              leadId: id,
+              actorType: "USER" as const,
+              actorId: user.id,
+              actorName: user.name || "Unknown",
+              action: "UPDATE_NOTE",
+              field: "notes",
+              beforeValue: existingNote.content,
+              afterValue: data.notes || "",
+              note: "Updated lead intelligence notes.",
+              source: "UI" as const,
+            });
+          }
+        } else if (data.notes) {
+          await tx.note.create({
+            data: {
+              content: data.notes,
+              leadId: id,
+              userId: user.id,
+              organizationId: user.organizationId
+            }
+          });
+          auditLogs.push({
+            organizationId: user.organizationId,
             leadId: id,
-            userId: user.id,
-            organizationId: user.organizationId
-          }
+            actorType: "USER" as const,
+            actorId: user.id,
+            actorName: user.name || "Unknown",
+            action: "CREATE_NOTE",
+            field: "notes",
+            beforeValue: "",
+            afterValue: data.notes,
+            note: "Created initial lead intelligence notes.",
+            source: "UI" as const,
+          });
+        }
+      }
+
+      // 3. Scan for other standard field changes
+      for (const [key, afterValue] of Object.entries(updateData)) {
+        if (key === "sourceId" || key === "notes") continue; // Handled separately
+        
+        const beforeValue = (existingLead as any)[key];
+        if (beforeValue?.toString() !== afterValue?.toString()) {
+          auditLogs.push({
+            organizationId: user.organizationId,
+            leadId: id,
+            actorType: "USER" as const,
+            actorId: user.id,
+            actorName: user.name || "Unknown",
+            action: "UPDATE",
+            field: key,
+            beforeValue: beforeValue?.toString(),
+            afterValue: afterValue?.toString(),
+            note: `Updated protocol field '${key}' from '${beforeValue || "None"}' to '${afterValue || "None"}'.`,
+            source: "UI" as const,
+          });
+        }
+      }
+
+      // 4. Handle human-readable changes for source updates instead of raw UUIDs
+      if (data.source !== undefined) {
+        const oldSourceName = existingLead.sourceId 
+          ? (await tx.leadSource.findUnique({ where: { id: existingLead.sourceId }, select: { name: true } }))?.name 
+          : "None";
+        const newSourceName = data.source || "None";
+        
+        if (oldSourceName !== newSourceName) {
+          auditLogs.push({
+            organizationId: user.organizationId,
+            leadId: id,
+            actorType: "USER" as const,
+            actorId: user.id,
+            actorName: user.name || "Unknown",
+            action: "UPDATE_SOURCE",
+            field: "source",
+            beforeValue: oldSourceName || "None",
+            afterValue: newSourceName,
+            note: `Changed acquisition source from '${oldSourceName || "None"}' to '${newSourceName}'.`,
+            source: "UI" as const,
+          });
+        }
+      }
+
+      // 5. Apply core lead updates
+      const updated = await tx.lead.update({
+        where: { id },
+        data: updateData,
+        include: {
+          owner: { select: { name: true, initials: true } },
+          source: { select: { name: true } },
+        }
+      });
+
+      // 6. Write all bulk audit logs directly to database inside the same transaction
+      if (auditLogs.length > 0) {
+        const formattedLogs = auditLogs.map(log => ({
+          organizationId: log.organizationId,
+          leadId: log.leadId,
+          actorType: log.actorType,
+          actorId: log.actorId,
+          actorName: log.actorName,
+          action: log.action,
+          field: log.field,
+          beforeValue: log.beforeValue ? String(log.beforeValue) : null,
+          afterValue: log.afterValue ? String(log.afterValue) : null,
+          note: log.note,
+          source: log.source || "UI",
+        }));
+
+        await tx.auditLog.createMany({
+          data: formattedLogs,
+          skipDuplicates: true
         });
       }
-    }
 
-    const updatedLead = await prisma.lead.update({
-      where: { id },
-      data: updateData,
-      include: {
-        owner: { select: { name: true, initials: true } },
-        source: { select: { name: true } },
-      }
+      return updated;
     });
-
-    // Create Audit Logs for changes
-    const auditLogs: any[] = [];
-    for (const [key, afterValue] of Object.entries(updateData)) {
-      const beforeValue = (existingLead as any)[key];
-      if (beforeValue?.toString() !== afterValue?.toString()) {
-        auditLogs.push({
-          organizationId: user.organizationId,
-          leadId: id,
-          actorType: "USER" as const,
-          actorId: user.id,
-          actorName: user.name || "Unknown",
-          action: "UPDATE",
-          field: key,
-          beforeValue: beforeValue?.toString(),
-          afterValue: afterValue?.toString(),
-          note: `Updated protocol field '${key}' from '${beforeValue}' to '${afterValue}'.`,
-          source: "UI" as const,
-        });
-      }
-    }
-
-    if (auditLogs.length > 0) {
-      // Fire-and-forget: don't block response for audit logging
-      import("@/lib/audit").then(m => m.createBulkAuditLogs(auditLogs)).catch(console.error);
-    }
 
     return NextResponse.json(updatedLead);
   } catch (error) {

@@ -118,19 +118,7 @@ export default function Sidebar({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const sfId = searchParams.get("sf");
-  const { stats, filters: customFilters, loading: contextLoading } = useDashboard();
-  const [googleConnected, setGoogleConnected] = useState(false);
-
-  useEffect(() => {
-    fetch("/api/integrations/google/status")
-      .then(res => res.json())
-      .then(data => {
-        if (data && data.isConnected) {
-          setGoogleConnected(true);
-        }
-      })
-      .catch(err => console.error("Error fetching Google status:", err));
-  }, []);
+  const { stats, filters: customFilters, loading: contextLoading, googleConnected } = useDashboard();
   
   const counts = useMemo(() => ({
     alerts: stats?.kpis?.alertsCount || 0,

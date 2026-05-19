@@ -37,6 +37,8 @@ interface DashboardContextType {
   refresh: (force?: boolean) => Promise<void>;
   refreshKey: number;
   triggerRefresh: () => void;
+  googleConnected: boolean;
+  setGoogleConnected: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 const DashboardContext = createContext<DashboardContextType | undefined>(undefined);
@@ -45,6 +47,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [filters, setFilters] = useState<CustomFilter[]>([]);
   const [loading, setLoading] = useState(true);
+  const [googleConnected, setGoogleConnected] = useState(false);
   const lastFetchRef = useRef(0);
   const [refreshKey, setRefreshKey] = useState(0);
   const pathname = usePathname();
@@ -55,9 +58,10 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
     lastFetchRef.current = now;
     try {
-      const [statsRes, filtersRes] = await Promise.all([
+      const [statsRes, filtersRes, googleRes] = await Promise.all([
         fetch("/api/dashboard/stats"),
-        fetch("/api/sidebar-filters")
+        fetch("/api/sidebar-filters"),
+        fetch("/api/integrations/google/status").catch(() => null)
       ]);
       
       const statsData = await statsRes.json();
@@ -65,6 +69,11 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       
       setStats(statsData);
       if (Array.isArray(filtersData)) setFilters(filtersData);
+
+      if (googleRes && googleRes.ok) {
+        const googleData = await googleRes.json();
+        setGoogleConnected(!!googleData?.isConnected);
+      }
     } catch (err) {
       console.error("DashboardContext fetch failed:", err);
     } finally {
@@ -87,7 +96,9 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       loading, 
       refresh: fetchData, 
       refreshKey,
-      triggerRefresh 
+      triggerRefresh,
+      googleConnected,
+      setGoogleConnected
     }}>
       {children}
     </DashboardContext.Provider>

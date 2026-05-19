@@ -208,4 +208,71 @@ export function withRouteTelemetry(handler: Function) {
       throw err;
     }
   };
+}
+
+// ── Background Snappy-Protobuf Telemetry Loop to Grafana Cloud ──
+const globalForTelemetryLoop = global as typeof global & {
+  telemetryIntervalRegistered?: boolean;
+};
+
+if (!globalForTelemetryLoop.telemetryIntervalRegistered) {
+  globalForTelemetryLoop.telemetryIntervalRegistered = true;
+  
+  if (typeof window === 'undefined') {
+    const runBackgroundTelemetry = async () => {
+      const url = process.env.GRAFANA_REMOTE_WRITE_URL;
+      const username = process.env.GRAFANA_USERNAME;
+      const apiKey = process.env.GRAFANA_API_KEY;
+      
+      if (!url || !username || !apiKey) {
+        return;
+      }
+      
+      try {
+        // 1. Refresh dynamic business/Prisma metrics
+        await updateDynamicBusinessMetrics();
+        
+        // 2. Fetch registry metrics as JSON
+        const jsonMetrics = await registry.getMetricsAsJSON();
+        const timeseries: any[] = [];
+        const timestamp = Date.now();
+        
+        for (const metric of jsonMetrics) {
+          for (const val of metric.values) {
+            const labels: Record<string, string> = {
+              __name__: String(metric.name),
+            };
+            if (val.labels) {
+              for (const [k, v] of Object.entries(val.labels)) {
+                if (v !== undefined && v !== null) {
+                  labels[k] = String(v);
+                }
+              }
+            }
+            timeseries.push({
+              labels,
+              samples: [{ value: Number(val.value) || 0, timestamp }]
+            });
+          }
+        }
+        
+        if (timeseries.length > 0) {
+          const { pushTimeseries } = require('prometheus-remote-write');
+          await pushTimeseries(timeseries, {
+            url,
+            auth: {
+              username,
+              password: apiKey
+            }
+          });
+        }
+      } catch (err: any) {
+        console.error('Background telemetry push to Grafana failed:', err.message);
+      }
+    };
+
+    // Trigger initial push 10s after boot, then every 60s
+    setTimeout(runBackgroundTelemetry, 10000);
+    setInterval(runBackgroundTelemetry, 60 * 1000);
+  }
 }

@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 
+export const dynamic = 'force-dynamic';
+
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-me";
 
 async function getAuthUser(req: NextRequest) {
@@ -60,6 +62,7 @@ export async function POST(
         "Content-Type": "application/json",
         "X-goog-api-key": apiKey
       },
+      cache: "no-store",
       body: JSON.stringify({
         contents: [
           {
