@@ -47,12 +47,12 @@ export function getOrCreateHistogram(name: string, help: string, labelNames: str
 }
 
 // Register standard HTTP telemetry endpoints safely with exact requested labels and buckets
-getOrCreateCounter('http_requests_total', 'Total HTTP requests', ['path', 'method', 'status']);
+getOrCreateCounter('http_requests_total', 'Total HTTP requests', ['method', 'path', 'status']);
 getOrCreateHistogram(
   'http_request_duration_seconds',
-  'HTTP request duration in seconds',
-  ['path', 'method', 'status'],
-  [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10]
+  'HTTP request duration',
+  ['method', 'path', 'status'],
+  [0.005, 0.01, 0.05, 0.1, 0.5, 1, 2, 5]
 );
 
 /**
@@ -184,10 +184,10 @@ export function withRouteTelemetry(handler: Function) {
       const httpRequestDurationSeconds = registry.getSingleMetric('http_request_duration_seconds') as client.Histogram<string>;
 
       if (httpRequestsTotal) {
-        httpRequestsTotal.inc({ path, method, status });
+        httpRequestsTotal.inc({ method, path, status });
       }
       if (httpRequestDurationSeconds) {
-        httpRequestDurationSeconds.observe({ path, method, status }, duration);
+        httpRequestDurationSeconds.observe({ method, path, status }, duration);
       }
 
       return response;
@@ -199,10 +199,10 @@ export function withRouteTelemetry(handler: Function) {
       const httpRequestDurationSeconds = registry.getSingleMetric('http_request_duration_seconds') as client.Histogram<string>;
 
       if (httpRequestsTotal) {
-        httpRequestsTotal.inc({ path, method, status });
+        httpRequestsTotal.inc({ method, path, status });
       }
       if (httpRequestDurationSeconds) {
-        httpRequestDurationSeconds.observe({ path, method, status }, duration);
+        httpRequestDurationSeconds.observe({ method, path, status }, duration);
       }
 
       throw err;

@@ -101,6 +101,19 @@ export default function SettingsView() {
   const [newPipelineItem, setNewPipelineItem] = useState({ value: "", label: "", color: "blue" });
   const [pipelineSaving, setPipelineSaving] = useState(false);
 
+  // High-fidelity delete confirmation state
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    isOpen: boolean;
+    type: "filter" | "pipeline";
+    id: string;
+    label: string;
+  }>({
+    isOpen: false,
+    type: "filter",
+    id: "",
+    label: "",
+  });
+
   const fetchPipelineData = async () => {
     setPipelineLoading(true);
     try {
@@ -360,6 +373,34 @@ export default function SettingsView() {
       }
     } catch {
       toast.error("Failed to delete option due to network error");
+    }
+  };
+
+  const triggerDeleteFilter = (id: string, name: string) => {
+    setDeleteConfirm({
+      isOpen: true,
+      type: "filter",
+      id,
+      label: name,
+    });
+  };
+
+  const triggerDeletePipelineItem = (id: string, label: string) => {
+    setDeleteConfirm({
+      isOpen: true,
+      type: "pipeline",
+      id,
+      label,
+    });
+  };
+
+  const handleConfirmDelete = async () => {
+    const { type, id, label } = deleteConfirm;
+    setDeleteConfirm((prev) => ({ ...prev, isOpen: false }));
+    if (type === "filter") {
+      await handleDeleteFilter(id, label);
+    } else {
+      await handleDeletePipelineItem(id, label);
     }
   };
 
@@ -791,7 +832,7 @@ export default function SettingsView() {
                         </div>
 
                         <button
-                          onClick={() => handleDeleteFilter(f.id, f.name)}
+                          onClick={() => triggerDeleteFilter(f.id, f.name)}
                           className="w-8 h-8 rounded-lg flex items-center justify-center text-red-400 hover:bg-red-50 hover:text-red-600 transition-all active:scale-90 opacity-60 hover:opacity-100"
                           title="Remove filter"
                         >
@@ -923,14 +964,14 @@ export default function SettingsView() {
                       <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-3 px-1">
                         Accent Color Theme
                       </label>
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-2.5">
                         {["blue", "cyan", "purple", "indigo", "pink", "rose", "amber", "orange", "red", "green", "slate"].map((c) => (
                           <button
                             key={c}
                             type="button"
                             onClick={() => setNewPipelineItem((prev) => ({ ...prev, color: c }))}
-                            className={`w-6 h-6 rounded-full border-2 transition-all flex items-center justify-center ${
-                              newPipelineItem.color === c ? "border-slate-800 scale-110 shadow" : "border-transparent"
+                            className={`w-8 h-8 rounded-full border-2 transition-all flex items-center justify-center ${
+                              newPipelineItem.color === c ? "border-slate-800 scale-110 shadow-lg" : "border-slate-200 hover:scale-105"
                             }`}
                             style={{
                               backgroundColor:
@@ -948,7 +989,7 @@ export default function SettingsView() {
                             }}
                           >
                             {newPipelineItem.color === c && (
-                              <div className="w-1.5 h-1.5 rounded-full bg-white shadow" />
+                              <div className="w-2 h-2 rounded-full bg-white shadow-md" />
                             )}
                           </button>
                         ))}
@@ -985,27 +1026,24 @@ export default function SettingsView() {
                       (activePipelineTab === "status" ? pipelineStatuses : pipelineSubStatuses).map((item, index, arr) => (
                         <div
                           key={item.id}
-                          className="flex items-center justify-between p-4 rounded-2xl bg-white border border-slate-100 hover:border-slate-200 transition-all hover:shadow-md hover:shadow-slate-100/50"
+                          className="flex items-center justify-between p-4 pl-6 rounded-2xl bg-white border-y border-r border-slate-100 hover:border-slate-200 transition-all hover:shadow-md hover:shadow-slate-100/50"
+                          style={{
+                            borderLeftWidth: "6px",
+                            borderLeftColor:
+                              item.color === "blue" ? "#3b82f6" :
+                              item.color === "cyan" ? "#06b6d4" :
+                              item.color === "purple" ? "#a855f7" :
+                              item.color === "indigo" ? "#6366f1" :
+                              item.color === "pink" ? "#ec4899" :
+                              item.color === "rose" ? "#f43f5e" :
+                              item.color === "amber" ? "#f59e0b" :
+                              item.color === "orange" ? "#f97316" :
+                              item.color === "red" ? "#ef4444" :
+                              item.color === "green" ? "#22c55e" :
+                              "#64748b",
+                          }}
                         >
                           <div className="flex items-center gap-4">
-                            {/* Color left indicator */}
-                            <div
-                              className="w-1.5 h-8 rounded-full"
-                              style={{
-                                backgroundColor:
-                                  item.color === "blue" ? "#3b82f6" :
-                                  item.color === "cyan" ? "#06b6d4" :
-                                  item.color === "purple" ? "#a855f7" :
-                                  item.color === "indigo" ? "#6366f1" :
-                                  item.color === "pink" ? "#ec4899" :
-                                  item.color === "rose" ? "#f43f5e" :
-                                  item.color === "amber" ? "#f59e0b" :
-                                  item.color === "orange" ? "#f97316" :
-                                  item.color === "red" ? "#ef4444" :
-                                  item.color === "green" ? "#22c55e" :
-                                  "#64748b",
-                              }}
-                            />
                             <div>
                               <div className="flex items-center gap-2">
                                 <span className="text-xs font-black text-slate-800">{item.label}</span>
@@ -1058,7 +1096,7 @@ export default function SettingsView() {
                             {/* Delete Option with active leads validation check */}
                             <button
                               type="button"
-                              onClick={() => handleDeletePipelineItem(item.id, item.label)}
+                              onClick={() => triggerDeletePipelineItem(item.id, item.label)}
                               className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-red-50 hover:text-red-600 transition-all"
                               title="Delete pipeline option"
                             >
@@ -1075,6 +1113,51 @@ export default function SettingsView() {
           )}
         </div>
       </div>
+
+      {/* Glassmorphic deletion confirmation modal */}
+      {deleteConfirm.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white border border-slate-100 rounded-[2rem] max-w-md w-full shadow-2xl p-6 md:p-8 space-y-6 transform animate-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-4 text-rose-600 bg-rose-50 p-4 rounded-2xl w-fit">
+              <span className="text-2xl font-black">⚠️</span>
+              <div>
+                <h3 className="font-extrabold text-slate-900 text-lg">Confirm Deletion</h3>
+                <p className="text-xs text-rose-600/90 font-medium">This action cannot be undone.</p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-sm text-slate-600 leading-relaxed">
+                Are you absolutely sure you want to delete <span className="font-bold text-slate-900">"{deleteConfirm.label}"</span>?
+              </p>
+              {deleteConfirm.type === "pipeline" && (
+                <p className="text-xs text-slate-400">
+                  Note: The system will verify if any active leads are currently occupying this pipeline stage before performing the deletion.
+                </p>
+              )}
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirm((prev) => ({ ...prev, isOpen: false }))}
+                className="flex-1 px-4 py-3 rounded-2xl border border-slate-200 text-slate-700 hover:text-slate-900 font-bold text-sm hover:bg-slate-50 transition-colors"
+                style={{ color: '#334155' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                className="flex-1 px-4 py-3 rounded-2xl bg-rose-600 hover:bg-rose-700 !text-white font-black text-sm shadow-lg shadow-rose-600/20 active:scale-95 transition-all"
+                style={{ color: '#ffffff' }}
+              >
+                Delete Permanently
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

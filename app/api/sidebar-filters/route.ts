@@ -119,20 +119,22 @@ export async function DELETE(req: Request) {
     });
     if (!filter) return NextResponse.json({ error: "Filter not found" }, { status: 404 });
 
-    await prisma.sidebarFilter.delete({ where: { id } });
-
-    // Create Audit Log
-    await createAuditLog({
-      organizationId: user.organizationId,
-      actorType: "USER",
-      actorId: user.id,
-      actorName: user.name || "Unknown",
-      action: "DELETE_FILTER",
-      field: "name",
-      beforeValue: filter.name,
-      note: `Permanently removed sidebar filter protocol: "${filter.name}".`,
-      source: "UI",
-    });
+    await prisma.$transaction([
+      prisma.sidebarFilter.delete({ where: { id } }),
+      prisma.auditLog.create({
+        data: {
+          organizationId: user.organizationId,
+          actorType: "USER",
+          actorId: user.id,
+          actorName: user.name || "Unknown",
+          action: "DELETE_FILTER",
+          field: "name",
+          beforeValue: filter.name,
+          note: `Permanently removed sidebar filter protocol: "${filter.name}".`,
+          source: "UI",
+        }
+      })
+    ]);
 
     return NextResponse.json({ message: "Filter deleted" });
   } catch (error: any) {

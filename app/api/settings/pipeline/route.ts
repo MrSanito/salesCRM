@@ -319,19 +319,22 @@ export async function DELETE(req: Request) {
         }, { status: 400 });
       }
 
-      await prisma.customStatus.delete({ where: { id } });
-
-      await createAuditLog({
-        organizationId,
-        actorType: "USER",
-        actorId: user.id,
-        actorName: user.name || "Unknown",
-        action: "DELETE_STATUS",
-        field: "label",
-        beforeValue: existing.label,
-        note: `Permanently deleted custom status option: "${existing.label}".`,
-        source: "UI",
-      });
+      await prisma.$transaction([
+        prisma.customStatus.delete({ where: { id } }),
+        prisma.auditLog.create({
+          data: {
+            organizationId,
+            actorType: "USER",
+            actorId: user.id,
+            actorName: user.name || "Unknown",
+            action: "DELETE_STATUS",
+            field: "label",
+            beforeValue: existing.label,
+            note: `Permanently deleted custom status option: "${existing.label}".`,
+            source: "UI",
+          }
+        })
+      ]);
 
       return NextResponse.json({ message: "Status deleted successfully" });
     } else if (type === "substatus") {
@@ -354,19 +357,22 @@ export async function DELETE(req: Request) {
         }, { status: 400 });
       }
 
-      await prisma.customSubStatus.delete({ where: { id } });
-
-      await createAuditLog({
-        organizationId,
-        actorType: "USER",
-        actorId: user.id,
-        actorName: user.name || "Unknown",
-        action: "DELETE_SUBSTATUS",
-        field: "label",
-        beforeValue: existing.label,
-        note: `Permanently deleted custom sub-status option: "${existing.label}".`,
-        source: "UI",
-      });
+      await prisma.$transaction([
+        prisma.customSubStatus.delete({ where: { id } }),
+        prisma.auditLog.create({
+          data: {
+            organizationId,
+            actorType: "USER",
+            actorId: user.id,
+            actorName: user.name || "Unknown",
+            action: "DELETE_SUBSTATUS",
+            field: "label",
+            beforeValue: existing.label,
+            note: `Permanently deleted custom sub-status option: "${existing.label}".`,
+            source: "UI",
+          }
+        })
+      ]);
 
       return NextResponse.json({ message: "Sub-status deleted successfully" });
     } else {
