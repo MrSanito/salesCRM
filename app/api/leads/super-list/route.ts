@@ -38,12 +38,24 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
     const view = searchParams.get("view");
 
     // Role-based access
-    if (view === "subordinates" && (isOrgAdmin || isSuperAdmin)) {
-      baseWhere.ownerId = { not: user.id };
-    } else if (!isSuperAdmin) {
-      baseWhere.ownerId = user.id;
+    if (view === "subordinates") {
+      if (isSuperAdmin || isOrgAdmin) {
+        baseWhere.ownerId = { not: user.id };
+      } else if (user.role === "MANAGER") {
+        const subordinates = await prisma.user.findMany({
+          where: { managerId: user.id },
+          select: { id: true }
+        });
+        const subIds = subordinates.map(s => s.id);
+        baseWhere.ownerId = { in: subIds };
+      } else {
+        baseWhere.ownerId = "none";
+      }
     } else if (searchParams.get("ownerId")) {
       baseWhere.ownerId = searchParams.get("ownerId");
+    } else {
+      // Default: My Leads
+      baseWhere.ownerId = user.id;
     }
 
     // Sidebar Filter Logic
