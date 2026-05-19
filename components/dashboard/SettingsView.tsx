@@ -1,6 +1,6 @@
 "use client"
 import { useState, useEffect } from "react";
-import { User, Mail, Shield, Save, ArrowLeft, Camera, Fingerprint, Plus, Trash2, LayoutPanelLeft, Filter, X } from "lucide-react";
+import { User, Mail, Shield, Save, ArrowLeft, Camera, Fingerprint, Plus, Trash2, LayoutPanelLeft, Filter, X, Settings2, Activity, ArrowUp, ArrowDown, Layers } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthContext";
 import { useDashboard } from "@/components/dashboard/DashboardContext";
@@ -92,6 +92,31 @@ export default function SettingsView() {
   const [sources, setSources] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
+  // Pipeline customization state
+  const [pipelineStatuses, setPipelineStatuses] = useState<any[]>([]);
+  const [pipelineSubStatuses, setPipelineSubStatuses] = useState<any[]>([]);
+  const [pipelineLoading, setPipelineLoading] = useState(false);
+  const [activePipelineTab, setActivePipelineTab] = useState<'status' | 'substatus'>('status');
+  const [showAddPipelineForm, setShowAddPipelineForm] = useState(false);
+  const [newPipelineItem, setNewPipelineItem] = useState({ value: "", label: "", color: "blue" });
+  const [pipelineSaving, setPipelineSaving] = useState(false);
+
+  const fetchPipelineData = async () => {
+    setPipelineLoading(true);
+    try {
+      const res = await fetch("/api/settings/pipeline");
+      if (res.ok) {
+        const data = await res.json();
+        setPipelineStatuses(data.statuses || []);
+        setPipelineSubStatuses(data.subStatuses || []);
+      }
+    } catch (err) {
+      console.error("Failed to load custom statuses", err);
+    } finally {
+      setPipelineLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (user) {
       setName(user.name);
@@ -110,6 +135,8 @@ export default function SettingsView() {
         })
         .catch(console.error)
         .finally(() => setFiltersLoading(false));
+
+      fetchPipelineData();
 
       // Fetch unique industries
       fetch("/api/leads/industries")
@@ -218,6 +245,121 @@ export default function SettingsView() {
       }
     } catch {
       toast.error("Failed to delete filter due to network or server issues");
+    }
+  };
+
+  const handleAddPipelineItem = async () => {
+    if (!newPipelineItem.value.trim() || !newPipelineItem.label.trim()) {
+      toast.error("Both internal code and display label are required");
+      return;
+    }
+    setPipelineSaving(true);
+    try {
+      const res = await fetch("/api/settings/pipeline", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: activePipelineTab,
+          value: newPipelineItem.value.trim().toUpperCase(),
+          label: newPipelineItem.label.trim(),
+          color: newPipelineItem.color,
+        }),
+      });
+
+      if (res.ok) {
+        const created = await res.json();
+        if (activePipelineTab === "status") {
+          setPipelineStatuses((prev) => [...prev, created]);
+        } else {
+          setPipelineSubStatuses((prev) => [...prev, created]);
+        }
+        setNewPipelineItem({ value: "", label: "", color: "blue" });
+        setShowAddPipelineForm(false);
+        toast.success(`"${created.label}" added to pipeline configuration`);
+        triggerRefresh();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to add pipeline option");
+      }
+    } catch {
+      toast.error("Network or server synchronization error");
+    } finally {
+      setPipelineSaving(false);
+    }
+  };
+
+  const handleTogglePipelineItem = async (id: string, isEnabled: boolean, currentLabel: string) => {
+    try {
+      const res = await fetch("/api/settings/pipeline", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: activePipelineTab,
+          id,
+          isEnabled,
+        }),
+      });
+
+      if (res.ok) {
+        toast.success(`"${currentLabel}" ${isEnabled ? "enabled" : "disabled"}`);
+        fetchPipelineData();
+        triggerRefresh();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to update option status");
+      }
+    } catch {
+      toast.error("Failed to sync option state with server");
+    }
+  };
+
+  const handleReorderPipelineItem = async (index: number, direction: 'up' | 'down') => {
+    const list = activePipelineTab === "status" ? [...pipelineStatuses] : [...pipelineSubStatuses];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    
+    if (targetIndex < 0 || targetIndex >= list.length) return;
+
+    const tempIndex = list[index].orderIndex;
+    list[index].orderIndex = list[targetIndex].orderIndex;
+    list[targetIndex].orderIndex = tempIndex;
+
+    try {
+      await Promise.all([
+        fetch("/api/settings/pipeline", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: activePipelineTab, id: list[index].id, orderIndex: list[index].orderIndex }),
+        }),
+        fetch("/api/settings/pipeline", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: activePipelineTab, id: list[targetIndex].id, orderIndex: list[targetIndex].orderIndex }),
+        })
+      ]);
+      toast.success("Order index updated");
+      fetchPipelineData();
+      triggerRefresh();
+    } catch {
+      toast.error("Failed to save new order priority");
+    }
+  };
+
+  const handleDeletePipelineItem = async (id: string, currentLabel: string) => {
+    try {
+      const res = await fetch(`/api/settings/pipeline?type=${activePipelineTab}&id=${id}`, {
+        method: "DELETE",
+      });
+
+      if (res.ok) {
+        toast.success(`"${currentLabel}" permanently deleted`);
+        fetchPipelineData();
+        triggerRefresh();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to delete pipeline option");
+      }
+    } catch {
+      toast.error("Failed to delete option due to network error");
     }
   };
 
@@ -657,6 +799,275 @@ export default function SettingsView() {
                         </button>
                       </div>
                     ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ────── Dynamic Lead Pipeline Customization (Admins Only) ────── */}
+          {user && (user.role === "CEO" || user.role === "ORG_ADMIN") && (
+            <div id="pipeline-customization" className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/50 overflow-hidden scroll-mt-6">
+              <div className="p-6 sm:p-10 border-b border-slate-50 bg-slate-50/30">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                  <div>
+                    <h3 className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-3">
+                      <Layers size={14} className="text-indigo-600" /> Pipeline Customization
+                    </h3>
+                    <p className="text-[10px] text-slate-400 mt-1 font-bold">Configure active lead statuses, sub-statuses, custom labels, and priority ordering.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAddPipelineForm(!showAddPipelineForm);
+                      setNewPipelineItem({ value: "", label: "", color: "blue" });
+                    }}
+                    className={`w-full sm:w-auto flex items-center justify-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-5 py-2.5 rounded-xl transition-all active:scale-95 ${
+                      showAddPipelineForm
+                        ? "bg-slate-100 text-slate-600 border border-slate-200"
+                        : "bg-indigo-600 text-white shadow-lg shadow-indigo-100 hover:bg-indigo-700"
+                    }`}
+                  >
+                    {showAddPipelineForm ? (
+                      <>
+                        <X size={12} /> Cancel
+                      </>
+                    ) : (
+                      <>
+                        <Plus size={12} /> Add Custom Option
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Tab Switcher */}
+                <div className="flex bg-slate-100/80 p-1 rounded-xl mb-6 max-w-xs border border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActivePipelineTab("status");
+                      setShowAddPipelineForm(false);
+                    }}
+                    className={`flex-1 text-center py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${
+                      activePipelineTab === "status"
+                        ? "bg-white text-indigo-600 shadow-sm"
+                        : "text-slate-500 hover:text-slate-800"
+                    }`}
+                  >
+                    Primary Statuses
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActivePipelineTab("substatus");
+                      setShowAddPipelineForm(false);
+                    }}
+                    className={`flex-1 text-center py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${
+                      activePipelineTab === "substatus"
+                        ? "bg-white text-indigo-600 shadow-sm"
+                        : "text-slate-500 hover:text-slate-800"
+                    }`}
+                  >
+                    Sub-statuses
+                  </button>
+                </div>
+
+                {/* Add Form Accordion */}
+                {showAddPipelineForm && (
+                  <div className="mb-6 p-6 bg-slate-50/50 rounded-3xl border border-slate-100 space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
+                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                      New Custom {activePipelineTab === "status" ? "Primary Status" : "Sub-status"}
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2 px-1">
+                          System Value Code
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. MEETING_SET, COLD, etc."
+                          value={newPipelineItem.value}
+                          onChange={(e) =>
+                            setNewPipelineItem((prev) => ({
+                              ...prev,
+                              value: e.target.value.toUpperCase().replace(/\s+/g, "_"),
+                            }))
+                          }
+                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 transition-all placeholder:text-slate-300"
+                        />
+                        <p className="text-[8px] text-slate-400 px-1 mt-1">Uppercase code stored in DB (e.g. WON, CHATTING)</p>
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2 px-1">
+                          Friendly Display Label
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Meeting Set, Warm Lead"
+                          value={newPipelineItem.label}
+                          onChange={(e) =>
+                            setNewPipelineItem((prev) => ({
+                              ...prev,
+                              label: e.target.value,
+                            }))
+                          }
+                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 transition-all placeholder:text-slate-300"
+                        />
+                        <p className="text-[8px] text-slate-400 px-1 mt-1">Custom name visible to sales team</p>
+                      </div>
+                    </div>
+
+                    {/* Color selection */}
+                    <div>
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-3 px-1">
+                        Accent Color Theme
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        {["blue", "cyan", "purple", "indigo", "pink", "rose", "amber", "orange", "red", "green", "slate"].map((c) => (
+                          <button
+                            key={c}
+                            type="button"
+                            onClick={() => setNewPipelineItem((prev) => ({ ...prev, color: c }))}
+                            className={`w-6 h-6 rounded-full border-2 transition-all flex items-center justify-center ${
+                              newPipelineItem.color === c ? "border-slate-800 scale-110 shadow" : "border-transparent"
+                            }`}
+                            style={{
+                              backgroundColor:
+                                c === "blue" ? "#3b82f6" :
+                                c === "cyan" ? "#06b6d4" :
+                                c === "purple" ? "#a855f7" :
+                                c === "indigo" ? "#6366f1" :
+                                c === "pink" ? "#ec4899" :
+                                c === "rose" ? "#f43f5e" :
+                                c === "amber" ? "#f59e0b" :
+                                c === "orange" ? "#f97316" :
+                                c === "red" ? "#ef4444" :
+                                c === "green" ? "#22c55e" :
+                                "#64748b",
+                            }}
+                          >
+                            {newPipelineItem.color === c && (
+                              <div className="w-1.5 h-1.5 rounded-full bg-white shadow" />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="pt-2 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={handleAddPipelineItem}
+                        disabled={pipelineSaving}
+                        className="bg-slate-900 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all disabled:opacity-50"
+                      >
+                        {pipelineSaving ? "Creating..." : `Create Custom ${activePipelineTab === "status" ? "Status" : "Sub-status"}`}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Pipeline items list */}
+                {pipelineLoading ? (
+                  <div className="flex flex-col items-center justify-center py-10 gap-3">
+                    <div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Loading configuration from server...</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {(activePipelineTab === "status" ? pipelineStatuses : pipelineSubStatuses).length === 0 ? (
+                      <div className="text-center py-10 bg-slate-50/50 rounded-3xl border border-dashed border-slate-100">
+                        <Activity className="mx-auto text-slate-300 mb-2" size={24} />
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No custom configurations registered</p>
+                      </div>
+                    ) : (
+                      (activePipelineTab === "status" ? pipelineStatuses : pipelineSubStatuses).map((item, index, arr) => (
+                        <div
+                          key={item.id}
+                          className="flex items-center justify-between p-4 rounded-2xl bg-white border border-slate-100 hover:border-slate-200 transition-all hover:shadow-md hover:shadow-slate-100/50"
+                        >
+                          <div className="flex items-center gap-4">
+                            {/* Color left indicator */}
+                            <div
+                              className="w-1.5 h-8 rounded-full"
+                              style={{
+                                backgroundColor:
+                                  item.color === "blue" ? "#3b82f6" :
+                                  item.color === "cyan" ? "#06b6d4" :
+                                  item.color === "purple" ? "#a855f7" :
+                                  item.color === "indigo" ? "#6366f1" :
+                                  item.color === "pink" ? "#ec4899" :
+                                  item.color === "rose" ? "#f43f5e" :
+                                  item.color === "amber" ? "#f59e0b" :
+                                  item.color === "orange" ? "#f97316" :
+                                  item.color === "red" ? "#ef4444" :
+                                  item.color === "green" ? "#22c55e" :
+                                  "#64748b",
+                              }}
+                            />
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-black text-slate-800">{item.label}</span>
+                                <span className="text-[8px] font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded uppercase">
+                                  {item.value}
+                                </span>
+                              </div>
+                              <p className="text-[8px] text-slate-400 font-bold mt-0.5 uppercase tracking-wider">
+                                Priority Index: {item.orderIndex}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            {/* Priority ordering arrows */}
+                            <div className="flex items-center bg-slate-50 rounded-lg p-0.5 border border-slate-100">
+                              <button
+                                type="button"
+                                disabled={index === 0}
+                                onClick={() => handleReorderPipelineItem(index, "up")}
+                                className="p-1 text-slate-400 hover:text-indigo-600 disabled:opacity-30 disabled:hover:text-slate-400"
+                                title="Move Priority Up"
+                              >
+                                <ArrowUp size={12} />
+                              </button>
+                              <button
+                                type="button"
+                                disabled={index === arr.length - 1}
+                                onClick={() => handleReorderPipelineItem(index, "down")}
+                                className="p-1 text-slate-400 hover:text-indigo-600 disabled:opacity-30 disabled:hover:text-slate-400"
+                                title="Move Priority Down"
+                              >
+                                <ArrowDown size={12} />
+                              </button>
+                            </div>
+
+                            {/* Visibility toggle status */}
+                            <button
+                              type="button"
+                              onClick={() => handleTogglePipelineItem(item.id, !item.isEnabled, item.label)}
+                              className={`text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border transition-all ${
+                                item.isEnabled
+                                  ? "bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100"
+                                  : "bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-100"
+                              }`}
+                            >
+                              {item.isEnabled ? "Active" : "Disabled"}
+                            </button>
+
+                            {/* Delete Option with active leads validation check */}
+                            <button
+                              type="button"
+                              onClick={() => handleDeletePipelineItem(item.id, item.label)}
+                              className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-red-50 hover:text-red-600 transition-all"
+                              title="Delete pipeline option"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
                 )}
               </div>

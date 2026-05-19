@@ -30,6 +30,8 @@ model Organization {
   teams             Team[]
   users             User[]
   proposals         Proposal[]
+  customStatuses    CustomStatus[]
+  customSubStatuses CustomSubStatus[]
 
   @@map("organizations")
 }
@@ -645,4 +647,40 @@ model Proposal {
   @@index([leadId])
   @@index([organizationId])
   @@map("proposals")
+}
+
+model CustomStatus {
+  id             String       @id @default(uuid())
+  organizationId String
+  value          String
+  label          String
+  color          String       @default("blue")
+  isEnabled      Boolean      @default(true)
+  orderIndex     Int          @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, value])
+  @@index([organizationId])
+  @@map("custom_statuses")
+}
+
+model CustomSubStatus {
+  id             String       @id @default(uuid())
+  organizationId String
+  value          String
+  label          String
+  color          String       @default("slate")
+  isEnabled      Boolean      @default(true)
+  orderIndex     Int          @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, value])
+  @@index([organizationId])
+  @@map("custom_sub_statuses")
 }
