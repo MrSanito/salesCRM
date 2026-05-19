@@ -113,6 +113,7 @@ export default function LeadsTable({
 
   useEffect(() => {
     setSelectedLeads(new Set());
+    setColumnFilters({});
     setCurrentPage(1);
   }, [sidebarFilter?.id, activeNav, view]);
 

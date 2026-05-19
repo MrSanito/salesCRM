@@ -2,6 +2,8 @@
 import React from "react";
 import { Filter } from "lucide-react";
 import { DbLead, SortConfig, STAGE_LABEL, SUB_STATUS_LABEL } from "./types";
+import { useAuth } from "@/components/auth/AuthContext";
+import { useSearchParams } from "next/navigation";
 
 interface TableHeaderProps {
   leads: DbLead[];
@@ -40,6 +42,9 @@ export default function TableHeader({
   uniqueDates,
   distinctFilters,
 }: TableHeaderProps) {
+  const { user } = useAuth();
+  const searchParams = useSearchParams();
+  const view = searchParams.get("view");
   
   const handleSort = (key: keyof DbLead | 'lead') => {
     setSortConfig(p => ({
@@ -319,7 +324,12 @@ export default function TableHeader({
               </button>
               <FilterDropdown column="owner">
                 <div className="max-h-44 overflow-y-auto">
-                  {((distinctFilters?.owners && distinctFilters.owners.length > 0) ? distinctFilters.owners : Array.from(new Set(leads.map(l => l.owner?.name).filter(Boolean))).sort()).map(v => (
+                  {((distinctFilters?.owners && distinctFilters.owners.length > 0) ? distinctFilters.owners : Array.from(new Set(leads.map(l => l.owner?.name).filter(Boolean))).sort())
+                    .filter(name => {
+                      if (view === "subordinates" && user && name === user.name) return false;
+                      return true;
+                    })
+                    .map(v => (
                     <label key={v as string} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer">
                       <input
                         type="checkbox"

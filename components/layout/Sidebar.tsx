@@ -39,7 +39,7 @@ const SIDEBAR_ITEMS: SidebarGroup[] = [
       { icon: Phone, label: "Follow Ups", href: "/dashboard/follow-ups", badgeColor: "bg-orange-500" },
       { icon: CalendarCheck, label: "Meeting Set", href: "/dashboard/meetings" },
       { icon: XCircle, label: "Closed", href: "/dashboard/closed" },
-      { icon: Users, label: "Subordinate Leads", href: "/dashboard?view=subordinates", roles: ["ORG_ADMIN", "CEO"] },
+      { icon: Users, label: "Subordinate Leads", href: "/dashboard?view=subordinates", roles: ["ORG_ADMIN", "CEO", "MANAGER"] },
     ],
   },
   {
