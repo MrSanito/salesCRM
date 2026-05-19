@@ -36,18 +36,25 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
     const isSuperAdmin = user.email === "sb.solobuild@gmail.com";
     const isOrgAdmin = user.role === "ORG_ADMIN" || user.role === "CEO";
     const view = searchParams.get("view");
+    const filterOwner = searchParams.get("filter_owner");
 
     // Role-based access
     if (view === "subordinates") {
       if (isSuperAdmin || isOrgAdmin) {
-        baseWhere.ownerId = { not: user.id };
+        if (!filterOwner) {
+          baseWhere.ownerId = { not: user.id };
+        }
       } else if (user.role === "MANAGER") {
         const subordinates = await prisma.user.findMany({
           where: { managerId: user.id },
           select: { id: true }
         });
         const subIds = subordinates.map(s => s.id);
-        baseWhere.ownerId = { in: subIds };
+        if (filterOwner) {
+          baseWhere.ownerId = { in: [...subIds, user.id] };
+        } else {
+          baseWhere.ownerId = { in: subIds };
+        }
       } else {
         baseWhere.ownerId = "none";
       }
