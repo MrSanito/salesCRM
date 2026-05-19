@@ -23,6 +23,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     const { id } = await params;
     const isSuperAdmin = user.email === "sb.solobuild@gmail.com";
+    const isOrgAdmin = user.role === "ORG_ADMIN" || user.role === "CEO" || user.role === "MANAGER";
 
     // Fetch Lead, Notes, and Team in parallel to minimize latency
     const [lead, team] = await Promise.all([
@@ -30,7 +31,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         where: {
           id,
           organizationId: user.organizationId,
-          ...(!isSuperAdmin ? { ownerId: user.id } : {}),
+          ...(!(isSuperAdmin || isOrgAdmin) ? { ownerId: user.id } : {}),
         },
         include: {
           owner: { select: { name: true, initials: true } },
@@ -98,6 +99,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const { id } = await params;
     const data = await req.json();
     const isSuperAdmin = user.email === "sb.solobuild@gmail.com";
+    const isOrgAdmin = user.role === "ORG_ADMIN" || user.role === "CEO" || user.role === "MANAGER";
 
     // Check if lead exists and belongs to org
     const existingLead = await prisma.lead.findFirst({
@@ -106,13 +108,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     if (!existingLead) return NextResponse.json({ error: "Lead not found" }, { status: 404 });
 
-    // Authorization: Workers (non-super-admins) can only update stage/value of their own leads
-    if (!isSuperAdmin && existingLead.ownerId !== user.id) {
+    // Authorization: Standard workers (non-admin/non-manager/non-super-admin) can only update stage/value of their own leads
+    if (!isSuperAdmin && !isOrgAdmin && existingLead.ownerId !== user.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Role-based restrictions: Only super-admin can change owner
-    if (data.ownerId && !isSuperAdmin) {
+    // Role-based restrictions: Only super-admin or org-admin/CEO/manager can change owner
+    if (data.ownerId && !isSuperAdmin && !isOrgAdmin) {
       delete data.ownerId;
     }
 
