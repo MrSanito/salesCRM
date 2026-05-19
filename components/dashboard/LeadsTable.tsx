@@ -1,6 +1,6 @@
 "use client"
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { XCircle } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -50,6 +50,8 @@ export default function LeadsTable({
   minWidthClass
 }: LeadsTableProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const view = searchParams.get("view");
   const [leads, setLeads] = useState<DbLead[]>(initialData?.leads || []);
   const [totalCount, setTotalCount] = useState(initialData?.pagination?.totalCount || 0);
   const [loading, setLoading] = useState(!initialData);
@@ -75,7 +77,8 @@ export default function LeadsTable({
     sources: string[];
     cities: string[];
     states: string[];
-  }>({ industries: [], sources: [], cities: [], states: [] });
+    owners: string[];
+  }>({ industries: [], sources: [], cities: [], states: [], owners: [] });
 
   const handleExportExcel = async (dataToExport: DbLead[], filename: string) => {
     try {
@@ -111,7 +114,7 @@ export default function LeadsTable({
   useEffect(() => {
     setSelectedLeads(new Set());
     setCurrentPage(1);
-  }, [sidebarFilter?.id, activeNav]);
+  }, [sidebarFilter?.id, activeNav, view]);
 
   const handleDeleteLead = async (id: string) => {
     setIsDeleting(true);
@@ -167,6 +170,8 @@ export default function LeadsTable({
           result = result.filter(l => l.industry && values.has(l.industry));
         } else if (key === 'source') {
           result = result.filter(l => l.source && values.has(l.source.name));
+        } else if (key === 'owner') {
+          result = result.filter(l => l.owner && values.has(l.owner.name));
         }
       }
     });
@@ -194,6 +199,7 @@ export default function LeadsTable({
       Object.entries(columnFilters).forEach(([key, values]) => {
         if (values.size > 0) params.set(`filter_${key}`, Array.from(values).join(","));
       });
+      if (view) params.set("view", view);
       if (currentPage === 1) params.set("includeStats", "true");
       const res = await fetch(`/api/leads/super-list?${params.toString()}`);
       const data = await res.json();
@@ -207,7 +213,7 @@ export default function LeadsTable({
       setLoading(false);
       setIsRefreshing(false);
     }
-  }, [currentPage, pageSize, debouncedSearchQuery, sortConfig, columnFilters, onStatsUpdate, sidebarFilter?.id]);
+  }, [currentPage, pageSize, debouncedSearchQuery, sortConfig, columnFilters, onStatsUpdate, sidebarFilter?.id, view]);
 
   useEffect(() => { fetchLeads(); }, [fetchLeads, refreshKey, activeNav]);
 

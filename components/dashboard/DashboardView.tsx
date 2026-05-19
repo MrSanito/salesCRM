@@ -6,6 +6,7 @@ import LeadsTable from "@/components/dashboard/LeadsTable";
 import { useAuth } from "@/components/auth/AuthContext";
 import { UserPlus, UserCircle2, Plus, Bell } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import type { SidebarFilterConfig } from "@/app/dashboard/page";
 
 interface DashboardViewProps {
@@ -19,12 +20,21 @@ interface DashboardViewProps {
 
 export default function DashboardView({ onAddLead, onAddEmployee, onLeadClick, activeNav, refreshKey = 0, sidebarFilter }: DashboardViewProps) {
   const { user } = useAuth();
+  const searchParams = useSearchParams();
+  const view = searchParams.get("view");
   const [dashboardStats, setDashboardStats] = useState<any>(null);
   const [fullData, setFullData] = useState<any>(null);
 
   const fetchDashboardData = useCallback(async () => {
     try {
-      const res = await fetch("/api/leads/super-list?page=1&pageSize=50&includeStats=true");
+      const params = new URLSearchParams();
+      params.set("page", "1");
+      params.set("pageSize", "50");
+      params.set("includeStats", "true");
+      if (view) {
+        params.set("view", view);
+      }
+      const res = await fetch(`/api/leads/super-list?${params.toString()}`);
       const data = await res.json();
       setFullData(data);
       if (data.stats) {
@@ -33,7 +43,7 @@ export default function DashboardView({ onAddLead, onAddEmployee, onLeadClick, a
     } catch (err) {
       console.error("Failed to fetch dashboard data:", err);
     }
-  }, []);
+  }, [view]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -48,10 +58,16 @@ export default function DashboardView({ onAddLead, onAddEmployee, onLeadClick, a
              <UserCircle2 size={20} className="sm:w-6 sm:h-6" />
           </div>
           <div className="min-w-0">
-            <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-0.5 truncate">Strategic Dashboard</p>
+            <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-0.5 truncate">
+              {view === "subordinates" ? "Subordinate Protocol Overview" : "Strategic Dashboard"}
+            </p>
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
               <h1 className="text-[15px] sm:text-[17px] text-slate-600 font-medium truncate">
-                Welcome back, <span className="font-bold text-slate-900">{user?.name || "Arjun Mehta"}</span> 👋
+                {view === "subordinates" ? (
+                  <>Viewing <span className="font-extrabold text-slate-900">All Subordinates' Leads</span></>
+                ) : (
+                  <>Welcome back, <span className="font-bold text-slate-900">{user?.name || "Arjun Mehta"}</span> 👋</>
+                )}
               </h1>
               
               <div className="flex items-center gap-2">

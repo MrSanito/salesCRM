@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
+import { withRouteTelemetry } from "@/lib/metrics";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-me";
 
@@ -20,13 +21,13 @@ async function getUser() {
   }
 }
 
-export async function GET() {
+export const GET = withRouteTelemetry(async function GET(req: Request) {
   try {
     const user = await getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     // Single query to get all lead-based distinct values instead of 4 separate queries
-    const [rawLeadFields, rawSources] = await Promise.all([
+    const [rawLeadFields, rawSources, rawUsers] = await Promise.all([
       prisma.lead.findMany({
         where: { organizationId: user.organizationId },
         select: { industry: true, city: true, state: true },
@@ -35,6 +36,10 @@ export async function GET() {
         where: { organizationId: user.organizationId },
         select: { name: true },
         distinct: ['name'],
+      }),
+      prisma.user.findMany({
+        where: { organizationId: user.organizationId },
+        select: { name: true },
       }),
     ]);
 
@@ -54,11 +59,14 @@ export async function GET() {
       .filter((name): name is string => !!name && name.trim() !== "")
       .sort();
 
+    const owners = Array.from(new Set(rawUsers.map(u => u.name).filter(Boolean))).sort();
+
     return NextResponse.json({
       industries: Array.from(industrySet).sort(),
       sources,
       cities: Array.from(citySet).sort(),
       states: Array.from(stateSet).sort(),
+      owners,
     }, {
       headers: {
         'Cache-Control': 'private, max-age=300, stale-while-revalidate=60'
@@ -67,4 +75,4 @@ export async function GET() {
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-}
+});

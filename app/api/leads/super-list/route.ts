@@ -2,11 +2,12 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
+import { withRouteTelemetry } from "@/lib/metrics";
 
 // UNIQUE_V12345
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-me";
 
-export async function GET(req: Request) {
+export const GET = withRouteTelemetry(async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get("page") || "1");
@@ -33,9 +34,13 @@ export async function GET(req: Request) {
     };
 
     const isSuperAdmin = user.email === "sb.solobuild@gmail.com";
+    const isOrgAdmin = user.role === "ORG_ADMIN" || user.role === "CEO";
+    const view = searchParams.get("view");
 
     // Role-based access
-    if (!isSuperAdmin) {
+    if (view === "subordinates" && (isOrgAdmin || isSuperAdmin)) {
+      baseWhere.ownerId = { not: user.id };
+    } else if (!isSuperAdmin) {
       baseWhere.ownerId = user.id;
     } else if (searchParams.get("ownerId")) {
       baseWhere.ownerId = searchParams.get("ownerId");
@@ -88,6 +93,8 @@ export async function GET(req: Request) {
           queryWhere.industry = { in: values };
         } else if (field === "source") {
           queryWhere.source = { name: { in: values } };
+        } else if (field === "owner") {
+          queryWhere.owner = { name: { in: values } };
         } else if (field === "followup") {
           const now = new Date();
           if (values.includes("OVERDUE")) {
@@ -303,6 +310,6 @@ export async function GET(req: Request) {
     console.error("Super List API Error:", error);
     return NextResponse.json({ error: "Failed to fetch dashboard data" }, { status: 500 });
   }
-}
+});
 
 

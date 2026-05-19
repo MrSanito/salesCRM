@@ -21,6 +21,7 @@ interface TableHeaderProps {
     sources: string[];
     cities: string[];
     states: string[];
+    owners?: string[];
   };
 }
 
@@ -308,7 +309,37 @@ export default function TableHeader({
 
         {/* Owner Column */}
         <th className="text-left px-2 py-2">
-          <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Owner</span>
+          <div className="flex items-center gap-1">
+            <div className="relative inline-block">
+              <button
+                onClick={() => setActiveColumnFilter(activeColumnFilter === 'owner' ? null : 'owner')}
+                className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-0.5 transition-colors ${columnFilters['owner']?.size ? "text-blue-600" : "text-slate-500 hover:text-slate-800"}`}
+              >
+                Owner <Filter size={9} />
+              </button>
+              <FilterDropdown column="owner">
+                <div className="max-h-44 overflow-y-auto">
+                  {((distinctFilters?.owners && distinctFilters.owners.length > 0) ? distinctFilters.owners : Array.from(new Set(leads.map(l => l.owner?.name).filter(Boolean))).sort()).map(v => (
+                    <label key={v as string} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={columnFilters['owner']?.has(v as string)}
+                        onChange={() => toggleColumnFilter('owner', v as string)}
+                        className="appearance-none w-3 h-3 rounded border-2 border-slate-300 bg-white checked:bg-blue-600 checked:border-blue-600 transition-all cursor-pointer relative checked:after:content-['✓'] checked:after:absolute checked:after:text-white checked:after:text-[8px] checked:after:font-black checked:after:left-[0.5px] checked:after:top-[-2px]"
+                      />
+                      <span className="text-[11px] font-semibold text-slate-700 truncate">{v as string}</span>
+                    </label>
+                  ))}
+                </div>
+              </FilterDropdown>
+            </div>
+            <button
+              onClick={() => handleSort('owner' as any)}
+              className={`p-1 rounded hover:bg-slate-100 transition-colors flex-shrink-0 ${sortConfig?.key === ('owner' as any) ? 'text-blue-600 bg-blue-50' : 'text-slate-400'}`}
+            >
+              {sortConfig?.key === ('owner' as any) ? (sortConfig?.direction === 'asc' ? "↑" : "↓") : "↕"}
+            </button>
+          </div>
         </th>
 
         {/* Created On Column */}

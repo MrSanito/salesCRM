@@ -39,6 +39,7 @@ const SIDEBAR_ITEMS: SidebarGroup[] = [
       { icon: Phone, label: "Follow Ups", href: "/dashboard/follow-ups", badgeColor: "bg-orange-500" },
       { icon: CalendarCheck, label: "Meeting Set", href: "/dashboard/meetings" },
       { icon: XCircle, label: "Closed", href: "/dashboard/closed" },
+      { icon: Users, label: "Subordinate Leads", href: "/dashboard?view=subordinates", roles: ["ORG_ADMIN", "CEO"] },
     ],
   },
   {
@@ -220,7 +221,13 @@ export default function Sidebar({
                 {group.items.map((item) => {
                   const Icon = item.icon;
                   const itemSfId = item.href.includes("?sf=") ? item.href.split("?sf=")[1] : null;
-                  const isActive = itemSfId ? sfId === itemSfId : activeNav === item.label;
+                  const itemView = item.href.includes("?view=") ? item.href.split("?view=")[1] : null;
+                  const currentView = searchParams.get("view");
+                  const isActive = itemSfId 
+                    ? sfId === itemSfId 
+                    : itemView 
+                      ? currentView === itemView 
+                      : (!currentView && activeNav === item.label);
                   return (
                     <li key={item.href + item.label}>
                       <Link
