@@ -30,6 +30,7 @@ export const getAuthUrl = () => {
 export const syncToGoogleCalendar = async (userId: string, eventData: {
   summary: string;
   description: string;
+  location?: string;
   start: string;
   end: string;
 }) => {
@@ -57,6 +58,7 @@ export const syncToGoogleCalendar = async (userId: string, eventData: {
       requestBody: {
         summary: eventData.summary,
         description: eventData.description,
+        location: eventData.location,
         start: { dateTime: eventData.start },
         end: { dateTime: eventData.end },
         reminders: {

@@ -35,3 +35,47 @@ export async function GET() {
     return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
   }
 }
+
+export async function POST(req: Request) {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get("token")?.value;
+
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    let decoded: any;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch {
+      return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+    }
+
+    const userId = decoded.userId;
+    const body = await req.json();
+    const { summary, description, location, start, end } = body;
+
+    if (!summary || !start || !end) {
+      return NextResponse.json({ error: "summary, start, and end dates are required" }, { status: 400 });
+    }
+
+    const { syncToGoogleCalendar } = await import('@/lib/google');
+    const result = await syncToGoogleCalendar(userId, {
+      summary,
+      description: description || "",
+      location: location || "",
+      start,
+      end,
+    });
+
+    if (!result) {
+      return NextResponse.json({ error: "Failed to create Google Calendar event. Ensure calendar sync is enabled." }, { status: 400 });
+    }
+
+    return NextResponse.json({ success: true, event: result }, { status: 201 });
+  } catch (error: any) {
+    console.error("Calendar POST API error:", error);
+    return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
+  }
+}
