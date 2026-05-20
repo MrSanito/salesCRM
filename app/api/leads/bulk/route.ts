@@ -55,30 +55,32 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: "One or more leads not found or unauthorized" }, { status: 403 });
     }
 
-    // Perform bulk update
-    await prisma.lead.updateMany({
-      where: {
-        id: { in: ids },
-        organizationId: user.organizationId
-      },
-      data: updateData
+    await prisma.$transaction(async (tx) => {
+      // Perform bulk update
+      await tx.lead.updateMany({
+        where: {
+          id: { in: ids },
+          organizationId: user.organizationId
+        },
+        data: updateData
+      });
+
+      // Create bulk audit logs
+      const auditLogsData = leads.map(lead => ({
+        organizationId: user.organizationId,
+        leadId: lead.id,
+        actorType: "USER" as any,
+        actorId: user.id,
+        actorName: user.name || "Unknown User",
+        action: "UPDATE",
+        beforeValue: JSON.stringify(lead),
+        afterValue: JSON.stringify({ ...lead, ...updateData }),
+        note: `Bulk update performed by ${user.name}. Fields updated: ${Object.keys(updateData).join(", ")}.`,
+        source: "UI" as any,
+      }));
+
+      await tx.auditLog.createMany({ data: auditLogsData, skipDuplicates: true });
     });
-
-    // Create bulk audit logs
-    const auditLogs = leads.map(lead => ({
-      organizationId: user.organizationId,
-      leadId: lead.id,
-      actorType: "USER" as any,
-      actorId: user.id,
-      actorName: user.name || "Unknown User",
-      action: "UPDATE",
-      beforeValue: lead,
-      afterValue: { ...lead, ...updateData },
-      note: `Bulk update performed by ${user.name}. Fields updated: ${Object.keys(updateData).join(", ")}.`,
-      source: "UI" as any,
-    }));
-
-    await createBulkAuditLogs(auditLogs);
 
     return NextResponse.json({ message: `Successfully updated ${ids.length} leads` });
   } catch (error: any) {
@@ -124,27 +126,29 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ error: "One or more leads not found or unauthorized" }, { status: 403 });
     }
 
-    // Create bulk audit logs for deletion BEFORE deleting
-    const auditLogs = leads.map(lead => ({
-      organizationId: user.organizationId,
-      leadId: lead.id,
-      actorType: "USER" as any,
-      actorId: user.id,
-      actorName: user.name || "Unknown User",
-      action: "DELETE",
-      beforeValue: lead,
-      note: `Lead ${lead.contactName} from ${lead.company} deleted in bulk operation by ${user.name}.`,
-      source: "UI" as any,
-    }));
+    await prisma.$transaction(async (tx) => {
+      // Create bulk audit logs for deletion BEFORE deleting
+      const auditLogsData = leads.map(lead => ({
+        organizationId: user.organizationId,
+        leadId: lead.id,
+        actorType: "USER" as any,
+        actorId: user.id,
+        actorName: user.name || "Unknown User",
+        action: "DELETE",
+        beforeValue: JSON.stringify(lead),
+        note: `Lead ${lead.contactName} from ${lead.company} deleted in bulk operation by ${user.name}.`,
+        source: "UI" as any,
+      }));
 
-    await createBulkAuditLogs(auditLogs);
+      await tx.auditLog.createMany({ data: auditLogsData, skipDuplicates: true });
 
-    // Perform bulk delete
-    await prisma.lead.deleteMany({
-      where: {
-        id: { in: ids },
-        organizationId: user.organizationId
-      }
+      // Perform bulk delete
+      await tx.lead.deleteMany({
+        where: {
+          id: { in: ids },
+          organizationId: user.organizationId
+        }
+      });
     });
 
     return NextResponse.json({ message: `Successfully deleted ${ids.length} leads` });
@@ -219,58 +223,62 @@ export async function POST(req: Request) {
       state: l.state || null,
     }));
 
-    const createdLeads = await prisma.lead.createManyAndReturn({
-      data: leadsToCreate,
-      skipDuplicates: true
-    });
+    const createdLeads = await prisma.$transaction(async (tx) => {
+      const created = await tx.lead.createManyAndReturn({
+        data: leadsToCreate,
+        skipDuplicates: true
+      });
 
-    // 3. Bulk Create Notes
-    const notesToCreate = [];
-    for (let i = 0; i < leads.length; i++) {
-      const originalLead = leads[i];
-      // We assume order is preserved in createManyAndReturn or we match by unique fields
-      // For simplicity, if leads array and createdLeads array match in length:
-      if (originalLead.notes && createdLeads[i]) {
-        notesToCreate.push({
-          content: originalLead.notes,
-          userId: user.id,
-          organizationId: user.organizationId,
-          leadId: createdLeads[i].id
+      // 3. Bulk Create Notes
+      const notesToCreate = [];
+      for (let i = 0; i < leads.length; i++) {
+        const originalLead = leads[i];
+        if (originalLead.notes && created[i]) {
+          notesToCreate.push({
+            content: originalLead.notes,
+            userId: user.id,
+            organizationId: user.organizationId,
+            leadId: created[i].id
+          });
+        }
+      }
+
+      if (notesToCreate.length > 0) {
+        await tx.note.createMany({
+          data: notesToCreate
         });
       }
-    }
 
-    if (notesToCreate.length > 0) {
-      await prisma.note.createMany({
-        data: notesToCreate
+      // 4. Bulk Create Audit Logs
+      const auditLogsData = created.map(lead => ({
+        organizationId: user.organizationId,
+        leadId: lead.id,
+        actorType: "USER" as any,
+        actorId: user.id,
+        actorName: user.name || "Unknown User",
+        action: "CREATE",
+        afterValue: JSON.stringify(lead),
+        note: `Imported new lead protocol via bulk upload.`,
+        source: "UI" as any,
+      }));
+
+      // Final summary log
+      auditLogsData.push({
+        organizationId: user.organizationId,
+        leadId: null as any,
+        actorType: "USER" as any,
+        actorId: user.id,
+        actorName: user.name || "Unknown User",
+        action: "BULK_IMPORT",
+        afterValue: null as any,
+        note: `Successfully executed bulk import protocol for ${created.length} leads.`,
+        source: "UI" as any,
       });
-    }
 
-    // 4. Bulk Create Audit Logs
-    const auditLogs = createdLeads.map(lead => ({
-      organizationId: user.organizationId,
-      leadId: lead.id,
-      actorType: "USER" as any,
-      actorId: user.id,
-      actorName: user.name || "Unknown User",
-      action: "CREATE",
-      afterValue: lead,
-      note: `Imported new lead protocol via bulk upload.`,
-      source: "UI" as any,
-    }));
+      await tx.auditLog.createMany({ data: auditLogsData, skipDuplicates: true });
 
-    await createBulkAuditLogs(auditLogs);
-
-    // Final summary log
-    await createBulkAuditLogs([{
-      organizationId: user.organizationId,
-      actorType: "USER" as any,
-      actorId: user.id,
-      actorName: user.name || "Unknown User",
-      action: "BULK_IMPORT",
-      note: `Successfully executed bulk import protocol for ${createdLeads.length} leads.`,
-      source: "UI" as any,
-    }]);
+      return created;
+    });
 
     return NextResponse.json({ 
       message: `Successfully imported ${createdLeads.length} leads`,

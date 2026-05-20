@@ -58,46 +58,50 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: "User not found" }, { status: 404 });
       }
 
-      // 1. Total leads count
-      const totalLeads = await prisma.lead.count({
-        where: { ownerId: userId, organizationId: currentUser.organizationId }
-      });
-
-      // 2. Leads stage breakdown
-      const stageBreakdown = await prisma.lead.groupBy({
-        by: ['stage'],
-        where: { ownerId: userId, organizationId: currentUser.organizationId },
-        _count: { stage: true }
-      });
-
-      // 3. Leads priority breakdown
-      const priorityBreakdown = await prisma.lead.groupBy({
-        by: ['priority'],
-        where: { ownerId: userId, organizationId: currentUser.organizationId },
-        _count: { priority: true }
-      });
-
-      // 4. Deal value aggregation
-      const dealValueStats = await prisma.lead.aggregate({
-        where: { ownerId: userId, organizationId: currentUser.organizationId },
-        _sum: { dealValueInr: true },
-        _avg: { dealValueInr: true }
-      });
-
-      // 5. Recent audit logs for this user's actions
-      const recentActivity = await prisma.auditLog.findMany({
-        where: { actorId: userId, organizationId: currentUser.organizationId },
-        orderBy: { createdAt: 'desc' },
-        take: 5,
-        select: {
-          id: true,
-          action: true,
-          field: true,
-          beforeValue: true,
-          afterValue: true,
-          createdAt: true
-        }
-      });
+      const [
+        totalLeads,
+        stageBreakdown,
+        priorityBreakdown,
+        dealValueStats,
+        recentActivity
+      ] = await Promise.all([
+        // 1. Total leads count
+        prisma.lead.count({
+          where: { ownerId: userId, organizationId: currentUser.organizationId }
+        }),
+        // 2. Leads stage breakdown
+        prisma.lead.groupBy({
+          by: ['stage'],
+          where: { ownerId: userId, organizationId: currentUser.organizationId },
+          _count: { stage: true }
+        }),
+        // 3. Leads priority breakdown
+        prisma.lead.groupBy({
+          by: ['priority'],
+          where: { ownerId: userId, organizationId: currentUser.organizationId },
+          _count: { priority: true }
+        }),
+        // 4. Deal value aggregation
+        prisma.lead.aggregate({
+          where: { ownerId: userId, organizationId: currentUser.organizationId },
+          _sum: { dealValueInr: true },
+          _avg: { dealValueInr: true }
+        }),
+        // 5. Recent audit logs for this user's actions
+        prisma.auditLog.findMany({
+          where: { actorId: userId, organizationId: currentUser.organizationId },
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+          select: {
+            id: true,
+            action: true,
+            field: true,
+            beforeValue: true,
+            afterValue: true,
+            createdAt: true
+          }
+        })
+      ]);
 
       return NextResponse.json({
         user: targetUser,

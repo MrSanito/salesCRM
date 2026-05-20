@@ -19,26 +19,55 @@ export async function proxy(req: NextRequest, event: NextFetchEvent) {
   ) {
     const duration = (Date.now() - start) / 1000;
     
-    // Resolve absolute URL for the local metrics tracking API
-    const trackUrl = new URL('/api/track-metric', req.url);
+    const g = globalThis as any;
+    if (!g.__metricsBatch) g.__metricsBatch = [];
+    
+    g.__metricsBatch.push({
+      path: pathname,
+      method: method,
+      duration: duration > 0 ? duration : 0.01,
+      status: '200',
+    });
 
-    // Keep the edge context alive for the background telemetry call
-    event.waitUntil(
-      fetch(trackUrl.toString(), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          path: pathname,
-          method: method,
-          duration: duration > 0 ? duration : 0.01,
-          status: '200',
-        }),
-      }).catch((err) => {
-        console.error('Error tracking metric in proxy:', err);
-      })
-    );
+    if (!g.__batchPromise) {
+      g.__batchPromise = new Promise((resolve) => {
+        g.__resolveBatchPromise = resolve;
+      });
+      
+      const trackUrl = new URL('/api/track-metric', req.url);
+
+      g.__batchTimeout = setTimeout(() => {
+        const payload = [...(g.__metricsBatch || [])];
+        g.__metricsBatch = [];
+        
+        const resolveCurrent = g.__resolveBatchPromise;
+        g.__batchPromise = null;
+        g.__resolveBatchPromise = null;
+        g.__batchTimeout = null;
+
+        if (payload.length > 0) {
+          fetch(trackUrl.toString(), {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ metrics: payload }),
+          })
+          .then(() => resolveCurrent?.())
+          .catch((err) => {
+            console.error('Error tracking batched metrics in proxy:', err);
+            resolveCurrent?.();
+          });
+        } else {
+          resolveCurrent?.();
+        }
+      }, 500); // 500ms batch window
+    }
+
+    // Keep the edge context alive until the current active batch finishes
+    if (g.__batchPromise) {
+      event.waitUntil(g.__batchPromise);
+    }
   }
 
   return response;

@@ -52,44 +52,50 @@ export async function GET() {
 
     const { organizationId } = user;
 
-    // Check if statuses exist
-    let statuses = await prisma.customStatus.findMany({
-      where: { organizationId },
-      orderBy: { orderIndex: "asc" },
-    });
-
-    if (statuses.length === 0) {
-      // Seed default statuses
-      await prisma.customStatus.createMany({
-        data: DEFAULT_STATUSES.map(s => ({
-          ...s,
-          organizationId,
-        })),
-      });
-      statuses = await prisma.customStatus.findMany({
+    // Concurrently fetch existing statuses and sub-statuses
+    let [statuses, subStatuses] = await Promise.all([
+      prisma.customStatus.findMany({
         where: { organizationId },
         orderBy: { orderIndex: "asc" },
-      });
-    }
-
-    // Check if sub-statuses exist
-    let subStatuses = await prisma.customSubStatus.findMany({
-      where: { organizationId },
-      orderBy: { orderIndex: "asc" },
-    });
-
-    if (subStatuses.length === 0) {
-      // Seed default sub-statuses
-      await prisma.customSubStatus.createMany({
-        data: DEFAULT_SUB_STATUSES.map(ss => ({
-          ...ss,
-          organizationId,
-        })),
-      });
-      subStatuses = await prisma.customSubStatus.findMany({
+      }),
+      prisma.customSubStatus.findMany({
         where: { organizationId },
         orderBy: { orderIndex: "asc" },
-      });
+      }),
+    ]);
+
+    if (statuses.length === 0 || subStatuses.length === 0) {
+      const initPromises = [];
+      
+      if (statuses.length === 0) {
+        initPromises.push(
+          prisma.customStatus.createMany({
+            data: DEFAULT_STATUSES.map(s => ({ ...s, organizationId })),
+          }).then(() => prisma.customStatus.findMany({
+            where: { organizationId },
+            orderBy: { orderIndex: "asc" },
+          }))
+        );
+      } else {
+        initPromises.push(Promise.resolve(statuses));
+      }
+
+      if (subStatuses.length === 0) {
+        initPromises.push(
+          prisma.customSubStatus.createMany({
+            data: DEFAULT_SUB_STATUSES.map(ss => ({ ...ss, organizationId })),
+          }).then(() => prisma.customSubStatus.findMany({
+            where: { organizationId },
+            orderBy: { orderIndex: "asc" },
+          }))
+        );
+      } else {
+        initPromises.push(Promise.resolve(subStatuses));
+      }
+
+      const results = await Promise.all(initPromises);
+      statuses = results[0];
+      subStatuses = results[1];
     }
 
     return NextResponse.json({ statuses, subStatuses }, {
@@ -130,26 +136,32 @@ export async function POST(req: Request) {
       });
       const nextOrder = existing.length > 0 ? existing[0].orderIndex + 1 : 0;
 
-      const newStatus = await prisma.customStatus.create({
-        data: {
-          organizationId,
-          value: value.toUpperCase(),
-          label,
-          color: color || "blue",
-          orderIndex: nextOrder,
-        },
-      });
+      const newStatus = await prisma.$transaction(async (tx) => {
+        const status = await tx.customStatus.create({
+          data: {
+            organizationId,
+            value: value.toUpperCase(),
+            label,
+            color: color || "blue",
+            orderIndex: nextOrder,
+          },
+        });
 
-      await createAuditLog({
-        organizationId,
-        actorType: "USER",
-        actorId: user.id,
-        actorName: user.name || "Unknown",
-        action: "CREATE_STATUS",
-        field: "label",
-        afterValue: label,
-        note: `Created a new custom status: "${label}" (${value.toUpperCase()}).`,
-        source: "UI",
+        await tx.auditLog.create({
+          data: {
+            organizationId,
+            actorType: "USER",
+            actorId: user.id,
+            actorName: user.name || "Unknown",
+            action: "CREATE_STATUS",
+            field: "label",
+            afterValue: label,
+            note: `Created a new custom status: "${label}" (${value.toUpperCase()}).`,
+            source: "UI",
+          }
+        });
+        
+        return status;
       });
 
       return NextResponse.json(newStatus, { status: 201 });
@@ -162,26 +174,32 @@ export async function POST(req: Request) {
       });
       const nextOrder = existing.length > 0 ? existing[0].orderIndex + 1 : 0;
 
-      const newSubStatus = await prisma.customSubStatus.create({
-        data: {
-          organizationId,
-          value: value.toUpperCase(),
-          label,
-          color: color || "slate",
-          orderIndex: nextOrder,
-        },
-      });
+      const newSubStatus = await prisma.$transaction(async (tx) => {
+        const subStatus = await tx.customSubStatus.create({
+          data: {
+            organizationId,
+            value: value.toUpperCase(),
+            label,
+            color: color || "slate",
+            orderIndex: nextOrder,
+          },
+        });
 
-      await createAuditLog({
-        organizationId,
-        actorType: "USER",
-        actorId: user.id,
-        actorName: user.name || "Unknown",
-        action: "CREATE_SUBSTATUS",
-        field: "label",
-        afterValue: label,
-        note: `Created a new custom sub-status: "${label}" (${value.toUpperCase()}).`,
-        source: "UI",
+        await tx.auditLog.create({
+          data: {
+            organizationId,
+            actorType: "USER",
+            actorId: user.id,
+            actorName: user.name || "Unknown",
+            action: "CREATE_SUBSTATUS",
+            field: "label",
+            afterValue: label,
+            note: `Created a new custom sub-status: "${label}" (${value.toUpperCase()}).`,
+            source: "UI",
+          }
+        });
+        
+        return subStatus;
       });
 
       return NextResponse.json(newSubStatus, { status: 201 });
@@ -219,27 +237,33 @@ export async function PATCH(req: Request) {
       });
       if (!existing) return NextResponse.json({ error: "Status option not found" }, { status: 404 });
 
-      const updated = await prisma.customStatus.update({
-        where: { id },
-        data: {
-          ...(label && { label }),
-          ...(color && { color }),
-          ...(isEnabled !== undefined && { isEnabled }),
-          ...(orderIndex !== undefined && { orderIndex }),
-        },
-      });
+      const updated = await prisma.$transaction(async (tx) => {
+        const res = await tx.customStatus.update({
+          where: { id },
+          data: {
+            ...(label && { label }),
+            ...(color && { color }),
+            ...(isEnabled !== undefined && { isEnabled }),
+            ...(orderIndex !== undefined && { orderIndex }),
+          },
+        });
 
-      await createAuditLog({
-        organizationId,
-        actorType: "USER",
-        actorId: user.id,
-        actorName: user.name || "Unknown",
-        action: "UPDATE_STATUS",
-        field: "label",
-        beforeValue: existing.label,
-        afterValue: label || existing.label,
-        note: `Updated custom status properties for "${existing.label}".`,
-        source: "UI",
+        await tx.auditLog.create({
+          data: {
+            organizationId,
+            actorType: "USER",
+            actorId: user.id,
+            actorName: user.name || "Unknown",
+            action: "UPDATE_STATUS",
+            field: "label",
+            beforeValue: existing.label,
+            afterValue: label || existing.label,
+            note: `Updated custom status properties for "${existing.label}".`,
+            source: "UI",
+          }
+        });
+        
+        return res;
       });
 
       return NextResponse.json(updated);
@@ -249,27 +273,33 @@ export async function PATCH(req: Request) {
       });
       if (!existing) return NextResponse.json({ error: "Sub-status option not found" }, { status: 404 });
 
-      const updated = await prisma.customSubStatus.update({
-        where: { id },
-        data: {
-          ...(label && { label }),
-          ...(color && { color }),
-          ...(isEnabled !== undefined && { isEnabled }),
-          ...(orderIndex !== undefined && { orderIndex }),
-        },
-      });
+      const updated = await prisma.$transaction(async (tx) => {
+        const res = await tx.customSubStatus.update({
+          where: { id },
+          data: {
+            ...(label && { label }),
+            ...(color && { color }),
+            ...(isEnabled !== undefined && { isEnabled }),
+            ...(orderIndex !== undefined && { orderIndex }),
+          },
+        });
 
-      await createAuditLog({
-        organizationId,
-        actorType: "USER",
-        actorId: user.id,
-        actorName: user.name || "Unknown",
-        action: "UPDATE_SUBSTATUS",
-        field: "label",
-        beforeValue: existing.label,
-        afterValue: label || existing.label,
-        note: `Updated custom sub-status properties for "${existing.label}".`,
-        source: "UI",
+        await tx.auditLog.create({
+          data: {
+            organizationId,
+            actorType: "USER",
+            actorId: user.id,
+            actorName: user.name || "Unknown",
+            action: "UPDATE_SUBSTATUS",
+            field: "label",
+            beforeValue: existing.label,
+            afterValue: label || existing.label,
+            note: `Updated custom sub-status properties for "${existing.label}".`,
+            source: "UI",
+          }
+        });
+        
+        return res;
       });
 
       return NextResponse.json(updated);

@@ -103,20 +103,24 @@ export async function DELETE(req: Request) {
       }
     }
 
-    // Delete record from database
-    await prisma.proposal.delete({
-      where: { id }
-    });
+    await prisma.$transaction(async (tx) => {
+      // Delete record from database
+      await tx.proposal.delete({
+        where: { id }
+      });
 
-    // Create Audit Log
-    await createAuditLog({
-      organizationId: user.organizationId,
-      actorType: "USER",
-      actorId: user.id,
-      actorName: user.name,
-      action: "DELETE_PROPOSAL",
-      note: `Permanently deleted proposal for ${proposal.clientCompanyName}.`,
-      source: "UI",
+      // Create Audit Log
+      await tx.auditLog.create({
+        data: {
+          organizationId: user.organizationId,
+          actorType: "USER",
+          actorId: user.id,
+          actorName: user.name,
+          action: "DELETE_PROPOSAL",
+          note: `Permanently deleted proposal for ${proposal.clientCompanyName}.`,
+          source: "UI",
+        }
+      });
     });
 
     return NextResponse.json({ message: "Proposal deleted successfully" });

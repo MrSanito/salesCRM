@@ -335,21 +335,25 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
     if (!existingLead) return NextResponse.json({ error: "Lead not found" }, { status: 404 });
 
-    // Create Audit Log for deletion
-    await createAuditLog({
-      organizationId: user.organizationId,
-      leadId: id,
-      actorType: "USER",
-      actorId: user.id,
-      actorName: user.name || "Unknown",
-      action: "DELETE",
-      note: `Permanently deleted lead protocol for ${existingLead.contactName} from ${existingLead.company}.`,
-      source: "UI",
-    });
+    await prisma.$transaction(async (tx) => {
+      // Create Audit Log for deletion
+      await tx.auditLog.create({
+        data: {
+          organizationId: user.organizationId,
+          leadId: id,
+          actorType: "USER",
+          actorId: user.id,
+          actorName: user.name || "Unknown",
+          action: "DELETE",
+          note: `Permanently deleted lead protocol for ${existingLead.contactName} from ${existingLead.company}.`,
+          source: "UI",
+        }
+      });
 
-    // Delete lead (cascades should handle related notes/logs if configured, but lead itself is primary)
-    await prisma.lead.delete({
-      where: { id }
+      // Delete lead (cascades should handle related notes/logs if configured, but lead itself is primary)
+      await tx.lead.delete({
+        where: { id }
+      });
     });
 
     return NextResponse.json({ success: true });
