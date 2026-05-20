@@ -36,6 +36,7 @@ export async function GET() {
   }
 }
 
+// POST route to handle Google Calendar event creation and sync
 export async function POST(req: Request) {
   try {
     const cookieStore = await cookies();
