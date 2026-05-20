@@ -20,9 +20,10 @@ const STAGE_LABEL: Record<string, string> = {
   COLD: "Cold Chatting", 
   CHATTING: "Cold Chatting",
   CLIENT: "Client",
+  WON: "Won",
 };
 
-const PIPELINE_STAGES = ["NEW", "CONTACTED", "CHATTING", "MEETING_SET", "NEGOTIATION", "CLIENT", "NOT_INTERESTED"];
+const PIPELINE_STAGES = ["NEW", "CONTACTED", "CHATTING", "MEETING_SET", "NEGOTIATION", "CLIENT", "NOT_INTERESTED", "COLD", "WON"];
 
 const SUB_STATUS_LABEL: Record<string, string> = {
   CHATTING: "Chatting",
@@ -1004,7 +1005,7 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                           <option key={s} className="bg-slate-900" value={s}>{STAGE_LABEL[s]}</option>
                         ))}
                       </select>
-                      <ChevronDown size={14} className="absolute right-3 top-1 -translate-y-1 text-white pointer-events-none" />
+                      <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-white pointer-events-none" />
                     </div>
                   </div>
                   <div className="space-y-1.5 flex-1">
@@ -1023,7 +1024,7 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                           <option key={s} value={s}>{SUB_STATUS_LABEL[s]}</option>
                         ))}
                       </select>
-                      <ChevronDown size={14} className="absolute right-3 top-1 -translate-y-1 text-blue-400 pointer-events-none" />
+                      <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-400 pointer-events-none" />
                     </div>
                   </div>
                 </div>

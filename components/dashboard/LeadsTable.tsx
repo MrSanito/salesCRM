@@ -19,6 +19,7 @@ import LeadRow from "./lead-table/LeadRow";
 import TablePagination from "./lead-table/TablePagination";
 import BulkUpdateModal from "./BulkUpdateModal";
 import BulkDeleteModal from "./BulkDeleteModal";
+import BulkAssignModal from "./BulkAssignModal";
 
 interface LeadsTableProps {
   onLeadClick: (id: string, allIds?: string[]) => void;
@@ -36,7 +37,6 @@ interface LeadsTableProps {
     alphabet: string | null;
   } | null;
   onStatsUpdate?: (stats: any) => void;
-  initialData?: any;
   minWidthClass?: string;
 }
 
@@ -46,15 +46,14 @@ export default function LeadsTable({
   refreshKey = 0,
   sidebarFilter,
   onStatsUpdate,
-  initialData,
   minWidthClass
 }: LeadsTableProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const view = searchParams.get("view");
-  const [leads, setLeads] = useState<DbLead[]>(initialData?.leads || []);
-  const [totalCount, setTotalCount] = useState(initialData?.pagination?.totalCount || 0);
-  const [loading, setLoading] = useState(!initialData);
+  const [leads, setLeads] = useState<DbLead[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
@@ -72,6 +71,7 @@ export default function LeadsTable({
   const [isDeleting, setIsDeleting] = useState(false);
   const [showBulkUpdate, setShowBulkUpdate] = useState(false);
   const [showBulkDelete, setShowBulkDelete] = useState(false);
+  const [showBulkAssign, setShowBulkAssign] = useState(false);
   const [distinctFilters, setDistinctFilters] = useState<{
     industries: string[];
     sources: string[];
@@ -111,11 +111,18 @@ export default function LeadsTable({
     }
   };
 
-  useEffect(() => {
+  const [prevView, setPrevView] = useState(view);
+  const [prevActiveNav, setPrevActiveNav] = useState(activeNav);
+  const [prevSidebarFilterId, setPrevSidebarFilterId] = useState(sidebarFilter?.id);
+
+  if (view !== prevView || activeNav !== prevActiveNav || sidebarFilter?.id !== prevSidebarFilterId) {
+    setPrevView(view);
+    setPrevActiveNav(activeNav);
+    setPrevSidebarFilterId(sidebarFilter?.id);
     setSelectedLeads(new Set());
     setColumnFilters({});
     setCurrentPage(1);
-  }, [sidebarFilter?.id, activeNav, view]);
+  }
 
   const handleDeleteLead = async (id: string) => {
     setIsDeleting(true);
@@ -137,7 +144,6 @@ export default function LeadsTable({
     }
   };
 
-  const isFirstRun = useRef(true);
   const leadsRef = useRef(leads);
   useEffect(() => { leadsRef.current = leads; }, [leads]);
 
@@ -181,13 +187,6 @@ export default function LeadsTable({
   }, [leads, loading, isRefreshing, searchQuery, columnFilters]);
 
   const fetchLeads = useCallback(async () => {
-    if (isFirstRun.current && initialData) {
-      isFirstRun.current = false;
-      if (onStatsUpdate && initialData.stats) onStatsUpdate(initialData.stats);
-      setLoading(false);
-      return;
-    }
-    isFirstRun.current = false;
     if (leadsRef.current.length === 0) setLoading(true);
     setIsRefreshing(true);
     try {
@@ -229,15 +228,7 @@ export default function LeadsTable({
       .catch(console.error);
   }, [refreshKey, activeNav]);
 
-  useEffect(() => {
-    if (initialData) {
-      if (initialData.leads) setLeads(initialData.leads);
-      const count = initialData.pagination?.totalCount ?? initialData.pagination?.total ?? 0;
-      setTotalCount(count);
-      if (initialData.stats && onStatsUpdate) onStatsUpdate(initialData.stats);
-      setLoading(false);
-    }
-  }, [initialData, onStatsUpdate]);
+  // initialData is no longer needed because LeadsTable manages fetching on mount
 
   const toggleSelectAll = () => {
     if (selectedLeads.size === displayedLeads.length) setSelectedLeads(new Set());
@@ -334,6 +325,7 @@ export default function LeadsTable({
         setColumnFilters={setColumnFilters}
         onBulkUpdate={() => setShowBulkUpdate(true)}
         onBulkDelete={() => setShowBulkDelete(true)}
+        onBulkAssign={view === "subordinates" ? () => setShowBulkAssign(true) : undefined}
         handleExportExcel={handleExportExcel}
       />
 
@@ -437,6 +429,13 @@ export default function LeadsTable({
       <BulkDeleteModal
         isOpen={showBulkDelete}
         onClose={() => setShowBulkDelete(false)}
+        selectedIds={Array.from(selectedLeads)}
+        onSuccess={() => { setSelectedLeads(new Set()); fetchLeads(); }}
+      />
+
+      <BulkAssignModal
+        isOpen={showBulkAssign}
+        onClose={() => setShowBulkAssign(false)}
         selectedIds={Array.from(selectedLeads)}
         onSuccess={() => { setSelectedLeads(new Set()); fetchLeads(); }}
       />

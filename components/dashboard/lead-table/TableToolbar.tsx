@@ -1,6 +1,6 @@
 "use client"
 import React from "react";
-import { Search, Filter, Download, X, Edit, Trash2, ChevronRight } from "lucide-react";
+import { Search, Filter, Download, X, Edit, Trash2, ChevronRight, UserPlus } from "lucide-react";
 import { DbLead, SortConfig, STAGE_LABEL, STAGE_STYLES } from "./types";
 
 interface TableToolbarProps {
@@ -31,6 +31,7 @@ interface TableToolbarProps {
   setColumnFilters: (filters: Record<string, Set<string>> | ((p: Record<string, Set<string>>) => Record<string, Set<string>>)) => void;
   onBulkUpdate: () => void;
   onBulkDelete: () => void;
+  onBulkAssign?: () => void;
   handleExportExcel: (data: DbLead[], name: string) => void;
 }
 
@@ -62,6 +63,7 @@ export default function TableToolbar({
   setColumnFilters,
   onBulkUpdate,
   onBulkDelete,
+  onBulkAssign,
   handleExportExcel,
 }: TableToolbarProps) {
   const hasActiveFilters = Object.keys(columnFilters).some(key => columnFilters[key]?.size > 0) || searchQuery || sortConfig;
@@ -264,6 +266,15 @@ export default function TableToolbar({
         {selectedLeadsCount > 0 && (
           <div className="flex items-center gap-1.5">
             <div className="w-px h-5 bg-slate-200" />
+            {onBulkAssign && (
+              <button
+                onClick={onBulkAssign}
+                title="Bulk Assign"
+                className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-200 hover:bg-indigo-600 hover:text-white transition-all flex items-center justify-center animate-in zoom-in-50 duration-200"
+              >
+                <UserPlus size={11} />
+              </button>
+            )}
             <button
               onClick={onBulkUpdate}
               title="Bulk Update"

@@ -19,6 +19,8 @@ const STAGES = [
   { id: "NEGOTIATION", label: "Negotiation" },
   { id: "CLIENT", label: "Client" },
   { id: "NOT_INTERESTED", label: "Not Interested" },
+  { id: "COLD", label: "Cold" },
+  { id: "WON", label: "Won" },
 ];
 
 const SUB_STATUSES = [

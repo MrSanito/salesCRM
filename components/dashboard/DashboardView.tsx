@@ -23,31 +23,6 @@ export default function DashboardView({ onAddLead, onAddEmployee, onLeadClick, a
   const searchParams = useSearchParams();
   const view = searchParams.get("view");
   const [dashboardStats, setDashboardStats] = useState<any>(null);
-  const [fullData, setFullData] = useState<any>(null);
-
-  const fetchDashboardData = useCallback(async () => {
-    try {
-      const params = new URLSearchParams();
-      params.set("page", "1");
-      params.set("pageSize", "50");
-      params.set("includeStats", "true");
-      if (view) {
-        params.set("view", view);
-      }
-      const res = await fetch(`/api/leads/super-list?${params.toString()}`);
-      const data = await res.json();
-      setFullData(data);
-      if (data.stats) {
-        setDashboardStats(data.stats);
-      }
-    } catch (err) {
-      console.error("Failed to fetch dashboard data:", err);
-    }
-  }, [view]);
-
-  useEffect(() => {
-    fetchDashboardData();
-  }, [fetchDashboardData, refreshKey]);
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
@@ -137,7 +112,6 @@ export default function DashboardView({ onAddLead, onAddEmployee, onLeadClick, a
         refreshKey={refreshKey}
         sidebarFilter={sidebarFilter}
         onStatsUpdate={setDashboardStats}
-        initialData={fullData}
       />
     </div>
   );

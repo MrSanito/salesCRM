@@ -38,6 +38,12 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
     const view = searchParams.get("view");
     const filterOwner = searchParams.get("filter_owner");
 
+    // Fetch sidebar filter definition if requested
+    let sf = null;
+    if (sidebarFilterId) {
+      sf = await prisma.sidebarFilter.findUnique({ where: { id: sidebarFilterId } });
+    }
+
     // Role-based access
     if (view === "subordinates") {
       if (isSuperAdmin || isOrgAdmin) {
@@ -61,22 +67,34 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
     } else if (searchParams.get("ownerId")) {
       baseWhere.ownerId = searchParams.get("ownerId");
     } else {
-      // Default: My Leads
-      baseWhere.ownerId = user.id;
+      // Default: My Leads or Sidebar Filter access scope
+      if (sf) {
+        if (isSuperAdmin || isOrgAdmin) {
+          // Admins/CEOs see all leads in their organization matching the filter
+        } else if (user.role === "MANAGER") {
+          const subordinates = await prisma.user.findMany({
+            where: { managerId: user.id },
+            select: { id: true }
+          });
+          const subIds = subordinates.map(s => s.id);
+          baseWhere.ownerId = { in: [...subIds, user.id] };
+        } else {
+          baseWhere.ownerId = user.id;
+        }
+      } else {
+        baseWhere.ownerId = user.id;
+      }
     }
 
     // Sidebar Filter Logic
-    if (sidebarFilterId) {
-      const sf = await prisma.sidebarFilter.findUnique({ where: { id: sidebarFilterId } });
-      if (sf) {
-        if (sf.statuses && sf.statuses.length > 0) baseWhere.stage = { in: sf.statuses };
-        if (sf.subStatuses && sf.subStatuses.length > 0) baseWhere.subStatus = { in: sf.subStatuses };
-        if (sf.industries && sf.industries.length > 0) baseWhere.industry = { in: sf.industries };
-        if (sf.sources && sf.sources.length > 0) baseWhere.source = { name: { in: sf.sources } };
-        if (sf.dealSizeMin) baseWhere.dealValueInr = { gte: sf.dealSizeMin };
-        if (sf.dealSizeMax) baseWhere.dealValueInr = { ...baseWhere.dealValueInr, lte: sf.dealSizeMax };
-        if (sf.alphabet) baseWhere.contactName = { startsWith: sf.alphabet, mode: 'insensitive' };
-      }
+    if (sf) {
+      if (sf.statuses && sf.statuses.length > 0) baseWhere.stage = { in: sf.statuses };
+      if (sf.subStatuses && sf.subStatuses.length > 0) baseWhere.subStatus = { in: sf.subStatuses };
+      if (sf.industries && sf.industries.length > 0) baseWhere.industry = { in: sf.industries };
+      if (sf.sources && sf.sources.length > 0) baseWhere.source = { name: { in: sf.sources } };
+      if (sf.dealSizeMin) baseWhere.dealValueInr = { gte: sf.dealSizeMin };
+      if (sf.dealSizeMax) baseWhere.dealValueInr = { ...baseWhere.dealValueInr, lte: sf.dealSizeMax };
+      if (sf.alphabet) baseWhere.contactName = { startsWith: sf.alphabet, mode: 'insensitive' };
     }
 
     const queryWhere: any = { ...baseWhere };
