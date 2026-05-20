@@ -87,7 +87,7 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
   const [showSchedule, setShowSchedule] = useState(false);
   const [showProposalForm, setShowProposalForm] = useState(false);
   const [isSelectingNoteForProposal, setIsSelectingNoteForProposal] = useState(false);
-  const [selectedNoteIdForProposal, setSelectedNoteIdForProposal] = useState<string>("");
+  const [selectedNoteIdsForProposal, setSelectedNoteIdsForProposal] = useState<string[]>([]);
   const [proposals, setProposals] = useState<any[]>([]);
   const [proposalsLoading, setProposalsLoading] = useState(false);
   const [isDossierOpen, setIsDossierOpen] = useState(true);
@@ -323,9 +323,10 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
     toast.success("Proposal template pasted into note field!");
   };
 
-  const handleGenerateProposalFromNote = async (noteId: string, noteContent: string) => {
+  const handleGenerateProposalFromNote = async (noteId: string | string[], noteContent: string) => {
     if (!lead) return;
-    setGeneratingProposalNoteId(noteId);
+    const primaryNoteId = Array.isArray(noteId) ? noteId[0] : noteId;
+    setGeneratingProposalNoteId(primaryNoteId);
     
     const getField = (field: string) => {
       const escapedField = field.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
@@ -1200,7 +1201,7 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                     <button
                       onClick={() => {
                         setIsSelectingNoteForProposal(!isSelectingNoteForProposal);
-                        setSelectedNoteIdForProposal("");
+                        setSelectedNoteIdsForProposal([]);
                       }}
                       className={`${isSelectingNoteForProposal ? "bg-red-50 text-red-600 border border-red-100" : "bg-indigo-50 border border-indigo-100 text-indigo-600"} px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100/50 transition-all active:scale-95 flex items-center gap-1`}
                     >
@@ -1222,47 +1223,62 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                         </h4>
                       </div>
 
-                      {notes.filter(n => n.content?.includes("### Proposal Specifications")).length === 0 ? (
+                      {notes.length === 0 ? (
                         <div className="p-4 bg-white border border-slate-100 rounded-xl text-center">
                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-                            No Template-Filled Notes Found
+                            No Notes Found
                           </p>
                           <p className="text-xs text-slate-500 leading-relaxed max-w-sm mx-auto">
-                            Please use the <strong>"Auto-Fill Template"</strong> option in the Notes section above to write and save a note pre-formatted with the Proposal specifications first.
+                            Please log some notes first before generating a proposal from them. Use the "Auto-Fill Template" if you need a structural starting point.
                           </p>
                         </div>
                       ) : (
                         <div className="space-y-4">
                           <div>
                             <label className="block text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 px-1">
-                              Choose Note
+                              Select Notes to Include as Context
                             </label>
-                            <select
-                              value={selectedNoteIdForProposal}
-                              onChange={(e) => setSelectedNoteIdForProposal(e.target.value)}
-                              className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer pr-10"
-                            >
-                              <option value="">-- Select a note containing specifications template --</option>
-                              {notes
-                                .filter(n => n.content?.includes("### Proposal Specifications"))
-                                .map(n => (
-                                  <option key={n.id} value={n.id}>
-                                    Note by {n.user?.name} on {new Date(n.updatedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                                  </option>
-                                ))
-                              }
-                            </select>
+                            <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar p-2 bg-white border border-slate-200 rounded-xl">
+                              {notes.map(n => (
+                                <label key={n.id} className="flex items-start gap-3 p-2 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors border border-transparent hover:border-slate-100">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedNoteIdsForProposal.includes(n.id)}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setSelectedNoteIdsForProposal([...selectedNoteIdsForProposal, n.id]);
+                                      } else {
+                                        setSelectedNoteIdsForProposal(selectedNoteIdsForProposal.filter(id => id !== n.id));
+                                      }
+                                    }}
+                                    className="mt-1 flex-shrink-0 w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                  />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-[11px] font-bold text-slate-700 truncate">
+                                      {n.user?.name} <span className="text-slate-400 font-normal ml-1">on {new Date(n.updatedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+                                    </p>
+                                    <p className="text-[10px] text-slate-500 line-clamp-2 mt-0.5">{n.content}</p>
+                                  </div>
+                                </label>
+                              ))}
+                            </div>
                           </div>
 
-                          {selectedNoteIdForProposal && (() => {
-                            const selNote = notes.find(n => n.id === selectedNoteIdForProposal);
-                            if (!selNote) return null;
-                            const parsed = getParsedNotePreview(selNote.content);
+                          {selectedNoteIdsForProposal.length > 0 && (() => {
+                            const combinedContent = selectedNoteIdsForProposal
+                              .map(id => notes.find(n => n.id === id)?.content || "")
+                              .join("\n\n---\n\n");
+                            const parsed = getParsedNotePreview(combinedContent);
                             
                             const isCompanyValid = !!parsed.clientCompanyName;
                             const isPriceValid = !!parsed.totalPricing;
                             const isContactValid = !!parsed.contactPerson;
                             const isValid = isCompanyValid && isPriceValid && isContactValid;
+                            
+                            const missingFields = [];
+                            if (!isCompanyValid) missingFields.push("Client Company Name");
+                            if (!isContactValid) missingFields.push("Contact Person");
+                            if (!isPriceValid) missingFields.push("Total Pricing");
 
                             return (
                               <div className="bg-white border border-slate-100 rounded-xl p-4 space-y-4 animate-in fade-in duration-200">
@@ -1297,28 +1313,28 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                                   </div>
                                 </div>
 
-                                <div className="pt-2.5 border-t border-slate-50 flex items-center justify-between">
-                                  <div className="text-[9px] font-bold">
+                                <div className="pt-2.5 border-t border-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                  <div className="text-[9px] font-bold flex-1">
                                     {isValid ? (
                                       <span className="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
                                         ✓ Validation Successful
                                       </span>
                                     ) : (
-                                      <span className="text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-100">
-                                        ⚠ Missing Fields Detected (will fallback to lead data)
+                                      <span className="text-red-600 bg-red-50 px-2 py-1 rounded border border-red-100 flex items-center gap-1.5">
+                                        ⚠ {missingFields.join(", ")} {missingFields.length === 1 ? "is" : "are"} not mentioned. Please check and update.
                                       </span>
                                     )}
                                   </div>
                                   <button
                                     onClick={async () => {
-                                      await handleGenerateProposalFromNote(selNote.id, selNote.content);
+                                      await handleGenerateProposalFromNote(selectedNoteIdsForProposal, combinedContent);
                                       setIsSelectingNoteForProposal(false);
-                                      setSelectedNoteIdForProposal("");
+                                      setSelectedNoteIdsForProposal([]);
                                     }}
-                                    disabled={generatingProposalNoteId !== null}
-                                    className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 text-white disabled:text-slate-400 px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all active:scale-95 flex items-center gap-1.5"
+                                    disabled={!isValid || generatingProposalNoteId !== null}
+                                    className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 text-white disabled:text-slate-400 px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all active:scale-95 flex items-center gap-1.5 whitespace-nowrap"
                                   >
-                                    {generatingProposalNoteId === selNote.id ? (
+                                    {generatingProposalNoteId ? (
                                       <>
                                         <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
                                         Generating...

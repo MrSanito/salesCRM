@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useDashboard } from "@/components/dashboard/DashboardContext";
-import { Puzzle, Calendar, CheckCircle2, AlertCircle, Loader2, Link2, ExternalLink, XCircle } from "lucide-react";
+import { Puzzle, Calendar, CheckCircle2, AlertCircle, Loader2, Link2, ExternalLink, X } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function IntegrationsView() {
@@ -139,7 +139,7 @@ export default function IntegrationsView() {
                 </span>
               </div>
               {isConnected ? (
-                <XCircle size={14} className="text-red-500" />
+                <X size={14} className="text-red-500" />
               ) : connecting ? (
                 <Loader2 size={14} className="animate-spin" />
               ) : (
@@ -191,7 +191,7 @@ export default function IntegrationsView() {
                     : "bg-blue-600 text-white hover:bg-blue-700 shadow-blue-100"
                 }`}
               >
-                {connecting ? <Loader2 size={14} className="animate-spin" /> : isConnected ? <XCircle size={14} /> : <Link2 size={14} />}
+                {connecting ? <Loader2 size={14} className="animate-spin" /> : isConnected ? <X size={14} /> : <Link2 size={14} />}
                 {isConnected ? "Disconnect Account" : "Connect Account"}
               </button>
             </div>

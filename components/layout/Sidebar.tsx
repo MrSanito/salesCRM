@@ -1,7 +1,7 @@
 "use client"
 import {
   AlertTriangle, LayoutDashboard, UserPlus, Phone, CheckCircle2,
-  FileText, CalendarCheck, XCircle, BarChart2, Activity, PieChart,
+  FileText, CalendarCheck, BarChart2, Activity, PieChart,
   Users2, Users, Puzzle, Settings, X, History, Filter, Target, Sparkles
 } from "lucide-react";
 import Link from "next/link";
@@ -37,8 +37,6 @@ const SIDEBAR_ITEMS: SidebarGroup[] = [
     items: [
       { icon: UserPlus, label: "New Leads", href: "/dashboard/leads", badgeColor: "bg-blue-500" },
       { icon: Phone, label: "Follow Ups", href: "/dashboard/follow-ups", badgeColor: "bg-orange-500" },
-      { icon: CalendarCheck, label: "Meeting Set", href: "/dashboard/meetings" },
-      { icon: XCircle, label: "Closed", href: "/dashboard/closed" },
       { icon: Users, label: "Subordinate Leads", href: "/dashboard?view=subordinates", roles: ["ORG_ADMIN", "CEO", "MANAGER"] },
     ],
   },

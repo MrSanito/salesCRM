@@ -49,42 +49,51 @@ export async function POST(req: NextRequest) {
     if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const decoded = jwt.verify(token, JWT_SECRET) as any;
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId },
-      select: { id: true, organizationId: true, name: true },
-    });
-    if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
-
     const { leadId, content } = await req.json();
     if (!leadId || !content?.trim()) {
       return NextResponse.json({ error: "leadId and content required" }, { status: 400 });
     }
 
-    const note = await prisma.note.create({
-      data: {
-        leadId,
-        userId: decoded.userId,
-        organizationId: user.organizationId,
-        content: content.trim(),
-      },
-      include: { user: { select: { name: true, initials: true, role: true } } },
+    const response = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.findUnique({
+        where: { id: decoded.userId },
+        select: { id: true, organizationId: true, name: true },
+      });
+      if (!user) return { error: "User not found", status: 404 };
+
+      const note = await tx.note.create({
+        data: {
+          leadId,
+          userId: decoded.userId,
+          organizationId: user.organizationId,
+          content: content.trim(),
+        },
+        include: { user: { select: { name: true, initials: true, role: true } } },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          organizationId: user.organizationId,
+          leadId: leadId,
+          actorType: "USER",
+          actorId: user.id,
+          actorName: user.name || "Unknown User",
+          action: "CREATE_NOTE",
+          field: "content",
+          afterValue: content,
+          note: `Appended a new intelligence note to the lead dossier: "${content.substring(0, 50)}${content.length > 50 ? '...' : ''}"`,
+          source: "UI",
+        }
+      });
+
+      return { note };
     });
 
-    // Fire-and-forget: don't block response for audit logging
-    createAuditLog({
-      organizationId: user.organizationId,
-      leadId: leadId,
-      actorType: "USER",
-      actorId: user.id,
-      actorName: user.name || "Unknown User",
-      action: "CREATE_NOTE",
-      field: "content",
-      afterValue: content,
-      note: `Appended a new intelligence note to the lead dossier: "${content.substring(0, 50)}${content.length > 50 ? '...' : ''}"`,
-      source: "UI",
-    }).catch(console.error);
+    if (response.error) {
+      return NextResponse.json({ error: response.error }, { status: response.status });
+    }
 
-    return NextResponse.json(note, { status: 201 });
+    return NextResponse.json(response.note, { status: 201 });
   } catch (error) {
     console.error("Notes POST error:", error);
     return NextResponse.json({ error: "Failed to save note" }, { status: 500 });

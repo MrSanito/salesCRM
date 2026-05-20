@@ -43,19 +43,19 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: "No update data provided" }, { status: 400 });
     }
 
-    // Verify all leads belong to the same organization
-    const leads = await prisma.lead.findMany({
-      where: {
-        id: { in: ids },
-        organizationId: user.organizationId
+    const response = await prisma.$transaction(async (tx) => {
+      // Verify all leads belong to the same organization
+      const leads = await tx.lead.findMany({
+        where: {
+          id: { in: ids },
+          organizationId: user.organizationId
+        }
+      });
+
+      if (leads.length !== ids.length) {
+        return { error: "One or more leads not found or unauthorized", status: 403 };
       }
-    });
 
-    if (leads.length !== ids.length) {
-      return NextResponse.json({ error: "One or more leads not found or unauthorized" }, { status: 403 });
-    }
-
-    await prisma.$transaction(async (tx) => {
       // Perform bulk update
       await tx.lead.updateMany({
         where: {
@@ -80,7 +80,12 @@ export async function PATCH(req: Request) {
       }));
 
       await tx.auditLog.createMany({ data: auditLogsData, skipDuplicates: true });
+      return { success: true };
     });
+
+    if (response.error) {
+      return NextResponse.json({ error: response.error }, { status: response.status });
+    }
 
     return NextResponse.json({ message: `Successfully updated ${ids.length} leads` });
   } catch (error: any) {
@@ -114,19 +119,19 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Verify all leads belong to the same organization
-    const leads = await prisma.lead.findMany({
-      where: {
-        id: { in: ids },
-        organizationId: user.organizationId
+    const response = await prisma.$transaction(async (tx) => {
+      // Verify all leads belong to the same organization
+      const leads = await tx.lead.findMany({
+        where: {
+          id: { in: ids },
+          organizationId: user.organizationId
+        }
+      });
+
+      if (leads.length !== ids.length) {
+        return { error: "One or more leads not found or unauthorized", status: 403 };
       }
-    });
 
-    if (leads.length !== ids.length) {
-      return NextResponse.json({ error: "One or more leads not found or unauthorized" }, { status: 403 });
-    }
-
-    await prisma.$transaction(async (tx) => {
       // Create bulk audit logs for deletion BEFORE deleting
       const auditLogsData = leads.map(lead => ({
         organizationId: user.organizationId,
@@ -149,7 +154,13 @@ export async function DELETE(req: Request) {
           organizationId: user.organizationId
         }
       });
+      
+      return { success: true };
     });
+
+    if (response.error) {
+      return NextResponse.json({ error: response.error }, { status: response.status });
+    }
 
     return NextResponse.json({ message: `Successfully deleted ${ids.length} leads` });
   } catch (error: any) {
@@ -183,47 +194,47 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // 1. Bulk handle Lead Sources
-    const sourceNames = [...new Set(leads.map(l => l.source).filter(Boolean) as string[])];
-    if (sourceNames.length > 0) {
-      // Create missing sources in bulk
-      await prisma.leadSource.createMany({
-        data: sourceNames.map(name => ({
-          name,
-          organizationId: user.organizationId
-        })),
-        skipDuplicates: true
-      });
-    }
-
-    // Map source names to IDs for the leads creation
-    const allSources = await prisma.leadSource.findMany({
-      where: { organizationId: user.organizationId }
-    });
-    const sourceMap = new Map(allSources.map(s => [s.name, s.id]));
-
-    // 2. Bulk Create Leads and return their IDs (supported in Prisma 6+)
-    const leadsToCreate = leads.map(l => ({
-      contactName: l.contactName || "Unknown",
-      company: l.company || "Unknown",
-      phone: l.phone || null,
-      phone2: l.phone2 || null,
-      email: l.email || null,
-      email2: l.email2 || null,
-      requirement: l.requirement || null,
-      industry: l.industry || null,
-      dealValueInr: "0",
-      stage: "NEW" as any,
-      subStatus: "BLANK" as any,
-      organizationId: user.organizationId,
-      ownerId: user.id,
-      createdById: user.id,
-      sourceId: l.source ? sourceMap.get(l.source) : null,
-      city: l.city || null,
-      state: l.state || null,
-    }));
-
     const createdLeads = await prisma.$transaction(async (tx) => {
+      // 1. Bulk handle Lead Sources
+      const sourceNames = [...new Set(leads.map(l => l.source).filter(Boolean) as string[])];
+      if (sourceNames.length > 0) {
+        // Create missing sources in bulk
+        await tx.leadSource.createMany({
+          data: sourceNames.map(name => ({
+            name,
+            organizationId: user.organizationId
+          })),
+          skipDuplicates: true
+        });
+      }
+
+      // Map source names to IDs for the leads creation
+      const allSources = await tx.leadSource.findMany({
+        where: { organizationId: user.organizationId }
+      });
+      const sourceMap = new Map(allSources.map(s => [s.name, s.id]));
+
+      // 2. Bulk Create Leads and return their IDs (supported in Prisma 6+)
+      const leadsToCreate = leads.map(l => ({
+        contactName: l.contactName || "Unknown",
+        company: l.company || "Unknown",
+        phone: l.phone || null,
+        phone2: l.phone2 || null,
+        email: l.email || null,
+        email2: l.email2 || null,
+        requirement: l.requirement || null,
+        industry: l.industry || null,
+        dealValueInr: "0",
+        stage: "NEW" as any,
+        subStatus: "BLANK" as any,
+        organizationId: user.organizationId,
+        ownerId: user.id,
+        createdById: user.id,
+        sourceId: l.source ? sourceMap.get(l.source) : null,
+        city: l.city || null,
+        state: l.state || null,
+      }));
+
       const created = await tx.lead.createManyAndReturn({
         data: leadsToCreate,
         skipDuplicates: true

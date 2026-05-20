@@ -28,71 +28,26 @@ export async function GET(req: Request) {
   let reminderAlertsCount = 0;
 
   try {
-    // 1. Process Leads: Find all leads with overdue/pending followUpAt times
-    const leads = await prisma.lead.findMany({
-      where: {
-        followUpAt: { lte: now }
-      },
-      include: {
-        owner: true,
-        alerts: {
-          where: {
-            type: "FOLLOW_UP_DUE"
-          },
-          orderBy: {
-            createdAt: 'desc'
-          },
-          take: 1
+    // 1 & 2. Process Leads and Reminders concurrently
+    const [leads, reminders] = await Promise.all([
+      prisma.lead.findMany({
+        where: { followUpAt: { lte: now } },
+        include: {
+          owner: true,
+          alerts: {
+            where: { type: "FOLLOW_UP_DUE" },
+            orderBy: { createdAt: 'desc' },
+            take: 1
+          }
         }
-      }
-    });
+      }),
+      prisma.reminder.findMany({
+        where: { scheduledAt: { lte: now }, status: "PENDING" },
+        include: { lead: true }
+      })
+    ]);
 
-    for (const lead of leads) {
-      if (!lead.ownerId || !lead.followUpAt) continue;
-
-      const lastAlert = lead.alerts[0];
-      // Skip if already alerted for this specific follow-up slot
-      if (lastAlert && lastAlert.createdAt >= lead.followUpAt) {
-        continue;
-      }
-
-      const alert = await prisma.alert.create({
-        data: {
-          userId: lead.ownerId,
-          organizationId: lead.organizationId,
-          leadId: lead.id,
-          type: "FOLLOW_UP_DUE",
-          title: "Follow-up Due Soon",
-          body: `Follow-up with ${lead.contactName} (${lead.company}) is due.`,
-        }
-      });
-
-      pushToUser(lead.ownerId, [{
-        id: alert.id,
-        type: alert.type,
-        title: alert.title,
-        body: alert.body,
-        leadId: alert.leadId,
-        contactName: lead.contactName,
-        createdAt: alert.createdAt
-      }]);
-      
-      followUpAlertsCount++;
-      triggeredAlerts.push({ userId: lead.ownerId, leadName: lead.contactName, type: "FOLLOW_UP" });
-    }
-
-    // 2. Process Reminders: Find all reminders that are due/overdue
-    const reminders = await prisma.reminder.findMany({
-      where: {
-        scheduledAt: { lte: now },
-        status: "PENDING"
-      },
-      include: {
-        lead: true
-      }
-    });
-
-    // Batch-fetch existing REMINDER_DUE alerts to avoid N+1 queries
+    // Batch-fetch existing REMINDER_DUE alerts
     const existingReminderAlerts = reminders.length > 0 
       ? await prisma.alert.findMany({
           where: {
@@ -107,38 +62,72 @@ export async function GET(req: Request) {
         })
       : [];
 
-    // Build a lookup set for O(1) duplicate checking
-    const alertedSet = new Set(
-      existingReminderAlerts.map(a => `${a.userId}:${a.leadId}`)
-    );
+    const alertedSet = new Set(existingReminderAlerts.map(a => `${a.userId}:${a.leadId}`));
+    const alertsToCreate: { query: any, context: any }[] = [];
 
+    // Prepare lead alerts
+    for (const lead of leads) {
+      if (!lead.ownerId || !lead.followUpAt) continue;
+
+      const lastAlert = lead.alerts[0];
+      if (lastAlert && lastAlert.createdAt >= lead.followUpAt) continue;
+
+      alertsToCreate.push({
+        query: prisma.alert.create({
+          data: {
+            userId: lead.ownerId,
+            organizationId: lead.organizationId,
+            leadId: lead.id,
+            type: "FOLLOW_UP_DUE",
+            title: "Follow-up Due Soon",
+            body: `Follow-up with ${lead.contactName} (${lead.company}) is due.`,
+          }
+        }),
+        context: { userId: lead.ownerId, leadName: lead.contactName, type: "FOLLOW_UP" }
+      });
+    }
+
+    // Prepare reminder alerts
     for (const reminder of reminders) {
       const key = `${reminder.userId}:${reminder.leadId}`;
       if (alertedSet.has(key)) continue;
 
-      const alert = await prisma.alert.create({
-        data: {
-          userId: reminder.userId,
-          organizationId: reminder.organizationId,
-          leadId: reminder.leadId,
-          type: "REMINDER_DUE",
-          title: "Reminder Due Soon",
-          body: `Reminder: ${reminder.type} with ${reminder.lead.contactName} is due.`,
-        }
+      alertsToCreate.push({
+        query: prisma.alert.create({
+          data: {
+            userId: reminder.userId,
+            organizationId: reminder.organizationId,
+            leadId: reminder.leadId,
+            type: "REMINDER_DUE",
+            title: "Reminder Due Soon",
+            body: `Reminder: ${reminder.type} with ${reminder.lead.contactName} is due.`,
+          }
+        }),
+        context: { userId: reminder.userId, leadName: reminder.lead.contactName, type: "REMINDER" }
       });
+    }
 
-      pushToUser(reminder.userId, [{
-        id: alert.id,
-        type: alert.type,
-        title: alert.title,
-        body: alert.body,
-        leadId: alert.leadId,
-        contactName: reminder.lead.contactName,
-        createdAt: alert.createdAt
-      }]);
+    // Execute all alert creations in a single transaction
+    if (alertsToCreate.length > 0) {
+      const createdAlerts = await prisma.$transaction(alertsToCreate.map(a => a.query));
 
-      reminderAlertsCount++;
-      triggeredAlerts.push({ userId: reminder.userId, leadName: reminder.lead.contactName, type: "REMINDER" });
+      createdAlerts.forEach((alert, i) => {
+        const ctx = alertsToCreate[i].context;
+        pushToUser(ctx.userId, [{
+          id: alert.id,
+          type: alert.type,
+          title: alert.title,
+          body: alert.body,
+          leadId: alert.leadId,
+          contactName: ctx.leadName,
+          createdAt: alert.createdAt
+        }]);
+
+        if (ctx.type === "FOLLOW_UP") followUpAlertsCount++;
+        else reminderAlertsCount++;
+
+        triggeredAlerts.push(ctx);
+      });
     }
 
     return NextResponse.json({ 

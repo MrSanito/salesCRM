@@ -1,7 +1,7 @@
 "use client"
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { XCircle } from "lucide-react";
+import { X } from "lucide-react";
 import toast from "react-hot-toast";
 
 // Sub-components
@@ -282,7 +282,7 @@ export default function LeadsTable({
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
           <div className="bg-white rounded-[2.5rem] shadow-2xl max-w-sm w-full p-6 border border-slate-100">
             <div className="w-10 h-10 bg-red-50 rounded-full flex items-center justify-center mb-3 mx-auto text-red-500">
-              <XCircle size={20} />
+              <X size={20} />
             </div>
             <h3 className="text-base font-black text-slate-900 text-center mb-1">Delete this lead?</h3>
             <p className="text-slate-400 text-center text-xs mb-5">This permanently removes the lead and all its history. Cannot be undone.</p>

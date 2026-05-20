@@ -22,10 +22,16 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
     if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const decoded = jwt.verify(token, JWT_SECRET) as any;
-    const user = await prisma.user.findUnique({
+    const userPromise = prisma.user.findUnique({
       where: { id: decoded.userId },
       select: { id: true, organizationId: true, role: true, name: true, email: true }
     });
+
+    const sfPromise = sidebarFilterId 
+      ? prisma.sidebarFilter.findUnique({ where: { id: sidebarFilterId } })
+      : Promise.resolve(null);
+
+    const [user, sf] = await Promise.all([userPromise, sfPromise]);
 
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
@@ -37,12 +43,6 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
     const isOrgAdmin = user.role === "ORG_ADMIN" || user.role === "CEO";
     const view = searchParams.get("view");
     const filterOwner = searchParams.get("filter_owner");
-
-    // Fetch sidebar filter definition if requested
-    let sf = null;
-    if (sidebarFilterId) {
-      sf = await prisma.sidebarFilter.findUnique({ where: { id: sidebarFilterId } });
-    }
 
     // Role-based access
     if (view === "subordinates") {

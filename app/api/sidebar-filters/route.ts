@@ -27,6 +27,14 @@ export async function GET() {
     const user = await getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+    // TEMPORARY CLEANUP: Remove Meeting Set and Closed
+    await prisma.sidebarFilter.deleteMany({
+      where: {
+        createdById: user.id,
+        name: { in: ["Meeting Set", "Closed"] }
+      }
+    });
+
     const filters = await prisma.sidebarFilter.findMany({
       where: { createdById: user.id },
       orderBy: { orderIndex: "asc" },

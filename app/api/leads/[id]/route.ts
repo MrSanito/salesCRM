@@ -101,48 +101,48 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const isSuperAdmin = user.email === "sb.solobuild@gmail.com";
     const isOrgAdmin = user.role === "ORG_ADMIN" || user.role === "CEO" || user.role === "MANAGER";
 
-    // Check if lead exists and belongs to org
-    const existingLead = await prisma.lead.findFirst({
-      where: { id, organizationId: user.organizationId }
-    });
-
-    if (!existingLead) return NextResponse.json({ error: "Lead not found" }, { status: 404 });
-
-    // Authorization: Standard workers (non-admin/non-manager/non-super-admin) can only update stage/value of their own leads
-    if (!isSuperAdmin && !isOrgAdmin && existingLead.ownerId !== user.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    // Role-based restrictions: Only super-admin or org-admin/CEO/manager can change owner
-    if (data.ownerId && !isSuperAdmin && !isOrgAdmin) {
-      delete data.ownerId;
-    }
-
-    const updateData: any = {
-      ...(data.contactName !== undefined && { contactName: data.contactName }),
-      ...(data.company !== undefined && { company: data.company }),
-      ...(data.email !== undefined && { email: data.email || null }),
-      ...(data.email2 !== undefined && { email2: data.email2 || null }),
-      ...(data.phone !== undefined && { phone: data.phone || null }),
-      ...(data.phone2 !== undefined && { phone2: data.phone2 || null }),
-      ...(data.stage !== undefined && { stage: data.stage }),
-      ...(data.priority !== undefined && { priority: data.priority }),
-      ...(data.dealValueInr !== undefined && { dealValueInr: data.dealValueInr ? data.dealValueInr.toString().replace(/[^0-9.]/g, '') : "0" }),
-      ...(data.ownerId !== undefined && { ownerId: data.ownerId }),
-      ...(data.requirement !== undefined && { requirement: data.requirement || null }),
-      ...(data.industry !== undefined && { industry: data.industry || null }),
-      ...(data.city !== undefined && { city: data.city || null }),
-      ...(data.state !== undefined && { state: data.state || null }),
-      ...(data.subStatus !== undefined && { subStatus: data.subStatus }),
-      ...(data.project !== undefined && { project: data.project || null }),
-      ...(data.followUpAt !== undefined && { followUpAt: data.followUpAt ? new Date(data.followUpAt) : null }),
-      ...(data.closedAt !== undefined && { closedAt: data.closedAt ? new Date(data.closedAt) : null }),
-    };
-
-    const auditLogs: any[] = [];
-
     // Run the entire series of database writes inside a single transaction to minimize latency and round-trips
-    const updatedLead = await prisma.$transaction(async (tx) => {
+    const response = await prisma.$transaction(async (tx) => {
+      // Check if lead exists and belongs to org
+      const existingLead = await tx.lead.findFirst({
+        where: { id, organizationId: user.organizationId }
+      });
+
+      if (!existingLead) return { error: "Lead not found", status: 404 };
+
+      // Authorization: Standard workers (non-admin/non-manager/non-super-admin) can only update stage/value of their own leads
+      if (!isSuperAdmin && !isOrgAdmin && existingLead.ownerId !== user.id) {
+        return { error: "Forbidden", status: 403 };
+      }
+
+      // Role-based restrictions: Only super-admin or org-admin/CEO/manager can change owner
+      if (data.ownerId && !isSuperAdmin && !isOrgAdmin) {
+        delete data.ownerId;
+      }
+
+      const updateData: any = {
+        ...(data.contactName !== undefined && { contactName: data.contactName }),
+        ...(data.company !== undefined && { company: data.company }),
+        ...(data.email !== undefined && { email: data.email || null }),
+        ...(data.email2 !== undefined && { email2: data.email2 || null }),
+        ...(data.phone !== undefined && { phone: data.phone || null }),
+        ...(data.phone2 !== undefined && { phone2: data.phone2 || null }),
+        ...(data.stage !== undefined && { stage: data.stage }),
+        ...(data.priority !== undefined && { priority: data.priority }),
+        ...(data.dealValueInr !== undefined && { dealValueInr: data.dealValueInr ? data.dealValueInr.toString().replace(/[^0-9.]/g, '') : "0" }),
+        ...(data.ownerId !== undefined && { ownerId: data.ownerId }),
+        ...(data.requirement !== undefined && { requirement: data.requirement || null }),
+        ...(data.industry !== undefined && { industry: data.industry || null }),
+        ...(data.city !== undefined && { city: data.city || null }),
+        ...(data.state !== undefined && { state: data.state || null }),
+        ...(data.subStatus !== undefined && { subStatus: data.subStatus }),
+        ...(data.project !== undefined && { project: data.project || null }),
+        ...(data.followUpAt !== undefined && { followUpAt: data.followUpAt ? new Date(data.followUpAt) : null }),
+        ...(data.closedAt !== undefined && { closedAt: data.closedAt ? new Date(data.closedAt) : null }),
+      };
+
+      const auditLogs: any[] = [];
+
       // 1. Handle source tracking changes
       if (data.source !== undefined) {
         if (!data.source) {
@@ -296,10 +296,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         });
       }
 
-      return updated;
+      return { updated };
     });
 
-    return NextResponse.json(updatedLead);
+    if (response.error) {
+      return NextResponse.json({ error: response.error }, { status: response.status });
+    }
+
+    return NextResponse.json(response.updated);
   } catch (error) {
     console.error("Lead PATCH error:", error);
     return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to update lead" }, { status: 500 });
@@ -328,14 +332,14 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
     const { id } = await params;
 
-    // Check if lead exists and belongs to org
-    const existingLead = await prisma.lead.findFirst({
-      where: { id, organizationId: user.organizationId }
-    });
+    const response = await prisma.$transaction(async (tx) => {
+      // Check if lead exists and belongs to org
+      const existingLead = await tx.lead.findFirst({
+        where: { id, organizationId: user.organizationId }
+      });
 
-    if (!existingLead) return NextResponse.json({ error: "Lead not found" }, { status: 404 });
+      if (!existingLead) return { error: "Lead not found", status: 404 };
 
-    await prisma.$transaction(async (tx) => {
       // Create Audit Log for deletion
       await tx.auditLog.create({
         data: {
@@ -354,7 +358,13 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       await tx.lead.delete({
         where: { id }
       });
+      
+      return { success: true };
     });
+
+    if (response.error) {
+      return NextResponse.json({ error: response.error }, { status: response.status });
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

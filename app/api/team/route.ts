@@ -177,46 +177,50 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "User ID is required" }, { status: 400 });
     }
 
-    // Fetch existing user to audit differences
-    const existingUser = await prisma.user.findUnique({
-      where: { id: userId, organizationId: currentUser.organizationId }
-    });
-
-    if (!existingUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    const updateData: any = {};
-    if (name && name !== existingUser.name) {
-      updateData.name = name;
-      updateData.initials = getInitials(name);
-    }
-    if (email && email !== existingUser.email) {
-      updateData.email = email;
-    }
-    if (role && role !== existingUser.role) {
-      // Validate role enum
-      if (!Object.values(Role).includes(role as Role)) {
-        return NextResponse.json({ error: "Invalid role specified" }, { status: 400 });
-      }
-      updateData.role = role as Role;
-    }
-    
-    // Manage reporting manager hierarchy
-    if (managerId !== undefined) {
-      if (managerId === "") {
-        updateData.managerId = null;
-      } else {
-        // Prevent setting themselves as their own manager
-        if (managerId === userId) {
-          return NextResponse.json({ error: "A user cannot report to themselves" }, { status: 400 });
-        }
-        updateData.managerId = managerId;
-      }
-    }
-
     // Perform database transaction or simple update
-    const updatedUser = await prisma.$transaction(async (tx) => {
+    const response = await prisma.$transaction(async (tx) => {
+      // Fetch existing user to audit differences
+      const existingUser = await tx.user.findUnique({
+        where: { id: userId, organizationId: currentUser.organizationId }
+      });
+
+      if (!existingUser) {
+        return { error: "User not found", status: 404 };
+      }
+
+      const updateData: any = {};
+      if (name && name !== existingUser.name) {
+        updateData.name = name;
+        updateData.initials = getInitials(name);
+      }
+      if (email && email !== existingUser.email) {
+        updateData.email = email;
+      }
+      if (role && role !== existingUser.role) {
+        // Validate role enum
+        if (!Object.values(Role).includes(role as Role)) {
+          return { error: "Invalid role specified", status: 400 };
+        }
+        updateData.role = role as Role;
+      }
+      
+      // Manage reporting manager hierarchy
+      if (managerId !== undefined) {
+        if (managerId === "") {
+          updateData.managerId = null;
+        } else {
+          // Prevent setting themselves as their own manager
+          if (managerId === userId) {
+            return { error: "A user cannot report to themselves", status: 400 };
+          }
+          updateData.managerId = managerId;
+        }
+      }
+
+      if (Object.keys(updateData).length === 0) {
+        return { user: existingUser };
+      }
+
       const user = await tx.user.update({
         where: { id: userId },
         data: updateData,
@@ -251,10 +255,14 @@ export async function PATCH(request: NextRequest) {
         }
       });
 
-      return user;
+      return { user };
     });
 
-    return NextResponse.json(updatedUser);
+    if (response.error) {
+      return NextResponse.json({ error: response.error }, { status: response.status });
+    }
+
+    return NextResponse.json(response.user);
   } catch (error) {
     console.error("Error updating team user:", error);
     return NextResponse.json({ error: "Failed to update team member details" }, { status: 500 });

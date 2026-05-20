@@ -119,90 +119,100 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Handle source
-    let sourceId = undefined;
-    if (source) {
-      const leadSource = await prisma.leadSource.upsert({
-        where: {
-          name_organizationId: {
+    const response = await prisma.$transaction(async (tx) => {
+      // Handle source
+      let sourceId = undefined;
+      if (source) {
+        const leadSource = await tx.leadSource.upsert({
+          where: {
+            name_organizationId: {
+              name: source,
+              organizationId: user.organizationId
+            }
+          },
+          update: {},
+          create: {
             name: source,
             organizationId: user.organizationId
           }
-        },
-        update: {},
-        create: {
-          name: source,
-          organizationId: user.organizationId
+        });
+        sourceId = leadSource.id;
+      }
+
+      // Check if lead already exists with this email or phone
+      const existingLead = await tx.lead.findFirst({
+        where: {
+          organizationId: user.organizationId,
+          OR: [
+            { email: email || undefined },
+            { phone: phone || undefined }
+          ].filter(condition => Object.values(condition)[0] !== undefined)
         }
       });
-      sourceId = leadSource.id;
-    }
 
-    // Check if lead already exists with this email or phone
-    const existingLead = await prisma.lead.findFirst({
-      where: {
-        organizationId: user.organizationId,
-        OR: [
-          { email: email || undefined },
-          { phone: phone || undefined }
-        ].filter(condition => Object.values(condition)[0] !== undefined)
+      if (existingLead) {
+        return { error: "A lead with this email or phone already exists.", status: 400 };
       }
+
+      // Determine owner: if worker, they are the owner. If manager/admin, they can specify.
+      let finalOwnerId = userId;
+      if (ownerId && (user.role === "ORG_ADMIN" || user.role === "MANAGER" || user.role === "CEO")) {
+        finalOwnerId = ownerId;
+      }
+
+      const lead = await tx.lead.create({
+        data: {
+          contactName: name,
+          company,
+          phone,
+          phone2,
+          email,
+          email2,
+          requirement,
+          industry,
+          city: body.city || null,
+          state: body.state || null,
+          sourceId,
+          subStatus: body.subStatus || "CHATTING",
+          dealValueInr: (value || 0).toString(),
+          organizationId: user.organizationId,
+          ownerId: finalOwnerId,
+          createdById: userId,
+          stage: "NEW",
+          // Standalone note if provided
+          notes: notes ? {
+              create: {
+                  content: notes,
+                  userId: userId,
+                  organizationId: user.organizationId
+              }
+          } : undefined
+        },
+      });
+
+      // Create Audit Log
+      await tx.auditLog.create({
+        data: {
+          organizationId: user.organizationId,
+          leadId: lead.id,
+          actorType: "USER",
+          actorId: user.id,
+          actorName: user.name || "Unknown User",
+          action: "CREATE",
+          afterValue: JSON.stringify(lead),
+          note: `Sales owner ${user.name || "Unknown"} initialized a new lead protocol for ${lead.contactName} from ${lead.company}.`,
+          source: "UI",
+        }
+      });
+      
+      return { lead };
     });
 
-    if (existingLead) {
-      return NextResponse.json({ error: "A lead with this email or phone already exists." }, { status: 400 });
+    if (response.error) {
+      return NextResponse.json({ error: response.error }, { status: response.status });
     }
 
-    // Determine owner: if worker, they are the owner. If manager/admin, they can specify.
-    let finalOwnerId = userId;
-    if (ownerId && (user.role === "ORG_ADMIN" || user.role === "MANAGER" || user.role === "CEO")) {
-      finalOwnerId = ownerId;
-    }
-
-    const lead = await prisma.lead.create({
-      data: {
-        contactName: name,
-        company,
-        phone,
-        phone2,
-        email,
-        email2,
-        requirement,
-        industry,
-        city: body.city || null,
-        state: body.state || null,
-        sourceId,
-        subStatus: body.subStatus || "CHATTING",
-        dealValueInr: (value || 0).toString(),
-        organizationId: user.organizationId,
-        ownerId: finalOwnerId,
-        createdById: userId,
-        stage: "NEW",
-        // Standalone note if provided
-        notes: notes ? {
-            create: {
-                content: notes,
-                userId: userId,
-                organizationId: user.organizationId
-            }
-        } : undefined
-      },
-    });
-
-    // Create Audit Log
-    await createAuditLog({
-      organizationId: user.organizationId,
-      leadId: lead.id,
-      actorType: "USER",
-      actorId: user.id,
-      actorName: user.name || "Unknown User",
-      action: "CREATE",
-      afterValue: lead,
-      note: `Sales owner ${user.name || "Unknown"} initialized a new lead protocol for ${lead.contactName} from ${lead.company}.`,
-      source: "UI",
-    });
-
-    return NextResponse.json(lead, { status: 201 });
+    return NextResponse.json(response.lead, { status: 201 });
   } catch (error: any) {
     console.error("Error creating lead:", error);
     return NextResponse.json({ error: error.message || "Failed to create lead" }, { status: 500 });

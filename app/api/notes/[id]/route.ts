@@ -26,24 +26,24 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ error: "Content required" }, { status: 400 });
     }
 
-    // Check if note exists and belongs to the organization
-    const existingNote = await prisma.note.findUnique({
-      where: { id },
-      select: { id: true, content: true, leadId: true, userId: true, organizationId: true }
-    });
+    const response = await prisma.$transaction(async (tx) => {
+      // Check if note exists and belongs to the organization
+      const existingNote = await tx.note.findUnique({
+        where: { id },
+        select: { id: true, content: true, leadId: true, userId: true, organizationId: true }
+      });
 
-    if (!existingNote || existingNote.organizationId !== user.organizationId) {
-      return NextResponse.json({ error: "Note not found" }, { status: 404 });
-    }
+      if (!existingNote || existingNote.organizationId !== user.organizationId) {
+        return { error: "Note not found", status: 404 };
+      }
 
-    const isSuperAdmin = user.email === "sb.solobuild@gmail.com";
+      const isSuperAdmin = user.email === "sb.solobuild@gmail.com";
 
-    // Authorization check: User can edit their own notes, or super admin can edit any note
-    if (existingNote.userId !== user.id && !isSuperAdmin) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+      // Authorization check: User can edit their own notes, or super admin can edit any note
+      if (existingNote.userId !== user.id && !isSuperAdmin) {
+        return { error: "Forbidden", status: 403 };
+      }
 
-    const updatedNote = await prisma.$transaction(async (tx) => {
       const note = await tx.note.update({
         where: { id },
         data: { content: content.trim() },
@@ -67,10 +67,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         }
       });
 
-      return note;
+      return { note };
     });
 
-    return NextResponse.json(updatedNote);
+    if (response.error) {
+      return NextResponse.json({ error: response.error }, { status: response.status });
+    }
+
+    return NextResponse.json(response.note);
   } catch (error) {
     console.error("Note PATCH error:", error);
     return NextResponse.json({ error: "Failed to update note" }, { status: 500 });
@@ -92,22 +96,22 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
     const { id } = await params;
 
-    const existingNote = await prisma.note.findUnique({
-      where: { id }
-    });
+    const response = await prisma.$transaction(async (tx) => {
+      const existingNote = await tx.note.findUnique({
+        where: { id }
+      });
 
-    if (!existingNote || existingNote.organizationId !== user.organizationId) {
-      return NextResponse.json({ error: "Note not found" }, { status: 404 });
-    }
+      if (!existingNote || existingNote.organizationId !== user.organizationId) {
+        return { error: "Note not found", status: 404 };
+      }
 
-    const isSuperAdmin = user.email === "sb.solobuild@gmail.com";
+      const isSuperAdmin = user.email === "sb.solobuild@gmail.com";
 
-    // Authorization check: User can delete their own notes, or super admin can delete any note
-    if (existingNote.userId !== user.id && !isSuperAdmin) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+      // Authorization check: User can delete their own notes, or super admin can delete any note
+      if (existingNote.userId !== user.id && !isSuperAdmin) {
+        return { error: "Forbidden", status: 403 };
+      }
 
-    await prisma.$transaction(async (tx) => {
       await tx.note.delete({
         where: { id }
       });
@@ -125,7 +129,13 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
           source: "UI",
         }
       });
+
+      return { success: true };
     });
+
+    if (response.error) {
+      return NextResponse.json({ error: response.error }, { status: response.status });
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

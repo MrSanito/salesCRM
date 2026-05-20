@@ -128,15 +128,15 @@ export async function POST(req: Request) {
     const { organizationId } = user;
 
     if (type === "status") {
-      // Get current max order
-      const existing = await prisma.customStatus.findMany({
-        where: { organizationId },
-        orderBy: { orderIndex: "desc" },
-        take: 1,
-      });
-      const nextOrder = existing.length > 0 ? existing[0].orderIndex + 1 : 0;
-
       const newStatus = await prisma.$transaction(async (tx) => {
+        // Get current max order
+        const existing = await tx.customStatus.findMany({
+          where: { organizationId },
+          orderBy: { orderIndex: "desc" },
+          take: 1,
+        });
+        const nextOrder = existing.length > 0 ? existing[0].orderIndex + 1 : 0;
+
         const status = await tx.customStatus.create({
           data: {
             organizationId,
@@ -166,15 +166,15 @@ export async function POST(req: Request) {
 
       return NextResponse.json(newStatus, { status: 201 });
     } else if (type === "substatus") {
-      // Get current max order
-      const existing = await prisma.customSubStatus.findMany({
-        where: { organizationId },
-        orderBy: { orderIndex: "desc" },
-        take: 1,
-      });
-      const nextOrder = existing.length > 0 ? existing[0].orderIndex + 1 : 0;
-
       const newSubStatus = await prisma.$transaction(async (tx) => {
+        // Get current max order
+        const existing = await tx.customSubStatus.findMany({
+          where: { organizationId },
+          orderBy: { orderIndex: "desc" },
+          take: 1,
+        });
+        const nextOrder = existing.length > 0 ? existing[0].orderIndex + 1 : 0;
+
         const subStatus = await tx.customSubStatus.create({
           data: {
             organizationId,
@@ -330,28 +330,29 @@ export async function DELETE(req: Request) {
     const { organizationId } = user;
 
     if (type === "status") {
-      const existing = await prisma.customStatus.findFirst({
-        where: { id, organizationId },
-      });
-      if (!existing) return NextResponse.json({ error: "Status option not found" }, { status: 404 });
+      const response = await prisma.$transaction(async (tx) => {
+        const existing = await tx.customStatus.findFirst({
+          where: { id, organizationId },
+        });
+        if (!existing) return { error: "Status option not found", status: 404 };
 
-      // Count leads using this raw value
-      const activeLeadsCount = await prisma.lead.count({
-        where: {
-          organizationId,
-          stage: existing.value as any,
-        },
-      });
+        // Count leads using this raw value
+        const activeLeadsCount = await tx.lead.count({
+          where: {
+            organizationId,
+            stage: existing.value as any,
+          },
+        });
 
-      if (activeLeadsCount > 0) {
-        return NextResponse.json({
-          error: `Cannot delete status: ${activeLeadsCount} active lead(s) are currently in the "${existing.label}" status.`
-        }, { status: 400 });
-      }
+        if (activeLeadsCount > 0) {
+          return {
+            error: `Cannot delete status: ${activeLeadsCount} active lead(s) are currently in the "${existing.label}" status.`,
+            status: 400
+          };
+        }
 
-      await prisma.$transaction([
-        prisma.customStatus.delete({ where: { id } }),
-        prisma.auditLog.create({
+        await tx.customStatus.delete({ where: { id } });
+        await tx.auditLog.create({
           data: {
             organizationId,
             actorType: "USER",
@@ -363,33 +364,40 @@ export async function DELETE(req: Request) {
             note: `Permanently deleted custom status option: "${existing.label}".`,
             source: "UI",
           }
-        })
-      ]);
+        });
+        
+        return { success: true };
+      });
+      
+      if (response.error) {
+        return NextResponse.json({ error: response.error }, { status: response.status });
+      }
 
       return NextResponse.json({ message: "Status deleted successfully" });
     } else if (type === "substatus") {
-      const existing = await prisma.customSubStatus.findFirst({
-        where: { id, organizationId },
-      });
-      if (!existing) return NextResponse.json({ error: "Sub-status option not found" }, { status: 404 });
+      const response = await prisma.$transaction(async (tx) => {
+        const existing = await tx.customSubStatus.findFirst({
+          where: { id, organizationId },
+        });
+        if (!existing) return { error: "Sub-status option not found", status: 404 };
 
-      // Count leads using this raw value
-      const activeLeadsCount = await prisma.lead.count({
-        where: {
-          organizationId,
-          subStatus: existing.value as any,
-        },
-      });
+        // Count leads using this raw value
+        const activeLeadsCount = await tx.lead.count({
+          where: {
+            organizationId,
+            subStatus: existing.value as any,
+          },
+        });
 
-      if (activeLeadsCount > 0) {
-        return NextResponse.json({
-          error: `Cannot delete sub-status: ${activeLeadsCount} active lead(s) are currently in the "${existing.label}" sub-status.`
-        }, { status: 400 });
-      }
+        if (activeLeadsCount > 0) {
+          return {
+            error: `Cannot delete sub-status: ${activeLeadsCount} active lead(s) are currently in the "${existing.label}" sub-status.`,
+            status: 400
+          };
+        }
 
-      await prisma.$transaction([
-        prisma.customSubStatus.delete({ where: { id } }),
-        prisma.auditLog.create({
+        await tx.customSubStatus.delete({ where: { id } });
+        await tx.auditLog.create({
           data: {
             organizationId,
             actorType: "USER",
@@ -401,8 +409,14 @@ export async function DELETE(req: Request) {
             note: `Permanently deleted custom sub-status option: "${existing.label}".`,
             source: "UI",
           }
-        })
-      ]);
+        });
+        
+        return { success: true };
+      });
+      
+      if (response.error) {
+        return NextResponse.json({ error: response.error }, { status: response.status });
+      }
 
       return NextResponse.json({ message: "Sub-status deleted successfully" });
     } else {
