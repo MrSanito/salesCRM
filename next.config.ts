@@ -28,3 +28,4 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+// Force Next.js server restart to clear Turbopack HMR cache
