@@ -67,34 +67,37 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
     const ownerFilter = searchParams.get("ownerFilter") || searchParams.get("filter_ownerId");
 
     if (stageFilter) {
-      baseWhere.stage = stageFilter;
+      const stages = stageFilter.split(",");
+      const expandedStages: string[] = [];
+      stages.forEach(st => {
+        if (st === "COLD_CHATTING") expandedStages.push("COLD", "CHATTING", "COLD_CHATTING");
+        else expandedStages.push(st);
+      });
+      baseWhere.stage = { in: expandedStages };
     }
 
     if (ownerFilter && ownerFilter !== "all") {
+      const selectedOwnerIds = ownerFilter.split(",");
       if (baseWhere.ownerId !== undefined) {
         if (typeof baseWhere.ownerId === "object" && baseWhere.ownerId !== null) {
           if (Array.isArray(baseWhere.ownerId.in)) {
-            if (baseWhere.ownerId.in.includes(ownerFilter)) {
-              baseWhere.ownerId = ownerFilter;
-            } else {
-              baseWhere.ownerId = "__none__";
-            }
+            const intersection = selectedOwnerIds.filter(id => baseWhere.ownerId.in.includes(id));
+            baseWhere.ownerId = intersection.length > 0 ? { in: intersection } : { in: ["__none__"] };
           } else if (baseWhere.ownerId.not !== undefined) {
-            if (baseWhere.ownerId.not !== ownerFilter) {
-              baseWhere.ownerId = ownerFilter;
-            } else {
-              baseWhere.ownerId = "__none__";
-            }
+            const allowedIds = selectedOwnerIds.filter(id => id !== baseWhere.ownerId.not);
+            baseWhere.ownerId = allowedIds.length > 0 ? { in: allowedIds } : { in: ["__none__"] };
           } else {
-            baseWhere.ownerId = "__none__";
+            baseWhere.ownerId = { in: ["__none__"] };
           }
-        } else if (baseWhere.ownerId !== ownerFilter) {
-          baseWhere.ownerId = "__none__";
         } else {
-          baseWhere.ownerId = ownerFilter;
+          if (selectedOwnerIds.includes(baseWhere.ownerId)) {
+            baseWhere.ownerId = { in: [baseWhere.ownerId] };
+          } else {
+            baseWhere.ownerId = { in: ["__none__"] };
+          }
         }
       } else {
-        baseWhere.ownerId = ownerFilter;
+        baseWhere.ownerId = { in: selectedOwnerIds };
       }
     }
 
