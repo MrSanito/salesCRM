@@ -23,7 +23,7 @@ if (typeof window === "undefined") {
         console.error(`Failed to load patched font file ${fileName} from ${localPath}:`, err);
       }
     }
-    return originalReadFileSync.apply(this, arguments as any);
+    return originalReadFileSync(filePath, options);
   } as any;
 }
 
