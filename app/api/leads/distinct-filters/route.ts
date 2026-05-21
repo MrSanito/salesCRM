@@ -39,7 +39,7 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
       }),
       prisma.user.findMany({
         where: { organizationId: user.organizationId },
-        select: { name: true },
+        select: { id: true, name: true },
       }),
     ]);
 
@@ -60,6 +60,7 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
       .sort();
 
     const owners = Array.from(new Set(rawUsers.map(u => u.name).filter(Boolean))).sort();
+    const ownerDetails = rawUsers.map(u => ({ id: u.id, name: u.name })).sort((a, b) => a.name.localeCompare(b.name));
 
     return NextResponse.json({
       industries: Array.from(industrySet).sort(),
@@ -67,6 +68,7 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
       cities: Array.from(citySet).sort(),
       states: Array.from(stateSet).sort(),
       owners,
+      ownerDetails,
     }, {
       headers: {
         'Cache-Control': 'private, max-age=300, stale-while-revalidate=60'

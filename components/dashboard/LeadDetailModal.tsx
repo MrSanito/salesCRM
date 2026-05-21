@@ -507,13 +507,14 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
   const activeReminder = lead?.reminders?.find(r => r.status === "PENDING");
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="absolute inset-0 bg-transparent backdrop-blur-[2px] animate-in fade-in duration-300" onClick={onClose} />
 
-      <div className="relative bg-white w-full max-w-4xl h-[90vh] rounded-2xl shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] overflow-hidden animate-in zoom-in-95 fade-in duration-300 border border-slate-100 flex flex-col mx-auto">
+      <div className="relative bg-white w-full max-w-4xl h-full sm:h-[90vh] sm:max-h-[90vh] rounded-t-2xl sm:rounded-2xl shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] overflow-hidden animate-in zoom-in-95 fade-in duration-300 border border-slate-100 flex flex-col mx-auto">
 
         {/* Header */}
-        <div className="h-16 bg-white border-b border-slate-50 flex items-center justify-between px-4 sm:px-8 flex-shrink-0 z-20">
+        <div className="min-h-[56px] sm:h-16 bg-white border-b border-slate-50 flex items-center justify-between px-3 sm:px-8 flex-shrink-0 z-20 gap-2">
           <div className="flex items-center gap-4">
             <button onClick={onClose} className="p-2 hover:bg-slate-50 rounded-xl text-slate-400 transition-colors">
               <X size={22} />
@@ -525,7 +526,7 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                   <ChevronLeft size={22} />
                 </button>
               )}
-              <span className="text-[10px] font-bold text-slate-300 font-mono uppercase tracking-[0.2em] px-2">
+              <span className="text-[10px] font-bold text-slate-300 font-mono uppercase tracking-[0.2em] px-1 sm:px-2 hidden sm:inline">
                 {lead?.id.slice(0, 8).toUpperCase() || "—"}
               </span>
               {onSwitch && (
@@ -536,7 +537,7 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
             </div>
           </div>
 
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2 sm:gap-6 flex-shrink-0">
             {lead && (
               <div className="text-right hidden sm:block">
                 <p className="text-[8px] font-bold text-slate-400 uppercase tracking-[0.2em] leading-none mb-1">Last Edited</p>
@@ -550,9 +551,9 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
             {!loading && !isLoading && (
               <button
                 onClick={() => router.push(`/lead/${leadId}/edit`)}
-                className="bg-slate-900 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-100 hover:bg-slate-800 transition-all active:scale-95"
+                className="bg-slate-900 text-white px-3 sm:px-6 py-2 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-100 hover:bg-slate-800 transition-all active:scale-95 whitespace-nowrap"
               >
-                Edit Details
+                Edit
               </button>
             )}
           </div>
@@ -566,7 +567,7 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] animate-pulse">Syncing Intelligence...</p>
             </div>
           ) : lead && (
-            <div className="p-5 sm:p-10 pt-4">
+            <div className="p-4 sm:p-10 pt-4">
               {/* Lead Info */}
               <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-8">
                 <div>
@@ -579,10 +580,10 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                       value={contactName}
                       onChange={e => setContactName(e.target.value)}
                       onBlur={() => handleUpdate()}
-                      className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight bg-transparent border-none outline-none focus:ring-2 focus:ring-blue-100 rounded px-1 -ml-1 w-full"
+                      className="text-xl sm:text-3xl font-bold text-slate-900 tracking-tight bg-transparent border-none outline-none focus:ring-2 focus:ring-blue-100 rounded px-1 -ml-1 w-full"
                     />
                   </div>
-                  <div className="flex flex-wrap items-center gap-3 md:gap-4 text-slate-500">
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3 md:gap-4 text-slate-500">
                     <div className="flex items-center gap-2">
                       <Building2 size={16} className="text-slate-400" />
                       <input
@@ -593,7 +594,7 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                         className="text-base font-semibold text-slate-700 bg-transparent border-none outline-none focus:ring-2 focus:ring-blue-100 rounded px-1 -ml-1 w-full max-w-[12rem]"
                       />
                     </div>
-                    <div className="h-4 w-[1px] bg-slate-200" />
+                    <div className="h-4 w-[1px] bg-slate-200 hidden sm:block" />
                     <div className="flex items-center gap-1.5 bg-slate-50 px-3 py-1 rounded-lg text-[11px] text-slate-900 border border-slate-200">
                       <span className="font-bold uppercase tracking-widest text-[9px] text-slate-500">Industry:</span>
                       <input 
@@ -629,7 +630,7 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                 </div>
 
                 {/* Lead Owner */}
-                <div className="flex flex-col items-end text-right">
+                <div className="flex flex-col items-start sm:items-end text-left sm:text-right w-full sm:w-auto">
                   <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-2">Lead Owner</p>
                   <div className="flex items-center gap-2.5">
                     <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600">
@@ -877,33 +878,35 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
 
               {/* Action Layer */}
               <div className="space-y-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
                   <a 
                     href={`tel:${lead.phone}`} 
                     onClick={() => logInteraction("CALL")}
-                    className="flex-1 bg-white border border-slate-100 rounded-2xl px-6 py-4 flex items-center justify-center gap-3 group hover:border-orange-200 hover:bg-orange-50 transition-all active:scale-[0.98] shadow-sm"
+                    className="bg-white border border-slate-100 rounded-2xl px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-center gap-2 sm:gap-3 group hover:border-orange-200 hover:bg-orange-50 transition-all active:scale-[0.98] shadow-sm"
                   >
                     <div className="w-8 h-8 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center border border-orange-100 group-hover:scale-110 transition-transform">
                       <Phone size={14} strokeWidth={2.5} />
                     </div>
-                    <div className="text-left">
+                    <div className="text-left hidden sm:block">
                       <p className="text-[8px] font-bold text-slate-400 uppercase tracking-[0.2em] leading-none mb-1">Direct Call</p>
                       <p className="text-[11px] font-black text-slate-700 tracking-tight uppercase">Initiate Call</p>
                     </div>
+                    <span className="text-[9px] font-black text-slate-700 uppercase sm:hidden">Call</span>
                   </a>
 
                   <a 
                     href={`mailto:${lead.email}`} 
                     onClick={() => logInteraction("EMAIL")}
-                    className="flex-1 bg-white border border-slate-100 rounded-2xl px-6 py-4 flex items-center justify-center gap-3 group hover:border-blue-200 hover:bg-blue-50 transition-all active:scale-[0.98] shadow-sm"
+                    className="bg-white border border-slate-100 rounded-2xl px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-center gap-2 sm:gap-3 group hover:border-blue-200 hover:bg-blue-50 transition-all active:scale-[0.98] shadow-sm"
                   >
                     <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 group-hover:scale-110 transition-transform">
                       <Mail size={14} strokeWidth={2.5} />
                     </div>
-                    <div className="text-left">
+                    <div className="text-left hidden sm:block">
                       <p className="text-[8px] font-bold text-slate-400 uppercase tracking-[0.2em] leading-none mb-1">Email Lead</p>
                       <p className="text-[11px] font-black text-slate-700 tracking-tight uppercase">Send Message</p>
                     </div>
+                    <span className="text-[9px] font-black text-slate-700 uppercase sm:hidden">Email</span>
                   </a>
 
                   <a
@@ -911,34 +914,36 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={() => logInteraction("WHATSAPP")}
-                    className="flex-1 bg-white border border-slate-100 rounded-2xl px-6 py-4 flex items-center justify-center gap-3 group hover:border-green-200 hover:bg-green-50 transition-all active:scale-[0.98] shadow-sm"
+                    className="bg-white border border-slate-100 rounded-2xl px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-center gap-2 sm:gap-3 group hover:border-green-200 hover:bg-green-50 transition-all active:scale-[0.98] shadow-sm"
                   >
                     <div className="w-8 h-8 rounded-xl bg-green-50 text-green-600 flex items-center justify-center border border-green-100 group-hover:scale-110 transition-transform">
                       <MessageCircle size={14} strokeWidth={2.5} />
                     </div>
-                    <div className="text-left">
+                    <div className="text-left hidden sm:block">
                       <p className="text-[8px] font-bold text-slate-400 uppercase tracking-[0.2em] leading-none mb-1">WhatsApp</p>
                       <p className="text-[11px] font-black text-slate-700 tracking-tight uppercase">Open Chat</p>
                     </div>
+                    <span className="text-[9px] font-black text-slate-700 uppercase sm:hidden">WhatsApp</span>
                   </a>
 
                   <button
                     onClick={() => setShowProposalForm(true)}
-                    className="flex-1 bg-white border border-slate-100 rounded-2xl px-6 py-4 flex items-center justify-center gap-3 group hover:border-indigo-200 hover:bg-indigo-50 transition-all active:scale-[0.98] shadow-sm"
+                    className="bg-white border border-slate-100 rounded-2xl px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-center gap-2 sm:gap-3 group hover:border-indigo-200 hover:bg-indigo-50 transition-all active:scale-[0.98] shadow-sm"
                   >
                     <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100 group-hover:scale-110 transition-transform">
                       <FileText size={14} strokeWidth={2.5} />
                     </div>
-                    <div className="text-left">
+                    <div className="text-left hidden sm:block">
                       <p className="text-[8px] font-bold text-slate-400 uppercase tracking-[0.2em] leading-none mb-1">Proposal</p>
                       <p className="text-[11px] font-black text-slate-700 tracking-tight uppercase">Create Proposal</p>
                     </div>
+                    <span className="text-[9px] font-black text-slate-700 uppercase sm:hidden">Proposal</span>
                   </button>
 
                   <button
                     onClick={() => !activeReminder && setShowSchedule(true)}
                     disabled={!!activeReminder}
-                    className={`flex-1 bg-white border border-slate-100 rounded-2xl px-6 py-4 flex items-center justify-center gap-3 group transition-all active:scale-[0.98] shadow-sm ${
+                    className={`bg-white border border-slate-100 rounded-2xl px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-center gap-2 sm:gap-3 group transition-all active:scale-[0.98] shadow-sm col-span-2 sm:col-span-1 ${
                       activeReminder 
                         ? "opacity-60 cursor-not-allowed bg-slate-50" 
                         : "hover:border-purple-200 hover:bg-purple-50"
@@ -951,18 +956,21 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                     }`}>
                       <CalendarCheck size={14} strokeWidth={2.5} />
                     </div>
-                    <div className="text-left">
+                    <div className="text-left hidden sm:block">
                       <p className="text-[8px] font-bold text-slate-400 uppercase tracking-[0.2em] leading-none mb-1">Pipeline</p>
                       <p className={`text-[11px] font-black tracking-tight uppercase ${activeReminder ? "text-slate-400" : "text-slate-700"}`}>
                         {activeReminder ? "Follow-up Active" : "Schedule Followup"}
                       </p>
                     </div>
+                    <span className={`text-[9px] font-black uppercase sm:hidden ${activeReminder ? "text-slate-400" : "text-slate-700"}`}>
+                      {activeReminder ? "Active" : "Follow-up"}
+                    </span>
                   </button>
                 </div>
 
                 {/* Active Follow-up Display */}
                 {activeReminder && (
-                  <div className="mt-6 p-4 bg-orange-50 border border-orange-100 rounded-2xl flex items-center justify-between gap-4 animate-in slide-in-from-top-2 duration-300">
+                  <div className="mt-6 p-3 sm:p-4 bg-orange-50 border border-orange-100 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 animate-in slide-in-from-top-2 duration-300">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-white text-orange-600 flex items-center justify-center border border-orange-100 shadow-sm">
                         <CalendarClock size={18} />
@@ -981,7 +989,7 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
                     </div>
                     <button
                       onClick={() => handleCompleteFollowup(activeReminder.id)}
-                      className="bg-orange-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-orange-700 transition-all active:scale-95 shadow-lg shadow-orange-100 flex items-center gap-2"
+                      className="bg-orange-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-orange-700 transition-all active:scale-95 shadow-lg shadow-orange-100 flex items-center gap-2 w-full sm:w-auto justify-center"
                     >
                       <CalendarCheck size={12} /> Complete
                     </button>
@@ -1429,14 +1437,15 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
         </div>
 
       </div>
-
-      <ScheduleFollowupModal
-        isOpen={showSchedule}
-        onClose={() => setShowSchedule(false)}
-        leadId={lead?.id || ""}
-        leadName={lead?.contactName}
-        onSaved={() => fetchData(false)}
-      />
     </div>
-  );
+
+    <ScheduleFollowupModal
+      isOpen={showSchedule}
+      onClose={() => setShowSchedule(false)}
+      leadId={lead?.id || ""}
+      leadName={lead?.contactName}
+      onSaved={() => fetchData(false)}
+    />
+  </>
+);
 }

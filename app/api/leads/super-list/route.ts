@@ -43,6 +43,7 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
     const isOrgAdmin = user.role === "ORG_ADMIN" || user.role === "CEO";
     const view = searchParams.get("view");
     const filterOwner = searchParams.get("filter_owner");
+    const filterOwnerId = searchParams.get("filter_ownerId");
 
     const filterStage = searchParams.get("filter_stage");
 
@@ -58,7 +59,7 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
           select: { id: true }
         });
         const subIds = subordinates.map(s => s.id);
-        if (filterOwner) {
+        if (filterOwner || filterOwnerId) {
           baseWhere.ownerId = { in: [...subIds, user.id] };
         } else {
           baseWhere.ownerId = { in: subIds };
@@ -71,7 +72,7 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
     } else {
       // Default: My Leads or Sidebar Filter access scope
       // When a sidebar filter, owner filter, or stage filter is active, widen scope by role
-      if (sf || filterOwner || filterStage) {
+      if (sf || filterOwner || filterOwnerId || filterStage) {
         if (isSuperAdmin || isOrgAdmin) {
           // Admins/CEOs see all leads in their organization matching the filter
         } else if (user.role === "MANAGER") {
@@ -135,6 +136,8 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
           queryWhere.source = { name: { in: values } };
         } else if (field === "owner") {
           queryWhere.owner = { name: { in: values } };
+        } else if (field === "ownerId") {
+          queryWhere.ownerId = { in: values };
         } else if (field === "followup") {
           const now = new Date();
           if (values.includes("OVERDUE")) {

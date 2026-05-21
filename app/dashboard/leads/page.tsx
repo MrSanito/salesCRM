@@ -13,7 +13,7 @@ export default function LeadsPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [leadIds, setLeadIds] = useState<string[]>([]);
-  const [owners, setOwners] = useState<string[]>([]);
+  const [ownerDetails, setOwnerDetails] = useState<{id: string, name: string}[]>([]);
   const [selectedOwner, setSelectedOwner] = useState<string>("");
   const [isOwnerInitialized, setIsOwnerInitialized] = useState(false);
   const { user } = useAuth();
@@ -26,19 +26,19 @@ export default function LeadsPage() {
 
   // Set default owner to current user on first load
   useEffect(() => {
-    if (user?.name && !isOwnerInitialized) {
-      setSelectedOwner(user.name);
+    if (user?.id && !isOwnerInitialized) {
+      setSelectedOwner(user.id);
       setIsOwnerInitialized(true);
     }
-  }, [user?.name, isOwnerInitialized]);
+  }, [user?.id, isOwnerInitialized]);
 
   // Fetch owners for the filter dropdown
   useEffect(() => {
     fetch("/api/leads/distinct-filters")
       .then((r) => r.json())
       .then((data) => {
-        if (data && !data.error && data.owners) {
-          setOwners(data.owners);
+        if (data && !data.error && data.ownerDetails) {
+          setOwnerDetails(data.ownerDetails);
         }
       })
       .catch(console.error);
@@ -54,7 +54,7 @@ export default function LeadsPage() {
   };
 
   const canAddLead = user?.role === "CEO" || user?.role === "MANAGER";
-  const isAdminOrManager = user?.role === "CEO" || user?.role === "ORG_ADMIN" || user?.role === "MANAGER";
+  const canFilterOwner = user?.role === "CEO" || user?.role === "ORG_ADMIN";
 
   const handleExportCSV = async () => {
     try {
@@ -98,8 +98,8 @@ export default function LeadsPage() {
         </div>
         
         <div className="flex items-center gap-3">
-          {/* Owner Filter Dropdown - Only for Admins/Managers */}
-          {isAdminOrManager && (
+          {/* Owner Filter Dropdown - Only for Admins */}
+          {canFilterOwner && (
             <div className="relative">
               <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
               <select 
@@ -109,8 +109,8 @@ export default function LeadsPage() {
                 className="appearance-none pl-9 pr-8 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all cursor-pointer min-w-[160px]"
               >
                 <option value="">All Owners</option>
-                {owners.map((owner) => (
-                  <option key={owner} value={owner}>{owner}</option>
+                {ownerDetails.map((owner) => (
+                  <option key={owner.id} value={owner.id}>{owner.name}</option>
                 ))}
               </select>
               <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />

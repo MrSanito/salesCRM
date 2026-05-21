@@ -227,7 +227,7 @@ export default function LeadsTable({
       }
       // Apply owner filter from the page-level dropdown
       if (ownerFilter) {
-        params.set("filter_owner", ownerFilter);
+        params.set("filter_ownerId", ownerFilter);
       }
       Object.entries(columnFilters).forEach(([key, values]) => {
         if (values.size > 0) {
