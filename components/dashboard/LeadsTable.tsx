@@ -260,6 +260,8 @@ export default function LeadsTable({
   useEffect(() => {
     const params = new URLSearchParams();
     if (view) params.set("view", view);
+    if (stageFilter) params.set("stageFilter", stageFilter);
+    if (ownerFilter) params.set("ownerFilter", ownerFilter);
     fetch(`/api/leads/distinct-filters?${params.toString()}`)
       .then((r) => r.json())
       .then((data) => {
@@ -268,7 +270,7 @@ export default function LeadsTable({
         }
       })
       .catch(console.error);
-  }, [refreshKey, activeNav, view]);
+  }, [refreshKey, activeNav, view, stageFilter, ownerFilter]);
 
   // initialData is no longer needed because LeadsTable manages fetching on mount
 

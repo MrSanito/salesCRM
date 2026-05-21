@@ -63,6 +63,40 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
         baseWhere.ownerId = user.id;
       }
     }
+    const stageFilter = searchParams.get("stageFilter") || searchParams.get("filter_stage");
+    const ownerFilter = searchParams.get("ownerFilter") || searchParams.get("filter_ownerId");
+
+    if (stageFilter) {
+      baseWhere.stage = stageFilter;
+    }
+
+    if (ownerFilter) {
+      if (baseWhere.ownerId !== undefined) {
+        if (typeof baseWhere.ownerId === "object" && baseWhere.ownerId !== null) {
+          if (Array.isArray(baseWhere.ownerId.in)) {
+            if (baseWhere.ownerId.in.includes(ownerFilter)) {
+              baseWhere.ownerId = ownerFilter;
+            } else {
+              baseWhere.ownerId = "__none__";
+            }
+          } else if (baseWhere.ownerId.not !== undefined) {
+            if (baseWhere.ownerId.not !== ownerFilter) {
+              baseWhere.ownerId = ownerFilter;
+            } else {
+              baseWhere.ownerId = "__none__";
+            }
+          } else {
+            baseWhere.ownerId = "__none__";
+          }
+        } else if (baseWhere.ownerId !== ownerFilter) {
+          baseWhere.ownerId = "__none__";
+        } else {
+          baseWhere.ownerId = ownerFilter;
+        }
+      } else {
+        baseWhere.ownerId = ownerFilter;
+      }
+    }
 
     // Use Prisma's findMany with distinct to get unique values directly from the database
     // This avoids fetching all leads into memory
@@ -82,10 +116,14 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
         select: { state: true },
         distinct: ['state'],
       }),
-      prisma.leadSource.findMany({
-        where: { organizationId: user.organizationId },
-        select: { name: true },
-        distinct: ['name'],
+      prisma.lead.findMany({
+        where: { ...baseWhere, sourceId: { not: null } },
+        select: {
+          source: {
+            select: { name: true }
+          }
+        },
+        distinct: ['sourceId'],
       }),
       prisma.user.findMany({
         where: { organizationId: user.organizationId },
@@ -108,10 +146,13 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
       .filter(Boolean)
       .sort();
 
-    const sources = rawSources
-      .map((s: { name: string }) => s.name)
-      .filter((name): name is string => !!name && name.trim() !== "")
-      .sort();
+    const sources = Array.from(
+      new Set(
+        rawSources
+          .map((r: any) => r.source?.name?.trim())
+          .filter((name: any): name is string => !!name && name !== "")
+      )
+    ).sort();
 
     const owners = Array.from(new Set(rawUsers.map((u: any) => u.name?.trim()).filter(Boolean))).sort();
     const ownerDetails = rawUsers.map((u: any) => ({ id: u.id, name: u.name?.trim() })).sort((a: any, b: any) => a.name.localeCompare(b.name));
