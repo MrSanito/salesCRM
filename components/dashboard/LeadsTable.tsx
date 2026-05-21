@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { X } from "lucide-react";
 import toast from "react-hot-toast";
+import { useTablePreferences, defaultColumnPreferences } from "@/hooks/useTablePreferences";
 
 // Sub-components
 import {
@@ -38,7 +39,27 @@ interface LeadsTableProps {
   } | null;
   onStatsUpdate?: (stats: any) => void;
   minWidthClass?: string;
+  /** Force filter by a specific stage (e.g. "NEW") */
+  stageFilter?: string;
+  /** Filter by owner name */
+  ownerFilter?: string;
+  /** Custom API endpoint */
+  apiUrl?: string;
 }
+
+// Calculate col spans dynamically
+const getActiveColumnsCount = (prefs: typeof defaultColumnPreferences) => {
+  return prefs.columnOrder.filter(colId => {
+    switch (colId) {
+      case 'city': return prefs.showCity;
+      case 'state': return prefs.showState;
+      case 'createdAt': return prefs.showCreatedOn;
+      case 'dealValueInr': return prefs.showDealValue;
+      case 'followUpAt': return prefs.showFollowUp;
+      default: return true;
+    }
+  }).length;
+};
 
 export default function LeadsTable({
   onLeadClick,
@@ -46,11 +67,15 @@ export default function LeadsTable({
   refreshKey = 0,
   sidebarFilter,
   onStatsUpdate,
-  minWidthClass
+  minWidthClass,
+  stageFilter,
+  ownerFilter,
+  apiUrl = "/api/leads/super-list"
 }: LeadsTableProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const view = searchParams.get("view");
+  const { columnPreferences, isLoaded: tablePrefsLoaded } = useTablePreferences();
   const [leads, setLeads] = useState<DbLead[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -196,12 +221,24 @@ export default function LeadsTable({
       if (debouncedSearchQuery) params.set("search", debouncedSearchQuery);
       if (sortConfig) { params.set("sortBy", sortConfig.key); params.set("sortDir", sortConfig.direction); }
       if (sidebarFilter) params.set("sidebarFilterId", sidebarFilter.id);
+      // Apply forced stage filter (e.g. "NEW" for the New Leads page)
+      if (stageFilter) {
+        params.set("filter_stage", stageFilter);
+      }
+      // Apply owner filter from the page-level dropdown
+      if (ownerFilter) {
+        params.set("filter_owner", ownerFilter);
+      }
       Object.entries(columnFilters).forEach(([key, values]) => {
-        if (values.size > 0) params.set(`filter_${key}`, Array.from(values).join(","));
+        if (values.size > 0) {
+          // Don't override the forced stage filter from props
+          if (key === "stage" && stageFilter) return;
+          params.set(`filter_${key}`, Array.from(values).join(","));
+        }
       });
       if (view) params.set("view", view);
       if (currentPage === 1) params.set("includeStats", "true");
-      const res = await fetch(`/api/leads/super-list?${params.toString()}`);
+      const res = await fetch(`${apiUrl}?${params.toString()}`);
       const data = await res.json();
       if (data.leads) setLeads(data.leads);
       const count = data.pagination?.totalCount ?? data.pagination?.total ?? 0;
@@ -213,7 +250,7 @@ export default function LeadsTable({
       setLoading(false);
       setIsRefreshing(false);
     }
-  }, [currentPage, pageSize, debouncedSearchQuery, sortConfig, columnFilters, onStatsUpdate, sidebarFilter?.id, view]);
+  }, [currentPage, pageSize, debouncedSearchQuery, sortConfig, columnFilters, onStatsUpdate, sidebarFilter?.id, view, stageFilter, ownerFilter, apiUrl]);
 
   useEffect(() => { fetchLeads(); }, [fetchLeads, refreshKey, activeNav]);
 
@@ -339,20 +376,36 @@ export default function LeadsTable({
         
         <table className={`w-full text-[12px] table-fixed ${minWidthClass || "min-w-[1200px]"}`}>
           <colgroup>
-            <col style={{ width: "38px" }} />
-            <col style={{ width: "9%" }} />
-            <col style={{ width: "120px" }} />
-            <col style={{ width: "100px" }} />
-            <col style={{ width: "9%" }} />
-            <col style={{ width: "9%" }} />
-            <col style={{ width: "7%" }} />
-            <col style={{ width: "7%" }} />
-            <col style={{ width: "10%" }} />
-            <col style={{ width: "7%" }} />
-            <col style={{ width: "11%" }} />
-            <col style={{ width: "9%" }} />
-            <col style={{ width: "7%" }} />
-            <col style={{ width: "32px" }} />
+            <col style={{ width: "38px" }} /> {/* Checkbox */}
+            {columnPreferences.columnOrder.map(colId => {
+              // Check visibility
+              if (colId === 'city' && !columnPreferences.showCity) return null;
+              if (colId === 'state' && !columnPreferences.showState) return null;
+              if (colId === 'createdAt' && !columnPreferences.showCreatedOn) return null;
+              if (colId === 'dealValueInr' && !columnPreferences.showDealValue) return null;
+              if (colId === 'followUpAt' && !columnPreferences.showFollowUp) return null;
+
+              // Get width
+              let width = "9%";
+              switch (colId) {
+                case 'lead': width = "120px"; break;
+                case 'company': width = "100px"; break;
+                case 'industry': width = "9%"; break;
+                case 'stage': width = "9%"; break;
+                case 'subStatus': width = "7%"; break;
+                case 'city': width = "7%"; break;
+                case 'state': width = "7%"; break;
+                case 'phone': width = "10%"; break;
+                case 'source': width = "7%"; break;
+                case 'owner': width = "11%"; break;
+                case 'createdAt': width = "9%"; break;
+                case 'dealValueInr': width = "7%"; break;
+                case 'followUpAt': width = "9%"; break;
+              }
+
+              return <col key={colId} style={{ width }} />;
+            })}
+            <col style={{ width: "32px" }} /> {/* Actions */}
           </colgroup>
 
           {/* Premium Header */}
@@ -370,27 +423,28 @@ export default function LeadsTable({
             setActiveColumnFilter={setActiveColumnFilter}
             uniqueDates={uniqueDates}
             distinctFilters={distinctFilters}
+            columnPreferences={columnPreferences}
           />
 
           {/* Body items */}
           <tbody className="divide-y divide-slate-50">
-            {(loading || isRefreshing) && leads.length === 0 && (
+            {(loading || isRefreshing || !tablePrefsLoaded) && leads.length === 0 && (
               <tr>
-                <td colSpan={14} className="text-center py-24 bg-white">
+                <td colSpan={getActiveColumnsCount(columnPreferences) + 2} className="text-center py-24 bg-white">
                   <div className="inline-block w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-3" />
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Loading leads pipeline…</p>
                 </td>
               </tr>
             )}
-            {!loading && !isRefreshing && displayedLeads.length === 0 && (
+            {!loading && !isRefreshing && tablePrefsLoaded && displayedLeads.length === 0 && (
               <tr>
-                <td colSpan={14} className="text-center py-24 bg-white text-[12px] font-semibold text-slate-400">
+                <td colSpan={getActiveColumnsCount(columnPreferences) + 2} className="text-center py-24 bg-white text-[12px] font-semibold text-slate-400">
                   No leads match current filters
                 </td>
               </tr>
             )}
 
-            {!loading && displayedLeads.map((lead) => (
+            {!loading && tablePrefsLoaded && displayedLeads.map((lead) => (
               <LeadRow
                 key={lead.id}
                 lead={lead}
@@ -402,6 +456,7 @@ export default function LeadsTable({
                 onEditLead={(l) => router.push(`/lead/${l.id}/edit`)}
                 onDeleteLeadConfirm={setShowDeleteConfirm}
                 displayedLeads={displayedLeads}
+                columnPreferences={columnPreferences}
               />
             ))}
           </tbody>

@@ -37,6 +37,7 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
 
     const baseWhere: any = {
       organizationId: user.organizationId,
+      stage: "NEW"
     };
 
     const isSuperAdmin = user.email === "sb.solobuild@gmail.com";
@@ -91,7 +92,9 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
 
     // Sidebar Filter Logic
     if (sf) {
-      if (sf.statuses && sf.statuses.length > 0) baseWhere.stage = { in: sf.statuses };
+      if (sf.statuses && sf.statuses.length > 0) {
+        // Ignored in new-list: strictly NEW
+      }
       if (sf.subStatuses && sf.subStatuses.length > 0) baseWhere.subStatus = { in: sf.subStatuses };
       if (sf.industries && sf.industries.length > 0) baseWhere.industry = { in: sf.industries };
       if (sf.sources && sf.sources.length > 0) baseWhere.source = { name: { in: sf.sources } };
@@ -122,7 +125,7 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
         const values = value.split(",");
         
         if (field === "stage") {
-          queryWhere.stage = { in: values };
+          // Ignored in new-list: strictly NEW
         } else if (field === "subStatus") {
           queryWhere.subStatus = { in: values };
         } else if (field === "city") {

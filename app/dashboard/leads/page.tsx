@@ -4,7 +4,7 @@ import { useSearchParams } from "next/navigation";
 import LeadsTable from "@/components/dashboard/LeadsTable";
 import LeadDetailModal from "@/components/dashboard/LeadDetailModal";
 import AddLeadModal from "@/components/dashboard/AddLeadModal";
-import { Plus, Search, Filter, Download } from "lucide-react";
+import { Plus, Download, Users, ChevronDown } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthContext";
 import * as XLSX from "xlsx";
 
@@ -13,6 +13,9 @@ export default function LeadsPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [leadIds, setLeadIds] = useState<string[]>([]);
+  const [owners, setOwners] = useState<string[]>([]);
+  const [selectedOwner, setSelectedOwner] = useState<string>("");
+  const [isOwnerInitialized, setIsOwnerInitialized] = useState(false);
   const { user } = useAuth();
   const searchParams = useSearchParams();
 
@@ -20,6 +23,26 @@ export default function LeadsPage() {
     const leadId = searchParams.get("id");
     if (leadId) setSelectedLeadId(leadId);
   }, [searchParams]);
+
+  // Set default owner to current user on first load
+  useEffect(() => {
+    if (user?.name && !isOwnerInitialized) {
+      setSelectedOwner(user.name);
+      setIsOwnerInitialized(true);
+    }
+  }, [user?.name, isOwnerInitialized]);
+
+  // Fetch owners for the filter dropdown
+  useEffect(() => {
+    fetch("/api/leads/distinct-filters")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data && !data.error && data.owners) {
+          setOwners(data.owners);
+        }
+      })
+      .catch(console.error);
+  }, []);
 
   const switchLead = (dir: "next" | "prev") => {
     if (!selectedLeadId || leadIds.length === 0) return;
@@ -30,9 +53,8 @@ export default function LeadsPage() {
     setSelectedLeadId(leadIds[newIndex]);
   };
 
-  // Only CEO and Manager can add leads based on previous instructions, 
-  // but let's check if the user is authorized.
   const canAddLead = user?.role === "CEO" || user?.role === "MANAGER";
+  const isAdminOrManager = user?.role === "CEO" || user?.role === "ORG_ADMIN" || user?.role === "MANAGER";
 
   const handleExportCSV = async () => {
     try {
@@ -56,7 +78,7 @@ export default function LeadsPage() {
       const worksheet = XLSX.utils.json_to_sheet(worksheetData);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Leads");
-      XLSX.writeFile(workbook, "Leads_Pipeline.csv", { bookType: "csv" });
+      XLSX.writeFile(workbook, "New_Leads_Pipeline.csv", { bookType: "csv" });
     } catch (e) {
       console.error("Export failed", e);
     }
@@ -75,7 +97,26 @@ export default function LeadsPage() {
           <p className="text-slate-500 text-sm">Review and qualify incoming sales opportunities</p>
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          {/* Owner Filter Dropdown - Only for Admins/Managers */}
+          {isAdminOrManager && (
+            <div className="relative">
+              <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
+              <select 
+                id="owner-filter"
+                value={selectedOwner}
+                onChange={(e) => setSelectedOwner(e.target.value)}
+                className="appearance-none pl-9 pr-8 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all cursor-pointer min-w-[160px]"
+              >
+                <option value="">All Owners</option>
+                {owners.map((owner) => (
+                  <option key={owner} value={owner}>{owner}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
+            </div>
+          )}
+
           <button 
             onClick={handleExportCSV}
             className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
@@ -96,36 +137,13 @@ export default function LeadsPage() {
         </div>
       </div>
 
-      {/* Advanced Filters Bar */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-        <div className="relative col-span-1 md:col-span-2">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-          <input 
-            type="text" 
-            placeholder="Search leads by name, email, or company..."
-            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
-          />
-        </div>
-        <select className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
-          <option>All Stages</option>
-          <option>New</option>
-          <option>Contacted</option>
-          <option>Qualified</option>
-          <option>Proposal Sent</option>
-          <option>Negotiation</option>
-          <option>Won</option>
-          <option>Lost</option>
-        </select>
-        <select className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
-          <option>All Owners</option>
-          {/* We could fetch owners here, but for now just placeholder */}
-        </select>
-      </div>
-
       <LeadsTable 
         refreshKey={refreshKey} 
         onLeadClick={handleLeadClick} 
-        activeNav="Leads" 
+        activeNav="New Leads"
+        stageFilter="NEW"
+        ownerFilter={selectedOwner === "" ? undefined : selectedOwner}
+        apiUrl="/api/leads/new-list"
       />
 
       {selectedLeadId && (

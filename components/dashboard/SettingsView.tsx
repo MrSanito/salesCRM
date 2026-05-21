@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthContext";
 import { useDashboard } from "@/components/dashboard/DashboardContext";
 import toast from "react-hot-toast";
+import { useTablePreferences, ColumnId } from "@/hooks/useTablePreferences";
 
 const STATUS_OPTIONS = [
   { value: "", label: "Any Status" },
@@ -16,6 +17,22 @@ const STATUS_OPTIONS = [
   { value: "NEGOTIATION", label: "Negotiation" },
   { value: "NOT_INTERESTED", label: "Not Interested" },
 ];
+
+const ALL_COLUMNS: Record<ColumnId, { label: string; desc: string; isBase: boolean }> = {
+  lead: { label: 'Lead / Contact Name', desc: 'Main contact info', isBase: true },
+  company: { label: 'Company', desc: 'Company name', isBase: true },
+  industry: { label: 'Industry', desc: 'Sector', isBase: true },
+  stage: { label: 'Status (Stage)', desc: 'Pipeline stage', isBase: true },
+  subStatus: { label: 'Substatus', desc: 'Detailed status', isBase: true },
+  city: { label: 'City', desc: 'Lead\'s city', isBase: false },
+  state: { label: 'State', desc: 'Lead\'s state', isBase: false },
+  phone: { label: 'Phone / Email', desc: 'Contact details', isBase: true },
+  source: { label: 'Source', desc: 'Lead origin', isBase: true },
+  owner: { label: 'Owner', desc: 'Assigned user', isBase: true },
+  createdAt: { label: 'Created On', desc: 'Date added', isBase: false },
+  dealValueInr: { label: 'Deal Value', desc: 'Deal size (INR)', isBase: false },
+  followUpAt: { label: 'Follow-Up Date', desc: 'Next follow-up', isBase: false },
+};
 
 const SUB_STATUS_OPTIONS = [
   { value: "", label: "Any Sub-status" },
@@ -73,6 +90,36 @@ export default function SettingsView() {
   const [name, setName] = useState(user?.name || "");
   const [email, setEmail] = useState(user?.email || "");
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'profile' | 'sidebar' | 'pipeline' | 'table'>('profile');
+  const { columnPreferences, updateColumnPreferences, isLoaded: tablePrefsLoaded } = useTablePreferences();
+
+  const handleMoveUp = (index: number) => {
+    if (index === 0) return;
+    const newOrder = [...columnPreferences.columnOrder];
+    const temp = newOrder[index - 1];
+    newOrder[index - 1] = newOrder[index];
+    newOrder[index] = temp;
+    updateColumnPreferences({ columnOrder: newOrder });
+  };
+
+  const handleMoveDown = (index: number) => {
+    if (index === columnPreferences.columnOrder.length - 1) return;
+    const newOrder = [...columnPreferences.columnOrder];
+    const temp = newOrder[index + 1];
+    newOrder[index + 1] = newOrder[index];
+    newOrder[index] = temp;
+    updateColumnPreferences({ columnOrder: newOrder });
+  };
+
+  const handleToggleVisibility = (colId: ColumnId, checked: boolean) => {
+    switch (colId) {
+      case 'city': updateColumnPreferences({ showCity: checked }); break;
+      case 'state': updateColumnPreferences({ showState: checked }); break;
+      case 'createdAt': updateColumnPreferences({ showCreatedOn: checked }); break;
+      case 'dealValueInr': updateColumnPreferences({ showDealValue: checked }); break;
+      case 'followUpAt': updateColumnPreferences({ showFollowUp: checked }); break;
+    }
+  };
 
   // Sidebar customization state
   const [sidebarFilters, setSidebarFilters] = useState<SidebarFilterItem[]>([]);
@@ -414,743 +461,908 @@ export default function SettingsView() {
   const getColorClass = (color: string) => COLOR_OPTIONS.find((o) => o.value === color)?.bg || "bg-blue-500";
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="max-w-6xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* Top Banner and Navigation */}
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 border-b border-slate-100 pb-6">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Security & Identity</h1>
-          <p className="text-sm text-slate-500 mt-1">Manage your professional profile and access protocols.</p>
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.2em] text-indigo-600 bg-indigo-50/80 rounded-full border border-indigo-100/50 mb-3 w-fit">
+            ⚙️ SYSTEM SETTINGS V2
+          </span>
+          <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">Configuration Console</h1>
+          <p className="text-sm text-slate-500 mt-1">Manage user identity, customize sidebar shortcuts, and define lead workflow rules.</p>
         </div>
         <button 
           onClick={() => router.back()}
-          className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-all"
+          className="group flex items-center gap-2.5 text-xs font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-all duration-300"
         >
-          <ArrowLeft size={16} /> Back to Dashboard
+          <ArrowLeft size={16} className="group-hover:-translate-x-1.5 transition-transform duration-300" /> Back to Dashboard
         </button>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Profile Sidebar */}
-        <div className="lg:col-span-1 space-y-6">
-          <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 flex flex-col items-center text-center shadow-xl shadow-slate-200/50">
-            <div className="relative group">
-              <div className="w-24 h-24 rounded-[2rem] bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-3xl font-black shadow-lg shadow-blue-200 relative z-10">
-                {user?.initials}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* Navigation Sidebar & Short Specs Profile */}
+        <div className="lg:col-span-4 space-y-6">
+          <div className="bg-white rounded-[2rem] border border-slate-100 p-6 flex flex-col space-y-6 shadow-xl shadow-slate-200/40">
+            {/* User profile avatar section */}
+            <div className="flex flex-col items-center text-center p-4 rounded-3xl bg-slate-50/40 border border-slate-50 relative group">
+              <div className="relative">
+                <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center text-white text-3xl font-black shadow-lg shadow-indigo-200 relative z-10 group-hover:scale-105 transition-transform duration-300">
+                  {user?.initials}
+                </div>
+                <div className="absolute -inset-2 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-[1.3rem] blur-xl opacity-20 group-hover:opacity-40 transition-opacity duration-300" />
+                <button className="absolute bottom-0 right-0 p-2 bg-slate-900 text-white rounded-xl border-4 border-white shadow-lg transform translate-x-1/4 translate-y-1/4 hover:scale-110 active:scale-95 transition-all duration-300 z-20">
+                  <Camera size={14} />
+                </button>
               </div>
-              <div className="absolute -inset-2 bg-blue-500 rounded-[2.2rem] blur-xl opacity-20 group-hover:opacity-40 transition-opacity" />
-              <button className="absolute bottom-0 right-0 p-2 bg-slate-900 text-white rounded-xl border-4 border-white shadow-lg transform translate-x-1/4 translate-y-1/4 hover:scale-110 transition-all active:scale-95 z-20">
-                <Camera size={14} />
+              
+              <div className="mt-5">
+                <h2 className="text-xl font-bold text-slate-900">{user?.name}</h2>
+                <span className="inline-block text-[9px] font-black uppercase tracking-widest text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-md mt-1">
+                  {user?.role.replace("ORG_", "").replace("_", " ")}
+                </span>
+              </div>
+
+              <div className="w-full h-px bg-slate-100 my-5" />
+
+              {/* Mini details list */}
+              <div className="w-full space-y-3">
+                 <div className="flex items-center justify-between text-left p-3.5 bg-white rounded-2xl border border-slate-100">
+                    <div>
+                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">ACCESS CREDENTIALS</p>
+                      <p className="text-xs font-bold text-slate-700">#{user?.id.slice(-6).toUpperCase()}</p>
+                    </div>
+                    <Fingerprint size={16} className="text-indigo-500/80" />
+                 </div>
+              </div>
+            </div>
+
+            {/* Navigation Tabs Menu */}
+            <nav className="flex flex-col gap-1">
+              <button
+                type="button"
+                onClick={() => setActiveTab("profile")}
+                className={`flex items-center gap-3.5 px-4.5 py-4 rounded-2xl text-xs font-black uppercase tracking-widest text-left transition-all duration-300 ${
+                  activeTab === "profile"
+                    ? "bg-slate-900 text-white shadow-xl shadow-slate-900/20"
+                    : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
+                }`}
+              >
+                <User size={16} />
+                <span>Identity & Profile</span>
               </button>
-            </div>
-            
-            <div className="mt-6">
-              <h2 className="text-xl font-bold text-slate-900">{user?.name}</h2>
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600 mt-1">{user?.role.replace("ORG_", "").replace("_", " ")}</p>
-            </div>
 
-            <div className="w-full h-px bg-slate-50 my-6" />
+              {user && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("sidebar")}
+                  className={`flex items-center gap-3.5 px-4.5 py-4 rounded-2xl text-xs font-black uppercase tracking-widest text-left transition-all duration-300 ${
+                    activeTab === "sidebar"
+                      ? "bg-slate-900 text-white shadow-xl shadow-slate-900/20"
+                      : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
+                  }`}
+                >
+                  <LayoutPanelLeft size={16} />
+                  <span>Sidebar Shortcuts</span>
+                </button>
+              )}
 
-            <div className="w-full space-y-4">
-               <div className="flex items-center justify-between text-left p-3 bg-slate-50 rounded-2xl border border-slate-100">
-                  <div>
-                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Employee ID</p>
-                    <p className="text-xs font-bold text-slate-700">#{user?.id.slice(-6).toUpperCase()}</p>
-                  </div>
-                  <Fingerprint size={16} className="text-blue-500" />
-               </div>
-            </div>
+              {user && (user.role === "CEO" || user.role === "ORG_ADMIN") && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("pipeline")}
+                  className={`flex items-center gap-3.5 px-4.5 py-4 rounded-2xl text-xs font-black uppercase tracking-widest text-left transition-all duration-300 ${
+                    activeTab === "pipeline"
+                      ? "bg-slate-900 text-white shadow-xl shadow-slate-900/20"
+                      : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
+                  }`}
+                >
+                  <Layers size={16} />
+                  <span>Lead Pipeline Stages</span>
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("table")}
+                className={`flex items-center gap-3.5 px-4.5 py-4 rounded-2xl text-xs font-black uppercase tracking-widest text-left transition-all duration-300 ${
+                  activeTab === "table"
+                    ? "bg-slate-900 text-white shadow-xl shadow-slate-900/20"
+                    : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
+                }`}
+              >
+                <Settings2 size={16} />
+                <span>Table Configuration</span>
+              </button>
+            </nav>
           </div>
         </div>
 
-        {/* Edit Form + Sidebar Customization */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Profile Form */}
-          <form onSubmit={handleUpdate} className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/50 overflow-hidden">
-             <div className="p-8 sm:p-10 border-b border-slate-50 bg-slate-50/30">
-                <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-8 flex items-center gap-3">
-                  <User size={14} className="text-blue-600" /> Profile & Identity
-                </h3>
-                
+        {/* Content Pane of Selected Tab */}
+        <div className="lg:col-span-8">
+          {/* PROFILE TAB */}
+          {activeTab === "profile" && (
+            <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/40 p-8 sm:p-10 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <div className="flex items-center gap-3 mb-8 pb-4 border-b border-slate-100">
+                <div className="p-2.5 bg-indigo-50 rounded-xl text-indigo-600">
+                  <User size={18} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-850">Identity & Account Settings</h3>
+                  <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mt-0.5">Manage your personal credentials</p>
+                </div>
+              </div>
+
+              <form onSubmit={handleUpdate} className="space-y-8">
                 <div className="space-y-6">
-                   <div className="space-y-2">
-                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Full Legal Name</label>
-                      <div className="relative">
-                        <User size={14} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" />
-                        <input 
-                          type="text" 
-                          required
-                          value={name}
-                          onChange={e => setName(e.target.value)}
-                          className="w-full pl-12 pr-6 py-4 bg-white border border-slate-200 rounded-2xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all"
-                          placeholder="Full Name"
-                        />
-                      </div>
-                      <p className="text-[9px] text-slate-400 px-1 italic">This name will be visible to all members of your organization.</p>
-                   </div>
+                  {/* Full Name */}
+                  <div className="space-y-2">
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Full Legal Name</label>
+                    <div className="relative group">
+                      <User size={15} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors duration-300" />
+                      <input 
+                        type="text" 
+                        required
+                        value={name}
+                        onChange={e => setName(e.target.value)}
+                        className="w-full pl-13 pr-6 py-4.5 bg-slate-50/50 border border-slate-200/80 rounded-2xl text-sm font-bold text-slate-800 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 transition-all duration-300"
+                        placeholder="Full Legal Name"
+                      />
+                    </div>
+                    <p className="text-[10px] text-slate-400 px-1 italic">This name is visible to all members inside your active organization.</p>
+                  </div>
 
-                   <div className="space-y-2">
-                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Email Address (Primary)</label>
-                      <div className="relative">
-                        <Mail size={14} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" />
-                        <input 
-                          type="email" 
-                          required
-                          value={email}
-                          onChange={e => setEmail(e.target.value)}
-                          className="w-full pl-12 pr-6 py-4 bg-white border border-slate-200 rounded-2xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all"
-                        />
-                      </div>
-                      <p className="text-[9px] text-slate-400 px-1">This email will be used for all system notifications and login.</p>
-                   </div>
-                </div>
-             </div>
-
-             <div className="p-8 sm:p-10 flex items-center justify-between bg-white">
-                <div className="hidden sm:block">
-                   <p className="text-xs font-bold text-slate-400">Last synced: Just now</p>
-                </div>
-                <button 
-                  type="submit"
-                  disabled={loading || (name === user?.name && email === user?.email)}
-                  className="w-full sm:w-auto flex items-center justify-center gap-2 bg-slate-900 text-white px-10 py-4 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all active:scale-95 shadow-xl shadow-slate-200 disabled:opacity-50 disabled:shadow-none"
-                >
-                  <Save size={16} />
-                  {loading ? "Updating..." : "Update Email & Profile"}
-                </button>
-             </div>
-          </form>
-
-          {/* ────── Sidebar Customization (CEO Only) ────── */}
-          {user && (
-            <div id="sidebar-filters" className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/50 overflow-hidden scroll-mt-6">
-              <div className="p-6 sm:p-10 border-b border-slate-50 bg-slate-50/30">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                  <h3 className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-3">
-                    <LayoutPanelLeft size={14} className="text-purple-600" /> Sidebar Protocols
-                  </h3>
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setShowAddForm(!showAddForm)}
-                      className={`w-full sm:w-auto flex items-center justify-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-5 py-2.5 rounded-xl transition-all active:scale-95 ${
-                        showAddForm
-                          ? "bg-slate-100 text-slate-600 border border-slate-200"
-                          : "bg-slate-900 text-white shadow-lg shadow-slate-200"
-                      }`}
-                    >
-                      {showAddForm ? <X size={12} /> : <Plus size={12} />}
-                      {showAddForm ? "Cancel" : "Add Filter"}
-                    </button>
+                  {/* Primary Email */}
+                  <div className="space-y-2">
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Primary Email Address</label>
+                    <div className="relative group">
+                      <Mail size={15} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors duration-300" />
+                      <input 
+                        type="email" 
+                        required
+                        value={email}
+                        onChange={e => setEmail(e.target.value)}
+                        className="w-full pl-13 pr-6 py-4.5 bg-slate-50/50 border border-slate-200/80 rounded-2xl text-sm font-bold text-slate-800 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 transition-all duration-300"
+                        placeholder="Primary Email Address"
+                      />
+                    </div>
+                    <p className="text-[10px] text-slate-400 px-1">This email address will be utilized for critical notifications and authentication checks.</p>
                   </div>
                 </div>
 
-                <p className="text-[11px] text-slate-500 leading-relaxed mb-6">
-                  Create custom sidebar shortcuts that will appear for all <span className="font-bold text-slate-700">Supervisors</span> and <span className="font-bold text-slate-700">Sales Reps</span> in your organization. 
-                  Each filter becomes a clickable icon in the sidebar that instantly filters the leads table.
-                </p>
+                <div className="pt-6 border-t border-slate-100 flex items-center justify-between gap-4">
+                  <span className="text-xs font-bold text-slate-450 italic">Sync state updated: Just now</span>
+                  <button 
+                    type="submit"
+                    disabled={loading || (name === user?.name && email === user?.email)}
+                    className="flex items-center justify-center gap-2 bg-slate-900 text-white px-8 py-4.5 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-slate-800 active:scale-[0.97] transition-all duration-300 shadow-xl shadow-slate-200 disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed"
+                  >
+                    <Save size={14} />
+                    {loading ? "Synchronizing..." : "Update Identity"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
 
-                {/* ── Add New Filter Form ── */}
-                {showAddForm && (
-                  <div className="bg-slate-50 rounded-2xl border border-slate-100 p-5 mb-6 animate-in slide-in-from-top-2 fade-in duration-300">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                      {/* Name */}
-                      <div className="sm:col-span-2 space-y-1.5">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Filter Name *</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. Hot Leads, Big Deals, Warm Pipeline"
-                          value={newFilter.name}
-                          onChange={(e) => setNewFilter({ ...newFilter, name: e.target.value })}
-                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-purple-500/10 focus:border-purple-500 transition-all"
-                        />
+          {/* SIDEBAR SHORTCUTS TAB */}
+          {activeTab === "sidebar" && user && (
+            <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/40 p-8 sm:p-10 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 mb-8">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-purple-50 rounded-xl text-purple-600">
+                    <LayoutPanelLeft size={18} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-850">Sidebar Protocols</h3>
+                    <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mt-0.5">Customize global organization shortcuts</p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowAddForm(!showAddForm)}
+                  className={`flex items-center gap-2 text-xs font-black uppercase tracking-widest px-5 py-3 rounded-xl transition-all duration-300 active:scale-95 ${
+                    showAddForm
+                      ? "bg-slate-100 text-slate-600 border border-slate-200/60"
+                      : "bg-slate-900 text-white shadow-lg shadow-slate-900/10 hover:bg-slate-800"
+                  }`}
+                >
+                  {showAddForm ? <X size={12} /> : <Plus size={12} />}
+                  {showAddForm ? "Cancel" : "Add Shortcut"}
+                </button>
+              </div>
+
+              <p className="text-xs text-slate-500 leading-relaxed mb-8 bg-slate-50 rounded-2xl p-4.5 border border-slate-100">
+                Setup high-priority database filters that appear natively inside the Sidebar of all <span className="font-bold text-slate-700">Supervisors</span> and <span className="font-bold text-slate-700">Sales Reps</span> in the organization.
+              </p>
+
+              {/* Add New Filter Accordion Form */}
+              {showAddForm && (
+                <div className="bg-slate-50/60 rounded-3xl border border-slate-200/40 p-6 mb-8 animate-in slide-in-from-top-3 fade-in duration-300 space-y-6">
+                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">NEW SHORTCUT PROTOCOL</h4>
+
+                  <div className="space-y-5">
+                    {/* Name */}
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Shortcut Name *</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Big Hot Deals, Active Leads"
+                        value={newFilter.name}
+                        onChange={(e) => setNewFilter({ ...newFilter, name: e.target.value })}
+                        className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-purple-500/5 focus:border-purple-500 transition-all duration-300"
+                      />
+                    </div>
+
+                    {/* Status Selectors */}
+                    <div className="space-y-2.5">
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Primary Status Blockers (Multiple)</label>
+                      <div className="flex flex-wrap gap-2">
+                        {STATUS_OPTIONS.filter(o => o.value).map((o) => {
+                          const isSelected = newFilter.statuses.includes(o.value);
+                          return (
+                            <button
+                              key={o.value}
+                              type="button"
+                              onClick={() => {
+                                const next = isSelected 
+                                  ? newFilter.statuses.filter(s => s !== o.value)
+                                  : [...newFilter.statuses, o.value];
+                                setNewFilter({ ...newFilter, statuses: next });
+                              }}
+                              className={`px-4 py-2.5 rounded-xl text-[10px] font-extrabold uppercase tracking-widest border transition-all duration-300 active:scale-95 ${
+                                isSelected 
+                                  ? "bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-100" 
+                                  : "bg-white text-slate-500 border-slate-200/80 hover:bg-slate-100"
+                              }`}
+                            >
+                              {o.label}
+                            </button>
+                          );
+                        })}
                       </div>
+                    </div>
 
-                      {/* Multi-Status */}
-                      <div className="sm:col-span-2 space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Lead Statuses (Select Multiple)</label>
-                        <div className="flex flex-wrap gap-2">
-                          {STATUS_OPTIONS.filter(o => o.value).map((o) => {
-                            const isSelected = newFilter.statuses.includes(o.value);
-                            return (
-                              <button
-                                key={o.value}
-                                type="button"
-                                onClick={() => {
-                                  const next = isSelected 
-                                    ? newFilter.statuses.filter(s => s !== o.value)
-                                    : [...newFilter.statuses, o.value];
-                                  setNewFilter({ ...newFilter, statuses: next });
-                                }}
-                                className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest border transition-all ${
-                                  isSelected 
-                                    ? "bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-100" 
-                                    : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
-                                }`}
-                              >
-                                {o.label}
-                              </button>
-                            );
-                          })}
-                        </div>
+                    {/* Sub-status Selectors */}
+                    <div className="space-y-2.5">
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Sub-status Blockers (Multiple)</label>
+                      <div className="flex flex-wrap gap-2">
+                        {SUB_STATUS_OPTIONS.filter(o => o.value).map((o) => {
+                          const isSelected = newFilter.subStatuses.includes(o.value);
+                          return (
+                            <button
+                              key={o.value}
+                              type="button"
+                              onClick={() => {
+                                const next = isSelected 
+                                  ? newFilter.subStatuses.filter(s => s !== o.value)
+                                  : [...newFilter.subStatuses, o.value];
+                                setNewFilter({ ...newFilter, subStatuses: next });
+                              }}
+                              className={`px-4 py-2.5 rounded-xl text-[10px] font-extrabold uppercase tracking-widest border transition-all duration-300 active:scale-95 ${
+                                isSelected 
+                                  ? "bg-purple-600 text-white border-purple-600 shadow-lg shadow-purple-100" 
+                                  : "bg-white text-slate-500 border-slate-200/80 hover:bg-slate-100"
+                              }`}
+                            >
+                              {o.label}
+                            </button>
+                          );
+                        })}
                       </div>
+                    </div>
 
-                      {/* Multi-Sub-status */}
-                      <div className="sm:col-span-2 space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Sub-statuses (Select Multiple)</label>
-                        <div className="flex flex-wrap gap-2">
-                          {SUB_STATUS_OPTIONS.filter(o => o.value).map((o) => {
-                            const isSelected = newFilter.subStatuses.includes(o.value);
-                            return (
-                              <button
-                                key={o.value}
-                                type="button"
-                                onClick={() => {
-                                  const next = isSelected 
-                                    ? newFilter.subStatuses.filter(s => s !== o.value)
-                                    : [...newFilter.subStatuses, o.value];
-                                  setNewFilter({ ...newFilter, subStatuses: next });
-                                }}
-                                className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest border transition-all ${
-                                  isSelected 
-                                    ? "bg-purple-600 text-white border-purple-600 shadow-lg shadow-purple-100" 
-                                    : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
-                                }`}
-                              >
-                                {o.label}
-                              </button>
-                            );
-                          })}
-                        </div>
+                    {/* Industries Selectors */}
+                    <div className="space-y-2.5">
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Industries (Multiple)</label>
+                      <div className="flex flex-wrap gap-2">
+                        {industries.map((ind) => {
+                          const isSelected = newFilter.industries.includes(ind);
+                          return (
+                            <button
+                              key={ind}
+                              type="button"
+                              onClick={() => {
+                                const next = isSelected 
+                                  ? newFilter.industries.filter(i => i !== ind)
+                                  : [...newFilter.industries, ind];
+                                setNewFilter({ ...newFilter, industries: next });
+                              }}
+                              className={`px-3 py-2 rounded-xl text-[10px] font-bold border transition-all duration-300 active:scale-95 ${
+                                isSelected 
+                                  ? "bg-amber-500 text-white border-amber-500 shadow-md shadow-amber-100" 
+                                  : "bg-white text-slate-500 border-slate-200/80 hover:bg-slate-100"
+                              }`}
+                            >
+                              {ind}
+                            </button>
+                          );
+                        })}
+                        {industries.length === 0 && <p className="text-[10px] text-slate-400 italic py-1">No industries captured inside database yet.</p>}
                       </div>
+                    </div>
 
-                      {/* Multi-Industry */}
-                      <div className="sm:col-span-2 space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Industries (Select Multiple)</label>
-                        <div className="flex flex-wrap gap-2">
-                          {industries.map((ind) => {
-                            const isSelected = newFilter.industries.includes(ind);
-                            return (
-                              <button
-                                key={ind}
-                                type="button"
-                                onClick={() => {
-                                  const next = isSelected 
-                                    ? newFilter.industries.filter(i => i !== ind)
-                                    : [...newFilter.industries, ind];
-                                  setNewFilter({ ...newFilter, industries: next });
-                                }}
-                                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${
-                                  isSelected 
-                                    ? "bg-amber-500 text-white border-amber-500 shadow-md shadow-amber-100" 
-                                    : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
-                                }`}
-                              >
-                                {ind}
-                              </button>
-                            );
-                          })}
-                          {industries.length === 0 && <p className="text-[10px] text-slate-400 italic">No industries detected in database yet.</p>}
-                        </div>
+                    {/* Sources Selectors */}
+                    <div className="space-y-2.5">
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Sources (Multiple)</label>
+                      <div className="flex flex-wrap gap-2">
+                        {sources.map((src) => {
+                          const isSelected = newFilter.sources.includes(src);
+                          return (
+                            <button
+                              key={src}
+                              type="button"
+                              onClick={() => {
+                                const next = isSelected 
+                                  ? newFilter.sources.filter(s => s !== src)
+                                  : [...newFilter.sources, src];
+                                setNewFilter({ ...newFilter, sources: next });
+                              }}
+                              className={`px-3 py-2 rounded-xl text-[10px] font-bold border transition-all duration-300 active:scale-95 ${
+                                isSelected 
+                                  ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-100" 
+                                  : "bg-white text-slate-500 border-slate-200/80 hover:bg-slate-100"
+                              }`}
+                            >
+                              {src}
+                            </button>
+                          );
+                        })}
+                        {sources.length === 0 && <p className="text-[10px] text-slate-400 italic py-1">No sources captured inside database yet.</p>}
                       </div>
+                    </div>
 
-                      {/* Multi-Source */}
-                      <div className="sm:col-span-2 space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Sources (Select Multiple)</label>
-                        <div className="flex flex-wrap gap-2">
-                          {sources.map((src) => {
-                            const isSelected = newFilter.sources.includes(src);
-                            return (
-                              <button
-                                key={src}
-                                type="button"
-                                onClick={() => {
-                                  const next = isSelected 
-                                    ? newFilter.sources.filter(s => s !== src)
-                                    : [...newFilter.sources, src];
-                                  setNewFilter({ ...newFilter, sources: next });
-                                }}
-                                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${
-                                  isSelected 
-                                    ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-100" 
-                                    : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
-                                }`}
-                              >
-                                {src}
-                              </button>
-                            );
-                          })}
-                          {sources.length === 0 && <p className="text-[10px] text-slate-400 italic">No sources detected in database yet.</p>}
-                        </div>
-                      </div>
-
-                      {/* Deal Size */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Deal Size Range */}
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Deal Size Range</label>
-                        <select
-                          value={newFilter.dealSize}
-                          onChange={(e) => setNewFilter({ ...newFilter, dealSize: e.target.value })}
-                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:outline-none focus:ring-4 focus:ring-purple-500/10 focus:border-purple-500 transition-all appearance-none cursor-pointer"
-                        >
-                          {DEAL_SIZE_OPTIONS.map((o) => (
-                            <option key={o.value} value={o.value}>{o.label}</option>
-                          ))}
-                        </select>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Deal Size Range</label>
+                        <div className="relative">
+                          <select
+                            value={newFilter.dealSize}
+                            onChange={(e) => setNewFilter({ ...newFilter, dealSize: e.target.value })}
+                            className="w-full px-5 py-4.5 bg-white border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 focus:outline-none focus:ring-4 focus:ring-purple-500/5 focus:border-purple-500 transition-all duration-300 cursor-pointer appearance-none"
+                          >
+                            {DEAL_SIZE_OPTIONS.map((o) => (
+                              <option key={o.value} value={o.value}>{o.label}</option>
+                            ))}
+                          </select>
+                          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4.5 text-slate-400">
+                            ▼
+                          </div>
+                        </div>
                       </div>
 
                       {/* Accent Color */}
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Protocol Accent Color</label>
-                        <div className="flex items-center gap-2 py-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Accent Protocol Color</label>
+                        <div className="flex items-center gap-2.5 py-3.5">
                           {COLOR_OPTIONS.map((c) => (
                             <button
                               key={c.value}
                               type="button"
                               onClick={() => setNewFilter({ ...newFilter, color: c.value })}
-                              className={`w-7 h-7 rounded-full ${c.bg} transition-all ${
+                              className={`w-7.5 h-7.5 rounded-full ${c.bg} transition-all duration-300 flex items-center justify-center ${
                                 newFilter.color === c.value
-                                  ? "ring-2 ring-offset-2 ring-slate-900 scale-110"
+                                  ? "ring-4 ring-offset-2 ring-slate-900 scale-110"
                                   : "opacity-60 hover:opacity-100 hover:scale-105"
                               }`}
-                            />
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Alphabet Filter */}
-                      <div className="sm:col-span-2 space-y-1.5">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Alphabetical Lock (Contact Name)</label>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {Array.from("ABCDEFGHIJKLMNOPQRSTUVWXYZ").map(char => (
-                            <button
-                              key={char}
-                              type="button"
-                              onClick={() => setNewFilter({ ...newFilter, alphabet: newFilter.alphabet === char ? "" : char })}
-                              className={`w-7 h-7 flex items-center justify-center rounded-lg text-[10px] font-bold border transition-all ${
-                                newFilter.alphabet === char
-                                  ? "bg-slate-900 text-white border-slate-900 shadow-md shadow-slate-100"
-                                  : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
-                              }`}
                             >
-                              {char}
+                              {newFilter.color === c.value && (
+                                <div className="w-2.5 h-2.5 rounded-full bg-white shadow-md animate-ping" />
+                              )}
                             </button>
                           ))}
                         </div>
                       </div>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={handleAddFilter}
-                      disabled={saving || !newFilter.name.trim()}
-                      className="w-full flex items-center justify-center gap-2 bg-slate-900 text-white px-6 py-4 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all active:scale-95 shadow-xl shadow-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Plus size={14} />
-                      {saving ? "Initiating Protocol..." : "Activate Sidebar Protocol"}
-                    </button>
-                  </div>
-                )}
-
-                {/* ── Existing Filters List ── */}
-                {filtersLoading ? (
-                  <div className="flex items-center justify-center py-12 text-slate-400">
-                    <div className="w-6 h-6 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
-                  </div>
-                ) : sidebarFilters.length === 0 ? (
-                  <div className="text-center py-10">
-                    <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
-                      <LayoutPanelLeft size={28} className="text-slate-300" />
-                    </div>
-                    <p className="text-sm font-bold text-slate-400">No sidebar filters yet</p>
-                    <p className="text-[11px] text-slate-400 mt-1">Click "Add Filter" above to create custom sidebar shortcuts for your team.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {sidebarFilters.map((f) => (
-                      <div
-                        key={f.id}
-                        className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 hover:border-slate-200 transition-all group"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-xl ${getColorClass(f.color)} text-white flex items-center justify-center shadow-md`}>
-                            <Filter size={18} />
-                          </div>
-                          <div>
-                            <p className="text-sm font-bold text-slate-900">{f.name}</p>
-                            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                                {f.statuses && f.statuses.length > 0 && (
-                                  <div className="flex items-center gap-1">
-                                    {f.statuses.map(s => (
-                                      <span key={s} className="text-[8px] font-black bg-blue-50 text-blue-600 px-2 py-0.5 rounded-lg border border-blue-100 uppercase tracking-tighter">
-                                        {getStatusLabel(s)}
-                                      </span>
-                                    ))}
-                                  </div>
-                                )}
-                                {f.subStatuses && f.subStatuses.length > 0 && (
-                                  <div className="flex items-center gap-1">
-                                    {f.subStatuses.map(ss => (
-                                      <span key={ss} className="text-[8px] font-black bg-purple-50 text-purple-600 px-2 py-0.5 rounded-lg border border-purple-100 uppercase tracking-tighter">
-                                        {getSubStatusLabel(ss)}
-                                      </span>
-                                    ))}
-                                  </div>
-                                )}
-                                {(f.dealSizeMin || f.dealSizeMax) && (
-                                  <span className="text-[8px] font-black bg-green-50 text-green-600 px-2 py-0.5 rounded-lg border border-green-100 uppercase tracking-tighter">
-                                    {getDealSizeLabel(f.dealSizeMin, f.dealSizeMax)}
-                                  </span>
-                                )}
-                                {f.industries && f.industries.length > 0 && (
-                                  <div className="flex items-center gap-1">
-                                    {f.industries.map(ind => (
-                                      <span key={ind} className="text-[8px] font-black bg-amber-50 text-amber-600 px-2 py-0.5 rounded-lg border border-amber-100 uppercase tracking-tighter">
-                                        {ind}
-                                      </span>
-                                    ))}
-                                  </div>
-                                )}
-                                {f.alphabet && (
-                                  <span className="text-[8px] font-black bg-rose-50 text-rose-600 px-2 py-0.5 rounded-lg border border-rose-100 uppercase tracking-tighter">
-                                    {f.alphabet}*
-                                  </span>
-                                )}
-                                {f.sources && f.sources.length > 0 && (
-                                  <div className="flex items-center gap-1">
-                                    {f.sources.map(src => (
-                                      <span key={src} className="text-[8px] font-black bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-lg border border-indigo-100 uppercase tracking-tighter">
-                                        {src}
-                                      </span>
-                                    ))}
-                                  </div>
-                                )}
-                                {!f.statuses?.length && !f.subStatuses?.length && !f.dealSizeMin && !f.dealSizeMax && !f.industries?.length && !f.alphabet && !f.sources?.length && (
-                                  <span className="text-[8px] font-black bg-slate-50 text-slate-400 px-2 py-0.5 rounded-lg border border-slate-100 uppercase tracking-tighter">
-                                    Full Access Protocol
-                                  </span>
-                                )}
-                              </div>
-                          </div>
-                        </div>
-
-                        <button
-                          onClick={() => triggerDeleteFilter(f.id, f.name)}
-                          className="w-8 h-8 rounded-lg flex items-center justify-center text-red-400 hover:bg-red-50 hover:text-red-600 transition-all active:scale-90 opacity-60 hover:opacity-100"
-                          title="Remove filter"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* ────── Dynamic Lead Pipeline Customization (Admins Only) ────── */}
-          {user && (user.role === "CEO" || user.role === "ORG_ADMIN") && (
-            <div id="pipeline-customization" className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/50 overflow-hidden scroll-mt-6">
-              <div className="p-6 sm:p-10 border-b border-slate-50 bg-slate-50/30">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                  <div>
-                    <h3 className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-3">
-                      <Layers size={14} className="text-indigo-600" /> Pipeline Customization
-                    </h3>
-                    <p className="text-[10px] text-slate-400 mt-1 font-bold">Configure active lead statuses, sub-statuses, custom labels, and priority ordering.</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowAddPipelineForm(!showAddPipelineForm);
-                      setNewPipelineItem({ value: "", label: "", color: "blue" });
-                    }}
-                    className={`w-full sm:w-auto flex items-center justify-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-5 py-2.5 rounded-xl transition-all active:scale-95 ${
-                      showAddPipelineForm
-                        ? "bg-slate-100 text-slate-600 border border-slate-200"
-                        : "bg-indigo-600 text-white shadow-lg shadow-indigo-100 hover:bg-indigo-700"
-                    }`}
-                  >
-                    {showAddPipelineForm ? (
-                      <>
-                        <X size={12} /> Cancel
-                      </>
-                    ) : (
-                      <>
-                        <Plus size={12} /> Add Custom Option
-                      </>
-                    )}
-                  </button>
-                </div>
-
-                {/* Tab Switcher */}
-                <div className="flex bg-slate-100/80 p-1 rounded-xl mb-6 max-w-xs border border-slate-100">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActivePipelineTab("status");
-                      setShowAddPipelineForm(false);
-                    }}
-                    className={`flex-1 text-center py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${
-                      activePipelineTab === "status"
-                        ? "bg-white text-indigo-600 shadow-sm"
-                        : "text-slate-500 hover:text-slate-800"
-                    }`}
-                  >
-                    Primary Statuses
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActivePipelineTab("substatus");
-                      setShowAddPipelineForm(false);
-                    }}
-                    className={`flex-1 text-center py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${
-                      activePipelineTab === "substatus"
-                        ? "bg-white text-indigo-600 shadow-sm"
-                        : "text-slate-500 hover:text-slate-800"
-                    }`}
-                  >
-                    Sub-statuses
-                  </button>
-                </div>
-
-                {/* Add Form Accordion */}
-                {showAddPipelineForm && (
-                  <div className="mb-6 p-6 bg-slate-50/50 rounded-3xl border border-slate-100 space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
-                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                      New Custom {activePipelineTab === "status" ? "Primary Status" : "Sub-status"}
-                    </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2 px-1">
-                          System Value Code
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="e.g. MEETING_SET, COLD, etc."
-                          value={newPipelineItem.value}
-                          onChange={(e) =>
-                            setNewPipelineItem((prev) => ({
-                              ...prev,
-                              value: e.target.value.toUpperCase().replace(/\s+/g, "_"),
-                            }))
-                          }
-                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 transition-all placeholder:text-slate-300"
-                        />
-                        <p className="text-[8px] text-slate-400 px-1 mt-1">Uppercase code stored in DB (e.g. WON, CHATTING)</p>
-                      </div>
-
-                      <div>
-                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2 px-1">
-                          Friendly Display Label
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="e.g. Meeting Set, Warm Lead"
-                          value={newPipelineItem.label}
-                          onChange={(e) =>
-                            setNewPipelineItem((prev) => ({
-                              ...prev,
-                              label: e.target.value,
-                            }))
-                          }
-                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 transition-all placeholder:text-slate-300"
-                        />
-                        <p className="text-[8px] text-slate-400 px-1 mt-1">Custom name visible to sales team</p>
-                      </div>
-                    </div>
-
-                    {/* Color selection */}
-                    <div>
-                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-3 px-1">
-                        Accent Color Theme
-                      </label>
-                      <div className="flex flex-wrap gap-2.5">
-                        {["blue", "cyan", "purple", "indigo", "pink", "rose", "amber", "orange", "red", "green", "slate"].map((c) => (
+                    {/* Alphabet Switch */}
+                    <div className="space-y-2">
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Alphabetical Range Lock (Lead Contact)</label>
+                      <div className="flex flex-wrap gap-1 mt-1 bg-white p-3 rounded-2xl border border-slate-200/70">
+                        {Array.from("ABCDEFGHIJKLMNOPQRSTUVWXYZ").map(char => (
                           <button
-                            key={c}
+                            key={char}
                             type="button"
-                            onClick={() => setNewPipelineItem((prev) => ({ ...prev, color: c }))}
-                            className={`w-8 h-8 rounded-full border-2 transition-all flex items-center justify-center ${
-                              newPipelineItem.color === c ? "border-slate-800 scale-110 shadow-lg" : "border-slate-200 hover:scale-105"
+                            onClick={() => setNewFilter({ ...newFilter, alphabet: newFilter.alphabet === char ? "" : char })}
+                            className={`w-7.5 h-7.5 flex items-center justify-center rounded-xl text-[10.5px] font-extrabold border transition-all duration-300 ${
+                              newFilter.alphabet === char
+                                ? "bg-slate-900 text-white border-slate-900 shadow-md"
+                                : "bg-white text-slate-500 border-slate-100 hover:border-slate-350 hover:bg-slate-50"
                             }`}
-                            style={{
-                              backgroundColor:
-                                c === "blue" ? "#3b82f6" :
-                                c === "cyan" ? "#06b6d4" :
-                                c === "purple" ? "#a855f7" :
-                                c === "indigo" ? "#6366f1" :
-                                c === "pink" ? "#ec4899" :
-                                c === "rose" ? "#f43f5e" :
-                                c === "amber" ? "#f59e0b" :
-                                c === "orange" ? "#f97316" :
-                                c === "red" ? "#ef4444" :
-                                c === "green" ? "#22c55e" :
-                                "#64748b",
-                            }}
                           >
-                            {newPipelineItem.color === c && (
-                              <div className="w-2 h-2 rounded-full bg-white shadow-md" />
-                            )}
+                            {char}
                           </button>
                         ))}
                       </div>
                     </div>
+                  </div>
 
-                    <div className="pt-2 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={handleAddFilter}
+                    disabled={saving || !newFilter.name.trim()}
+                    className="w-full flex items-center justify-center gap-2 bg-slate-900 text-white px-6 py-4.5 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all duration-300 active:scale-[0.98] shadow-xl shadow-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Plus size={14} />
+                    {saving ? "Initiating Shortcut Protocol..." : "Activate Global Shortcut"}
+                  </button>
+                </div>
+              )}
+
+              {/* Existing Shortcuts List */}
+              {filtersLoading ? (
+                <div className="flex flex-col items-center justify-center py-16 gap-3">
+                  <div className="w-7 h-7 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Gathering Active Protocols...</p>
+                </div>
+              ) : sidebarFilters.length === 0 ? (
+                <div className="text-center py-14 bg-slate-50/40 rounded-3xl border border-dashed border-slate-200">
+                  <LayoutPanelLeft size={32} className="text-slate-300 mx-auto mb-3" />
+                  <p className="text-sm font-bold text-slate-700">No Custom Sidebar Shortcuts</p>
+                  <p className="text-xs text-slate-400 mt-1">Configure database filters above to display custom shortcuts on all teammate screens.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {sidebarFilters.map((f) => (
+                    <div
+                      key={f.id}
+                      className="flex items-center justify-between p-4.5 bg-white rounded-3xl border border-slate-100 hover:border-slate-200/80 hover:shadow-lg hover:shadow-slate-100/40 transition-all duration-300 group"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className={`w-11 h-11 rounded-2xl ${getColorClass(f.color)} text-white flex items-center justify-center shadow-lg`}>
+                          <Filter size={18} />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-slate-900">{f.name}</p>
+                          <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                            {f.statuses && f.statuses.length > 0 && (
+                              <div className="flex items-center gap-1">
+                                {f.statuses.map(s => (
+                                  <span key={s} className="text-[8px] font-black bg-blue-50 text-blue-600 px-2 py-0.5 rounded-lg border border-blue-100 uppercase tracking-widest">
+                                    {getStatusLabel(s)}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                            {f.subStatuses && f.subStatuses.length > 0 && (
+                              <div className="flex items-center gap-1">
+                                {f.subStatuses.map(ss => (
+                                  <span key={ss} className="text-[8px] font-black bg-purple-50 text-purple-600 px-2 py-0.5 rounded-lg border border-purple-100 uppercase tracking-widest">
+                                    {getSubStatusLabel(ss)}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                            {(f.dealSizeMin || f.dealSizeMax) && (
+                              <span className="text-[8px] font-black bg-green-50 text-green-600 px-2 py-0.5 rounded-lg border border-green-100 uppercase tracking-widest">
+                                {getDealSizeLabel(f.dealSizeMin, f.dealSizeMax)}
+                              </span>
+                            )}
+                            {f.industries && f.industries.length > 0 && (
+                              <div className="flex items-center gap-1">
+                                {f.industries.map(ind => (
+                                  <span key={ind} className="text-[8px] font-black bg-amber-50 text-amber-600 px-2 py-0.5 rounded-lg border border-amber-100 uppercase tracking-widest">
+                                    {ind}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                            {f.alphabet && (
+                              <span className="text-[8px] font-black bg-rose-50 text-rose-600 px-2 py-0.5 rounded-lg border border-rose-100 uppercase tracking-widest">
+                                {f.alphabet}*
+                              </span>
+                            )}
+                            {f.sources && f.sources.length > 0 && (
+                              <div className="flex items-center gap-1">
+                                {f.sources.map(src => (
+                                  <span key={src} className="text-[8px] font-black bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-lg border border-indigo-100 uppercase tracking-widest">
+                                    {src}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                            {!f.statuses?.length && !f.subStatuses?.length && !f.dealSizeMin && !f.dealSizeMax && !f.industries?.length && !f.alphabet && !f.sources?.length && (
+                              <span className="text-[8px] font-black bg-slate-50 text-slate-450 px-2 py-0.5 rounded-lg border border-slate-100 uppercase tracking-widest">
+                                Open Access Filter
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
                       <button
-                        type="button"
-                        onClick={handleAddPipelineItem}
-                        disabled={pipelineSaving}
-                        className="bg-slate-900 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all disabled:opacity-50"
+                        onClick={() => triggerDeleteFilter(f.id, f.name)}
+                        className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-all duration-300 active:scale-90"
+                        title="Remove Filter Shortcut"
                       >
-                        {pipelineSaving ? "Creating..." : `Create Custom ${activePipelineTab === "status" ? "Status" : "Sub-status"}`}
+                        <Trash2 size={15} />
                       </button>
                     </div>
-                  </div>
-                )}
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
-                {/* Pipeline items list */}
-                {pipelineLoading ? (
-                  <div className="flex flex-col items-center justify-center py-10 gap-3">
-                    <div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Loading configuration from server...</p>
+          {/* DYNAMIC PIPELINE TAB */}
+          {activeTab === "pipeline" && user && (user.role === "CEO" || user.role === "ORG_ADMIN") && (
+            <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/40 p-8 sm:p-10 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 mb-8">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-indigo-50 rounded-xl text-indigo-600">
+                    <Layers size={18} />
                   </div>
-                ) : (
-                  <div className="space-y-3">
-                    {(activePipelineTab === "status" ? pipelineStatuses : pipelineSubStatuses).length === 0 ? (
-                      <div className="text-center py-10 bg-slate-50/50 rounded-3xl border border-dashed border-slate-100">
-                        <Activity className="mx-auto text-slate-300 mb-2" size={24} />
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No custom configurations registered</p>
-                      </div>
-                    ) : (
-                      (activePipelineTab === "status" ? pipelineStatuses : pipelineSubStatuses).map((item, index, arr) => (
-                        <div
-                          key={item.id}
-                          className="flex items-center justify-between p-4 pl-6 rounded-2xl bg-white border-y border-r border-slate-100 hover:border-slate-200 transition-all hover:shadow-md hover:shadow-slate-100/50"
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-850">Pipeline Architecture</h3>
+                    <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mt-0.5">Customize lead status phases</p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddPipelineForm(!showAddPipelineForm);
+                    setNewPipelineItem({ value: "", label: "", color: "blue" });
+                  }}
+                  className={`flex items-center gap-2 text-xs font-black uppercase tracking-widest px-5 py-3 rounded-xl transition-all duration-300 active:scale-95 ${
+                    showAddPipelineForm
+                      ? "bg-slate-100 text-slate-600 border border-slate-200/60"
+                      : "bg-indigo-600 text-white shadow-lg shadow-indigo-100 hover:bg-indigo-700"
+                  }`}
+                >
+                  {showAddPipelineForm ? <X size={12} /> : <Plus size={12} />}
+                  {showAddPipelineForm ? "Cancel" : "Add Custom Stage"}
+                </button>
+              </div>
+
+              {/* Tab Selector Switcher */}
+              <div className="flex bg-slate-100/60 p-1.5 rounded-2xl mb-8 max-w-xs border border-slate-200/20">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActivePipelineTab("status");
+                    setShowAddPipelineForm(false);
+                  }}
+                  className={`flex-1 text-center py-2.5 text-[9px] font-black uppercase tracking-[0.1em] rounded-xl transition-all duration-300 ${
+                    activePipelineTab === "status"
+                      ? "bg-white text-indigo-600 shadow-md shadow-slate-200"
+                      : "text-slate-500 hover:text-slate-800"
+                  }`}
+                >
+                  Primary Phases
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActivePipelineTab("substatus");
+                    setShowAddPipelineForm(false);
+                  }}
+                  className={`flex-1 text-center py-2.5 text-[9px] font-black uppercase tracking-[0.1em] rounded-xl transition-all duration-300 ${
+                    activePipelineTab === "substatus"
+                      ? "bg-white text-indigo-600 shadow-md shadow-slate-200"
+                      : "text-slate-500 hover:text-slate-800"
+                  }`}
+                >
+                  Sub-statuses
+                </button>
+              </div>
+
+              {/* Add Custom Stage Form Accordion */}
+              {showAddPipelineForm && (
+                <div className="mb-8 p-6 bg-slate-50/60 rounded-3xl border border-slate-250/20 space-y-5 animate-in fade-in slide-in-from-top-3 duration-300">
+                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    ADD CUSTOM {activePipelineTab === "status" ? "PRIMARY STATUS" : "SUB-STATUS"}
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider px-1">
+                        System Identifier Code (Uppercase)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. MEETING_SET, ON_HOLD"
+                        value={newPipelineItem.value}
+                        onChange={(e) =>
+                          setNewPipelineItem((prev) => ({
+                            ...prev,
+                            value: e.target.value.toUpperCase().replace(/\s+/g, "_"),
+                          }))
+                        }
+                        className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 transition-all placeholder:text-slate-300"
+                      />
+                      <p className="text-[9px] text-slate-400 px-1">Unique database identifier token (e.g. WON, CHATTING).</p>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider px-1">
+                        Friendly Layout Label
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Meeting Set, Warm Lead"
+                        value={newPipelineItem.label}
+                        onChange={(e) =>
+                          setNewPipelineItem((prev) => ({
+                            ...prev,
+                            label: e.target.value,
+                          }))
+                        }
+                        className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 transition-all placeholder:text-slate-300"
+                      />
+                      <p className="text-[9px] text-slate-400 px-1">Readable tag visible to sales representatives.</p>
+                    </div>
+                  </div>
+
+                  {/* Theme Accent Color */}
+                  <div className="space-y-2">
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider px-1">
+                      Accent Color Theme
+                    </label>
+                    <div className="flex flex-wrap gap-2 bg-white p-3 rounded-2xl border border-slate-200/70">
+                      {["blue", "cyan", "purple", "indigo", "pink", "rose", "amber", "orange", "red", "green", "slate"].map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => setNewPipelineItem((prev) => ({ ...prev, color: c }))}
+                          className={`w-8 h-8 rounded-full border-2 transition-all duration-300 flex items-center justify-center ${
+                            newPipelineItem.color === c ? "border-slate-800 scale-110 shadow-lg shadow-slate-200" : "border-slate-200 hover:scale-105"
+                          }`}
                           style={{
-                            borderLeftWidth: "6px",
-                            borderLeftColor:
-                              item.color === "blue" ? "#3b82f6" :
-                              item.color === "cyan" ? "#06b6d4" :
-                              item.color === "purple" ? "#a855f7" :
-                              item.color === "indigo" ? "#6366f1" :
-                              item.color === "pink" ? "#ec4899" :
-                              item.color === "rose" ? "#f43f5e" :
-                              item.color === "amber" ? "#f59e0b" :
-                              item.color === "orange" ? "#f97316" :
-                              item.color === "red" ? "#ef4444" :
-                              item.color === "green" ? "#22c55e" :
+                            backgroundColor:
+                              c === "blue" ? "#3b82f6" :
+                              c === "cyan" ? "#06b6d4" :
+                              c === "purple" ? "#a855f7" :
+                              c === "indigo" ? "#6366f1" :
+                              c === "pink" ? "#ec4899" :
+                              c === "rose" ? "#f43f5e" :
+                              c === "amber" ? "#f59e0b" :
+                              c === "orange" ? "#f97316" :
+                              c === "red" ? "#ef4444" :
+                              c === "green" ? "#22c55e" :
                               "#64748b",
                           }}
                         >
-                          <div className="flex items-center gap-4">
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs font-black text-slate-800">{item.label}</span>
-                                <span className="text-[8px] font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded uppercase">
-                                  {item.value}
-                                </span>
-                              </div>
-                              <p className="text-[8px] text-slate-400 font-bold mt-0.5 uppercase tracking-wider">
-                                Priority Index: {item.orderIndex}
-                              </p>
+                          {newPipelineItem.color === c && (
+                            <div className="w-2.5 h-2.5 rounded-full bg-white shadow-md animate-scale" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="pt-2 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={handleAddPipelineItem}
+                      disabled={pipelineSaving}
+                      className="bg-slate-900 text-white px-8 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 active:scale-95 transition-all duration-300 disabled:opacity-50"
+                    >
+                      {pipelineSaving ? "Activating Stage..." : `Create Custom ${activePipelineTab === "status" ? "Status" : "Sub-status"}`}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Pipeline Options list */}
+              {pipelineLoading ? (
+                <div className="flex flex-col items-center justify-center py-16 gap-3">
+                  <div className="w-7 h-7 border-3 border-indigo-650 border-t-transparent rounded-full animate-spin" />
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Configuring pipelines on database...</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {(activePipelineTab === "status" ? pipelineStatuses : pipelineSubStatuses).length === 0 ? (
+                    <div className="text-center py-14 bg-slate-50/40 rounded-3xl border border-dashed border-slate-200">
+                      <Activity className="mx-auto text-slate-350 mb-3 animate-pulse" size={28} />
+                      <p className="text-sm font-bold text-slate-700">No active custom pipeline filters detected</p>
+                      <p className="text-xs text-slate-400 mt-1">Deploy new custom pipeline statuses using the action button above.</p>
+                    </div>
+                  ) : (
+                    (activePipelineTab === "status" ? pipelineStatuses : pipelineSubStatuses).map((item, index, arr) => (
+                      <div
+                        key={item.id}
+                        className="flex items-center justify-between p-4.5 pl-6 bg-white rounded-3xl border border-y border-r border-slate-100 hover:border-slate-250/60 hover:shadow-lg hover:shadow-slate-100/40 transition-all duration-300"
+                        style={{
+                          borderLeftWidth: "6px",
+                          borderLeftColor:
+                            item.color === "blue" ? "#3b82f6" :
+                            item.color === "cyan" ? "#06b6d4" :
+                            item.color === "purple" ? "#a855f7" :
+                            item.color === "indigo" ? "#6366f1" :
+                            item.color === "pink" ? "#ec4899" :
+                            item.color === "rose" ? "#f43f5e" :
+                            item.color === "amber" ? "#f59e0b" :
+                            item.color === "orange" ? "#f97316" :
+                            item.color === "red" ? "#ef4444" :
+                            item.color === "green" ? "#22c55e" :
+                            "#64748b",
+                        }}
+                      >
+                        <div className="flex items-center gap-4">
+                          <div>
+                            <div className="flex items-center gap-2.5">
+                              <span className="text-sm font-extrabold text-slate-800">{item.label}</span>
+                              <span className="text-[9px] font-black bg-slate-100/70 text-slate-500 px-2 py-0.5 rounded-lg uppercase tracking-wide border border-slate-200/40">
+                                {item.value}
+                              </span>
                             </div>
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            {/* Priority ordering arrows */}
-                            <div className="flex items-center bg-slate-50 rounded-lg p-0.5 border border-slate-100">
-                              <button
-                                type="button"
-                                disabled={index === 0}
-                                onClick={() => handleReorderPipelineItem(index, "up")}
-                                className="p-1 text-slate-400 hover:text-indigo-600 disabled:opacity-30 disabled:hover:text-slate-400"
-                                title="Move Priority Up"
-                              >
-                                <ArrowUp size={12} />
-                              </button>
-                              <button
-                                type="button"
-                                disabled={index === arr.length - 1}
-                                onClick={() => handleReorderPipelineItem(index, "down")}
-                                className="p-1 text-slate-400 hover:text-indigo-600 disabled:opacity-30 disabled:hover:text-slate-400"
-                                title="Move Priority Down"
-                              >
-                                <ArrowDown size={12} />
-                              </button>
-                            </div>
-
-                            {/* Visibility toggle status */}
-                            <button
-                              type="button"
-                              onClick={() => handleTogglePipelineItem(item.id, !item.isEnabled, item.label)}
-                              className={`text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border transition-all ${
-                                item.isEnabled
-                                  ? "bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100"
-                                  : "bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-100"
-                              }`}
-                            >
-                              {item.isEnabled ? "Active" : "Disabled"}
-                            </button>
-
-                            {/* Delete Option with active leads validation check */}
-                            <button
-                              type="button"
-                              onClick={() => triggerDeletePipelineItem(item.id, item.label)}
-                              className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-red-50 hover:text-red-600 transition-all"
-                              title="Delete pipeline option"
-                            >
-                              <Trash2 size={12} />
-                            </button>
+                            <p className="text-[9px] text-slate-400 font-extrabold mt-1.5 uppercase tracking-wider">
+                              PRIORITY SORT INDEX: {item.orderIndex}
+                            </p>
                           </div>
                         </div>
-                      ))
-                    )}
+
+                        <div className="flex items-center gap-3">
+                          {/* Ordering priority arrow controls */}
+                          <div className="flex items-center bg-slate-50 rounded-xl p-1 border border-slate-200/50">
+                            <button
+                              type="button"
+                              disabled={index === 0}
+                              onClick={() => handleReorderPipelineItem(index, "up")}
+                              className="p-1.5 text-slate-400 hover:text-indigo-650 hover:bg-white rounded-lg disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400 transition-colors"
+                              title="Raise Priority Index"
+                            >
+                              <ArrowUp size={13} />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={index === arr.length - 1}
+                              onClick={() => handleReorderPipelineItem(index, "down")}
+                              className="p-1.5 text-slate-400 hover:text-indigo-650 hover:bg-white rounded-lg disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400 transition-colors"
+                              title="Lower Priority Index"
+                            >
+                              <ArrowDown size={13} />
+                            </button>
+                          </div>
+
+                          {/* Visbility switch badge toggle */}
+                          <button
+                            type="button"
+                            onClick={() => handleTogglePipelineItem(item.id, !item.isEnabled, item.label)}
+                            className={`text-[9px] font-black uppercase tracking-widest px-3.5 py-2 rounded-xl border transition-all duration-300 ${
+                              item.isEnabled
+                                ? "bg-emerald-50 text-emerald-600 border-emerald-100/80 hover:bg-emerald-100"
+                                : "bg-slate-50 text-slate-400 border-slate-200/60 hover:bg-slate-100"
+                            }`}
+                          >
+                            {item.isEnabled ? "Active" : "Disabled"}
+                          </button>
+
+                          {/* Delete Stage Trigger */}
+                          <button
+                            type="button"
+                            onClick={() => triggerDeletePipelineItem(item.id, item.label)}
+                            className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-all duration-300"
+                            title="Delete pipeline option"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TABLE TAB */}
+          {activeTab === "table" && tablePrefsLoaded && (
+            <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/40 p-8 sm:p-10 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <div className="flex items-center gap-3 mb-8 pb-4 border-b border-slate-100">
+                <div className="p-2.5 bg-blue-50 rounded-xl text-blue-600">
+                  <Settings2 size={18} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-850">Table Columns Setup</h3>
+                  <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mt-0.5">Customize columns and their order</p>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <div>
+                  <h4 className="text-sm font-black text-slate-900 mb-3 uppercase tracking-widest">Column Order & Visibility</h4>
+                  <p className="text-xs text-slate-500 mb-4 font-medium">Toggle optional columns and use the arrows to reorder them in the table.</p>
+                  
+                  <div className="space-y-2">
+                    {columnPreferences.columnOrder.map((colId, index) => {
+                      const colDef = ALL_COLUMNS[colId];
+                      if (!colDef) return null;
+                      
+                      let isChecked = true;
+                      if (!colDef.isBase) {
+                        switch(colId) {
+                          case 'city': isChecked = columnPreferences.showCity; break;
+                          case 'state': isChecked = columnPreferences.showState; break;
+                          case 'createdAt': isChecked = columnPreferences.showCreatedOn; break;
+                          case 'dealValueInr': isChecked = columnPreferences.showDealValue; break;
+                          case 'followUpAt': isChecked = columnPreferences.showFollowUp; break;
+                        }
+                      }
+
+                      return (
+                        <div key={colId} className="flex items-center justify-between p-3 rounded-xl border border-slate-100 bg-slate-50 hover:bg-slate-100/70 transition-colors">
+                          <div className="flex items-center gap-4">
+                            <div className="flex flex-col gap-1">
+                              <button 
+                                onClick={() => handleMoveUp(index)} 
+                                disabled={index === 0}
+                                className="p-1 rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400 transition-colors"
+                              >
+                                <ArrowUp size={14} strokeWidth={3} />
+                              </button>
+                              <button 
+                                onClick={() => handleMoveDown(index)} 
+                                disabled={index === columnPreferences.columnOrder.length - 1}
+                                className="p-1 rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400 transition-colors"
+                              >
+                                <ArrowDown size={14} strokeWidth={3} />
+                              </button>
+                            </div>
+                            <div className="space-y-0.5">
+                              <span className="block text-sm font-black text-slate-800">{colDef.label} {colDef.isBase && <span className="ml-1 text-[10px] uppercase text-blue-500 tracking-wider font-bold bg-blue-50 px-1.5 py-0.5 rounded">Base</span>}</span>
+                              <span className="block text-xs text-slate-500 font-medium">{colDef.desc}</span>
+                            </div>
+                          </div>
+                          
+                          <label className={`flex items-center cursor-pointer ${colDef.isBase ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                            <input 
+                              type="checkbox" 
+                              checked={isChecked}
+                              onChange={(e) => !colDef.isBase && handleToggleVisibility(colId, e.target.checked)}
+                              disabled={colDef.isBase}
+                              className={`w-5 h-5 accent-blue-600 rounded ${colDef.isBase ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                            />
+                          </label>
+                        </div>
+                      );
+                    })}
                   </div>
-                )}
+                </div>
               </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Glassmorphic deletion confirmation modal */}
+      {/* Elegant Glassmorphic Confirm Deletion Dialogue Popup Modal */}
       {deleteConfirm.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white border border-slate-100 rounded-[2rem] max-w-md w-full shadow-2xl p-6 md:p-8 space-y-6 transform animate-in zoom-in-95 duration-200">
-            <div className="flex items-center gap-4 text-rose-600 bg-rose-50 p-4 rounded-2xl w-fit">
-              <span className="text-2xl font-black">⚠️</span>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-md p-4 animate-in fade-in duration-300">
+          <div className="bg-white border border-slate-100 rounded-[2.5rem] max-w-md w-full shadow-2xl p-6 md:p-8 space-y-6 transform animate-in zoom-in-95 duration-350">
+            <div className="flex items-center gap-4 text-rose-600 bg-rose-50 p-4.5 rounded-2xl w-fit">
+              <span className="text-3xl">⚠️</span>
               <div>
-                <h3 className="font-extrabold text-slate-900 text-lg">Confirm Deletion</h3>
-                <p className="text-xs text-rose-600/90 font-medium">This action cannot be undone.</p>
+                <h3 className="font-extrabold text-slate-900 text-lg tracking-tight">Confirm Deletion</h3>
+                <p className="text-xs text-rose-500 font-bold uppercase tracking-wider mt-0.5">Permanent Database Action</p>
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-3">
               <p className="text-sm text-slate-600 leading-relaxed">
-                Are you absolutely sure you want to delete <span className="font-bold text-slate-900">"{deleteConfirm.label}"</span>?
+                Are you absolutely certain you want to permanently delete the stage <span className="font-bold text-slate-900">"{deleteConfirm.label}"</span>?
               </p>
               {deleteConfirm.type === "pipeline" && (
-                <p className="text-xs text-slate-400">
-                  Note: The system will verify if any active leads are currently occupying this pipeline stage before performing the deletion.
+                <p className="text-xs text-slate-400 leading-relaxed bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+                  Note: The server will verify if any active leads are currently occupying this pipeline phase before executing the request.
                 </p>
               )}
             </div>
 
-            <div className="flex items-center gap-3 pt-2">
+            <div className="flex items-center gap-3 pt-3">
               <button
                 type="button"
                 onClick={() => setDeleteConfirm((prev) => ({ ...prev, isOpen: false }))}
-                className="flex-1 px-4 py-3 rounded-2xl border border-slate-200 text-slate-700 hover:text-slate-900 font-bold text-sm hover:bg-slate-50 transition-colors"
-                style={{ color: '#334155' }}
+                className="flex-1 px-5 py-4 rounded-2xl border border-slate-200 text-slate-600 hover:text-slate-900 font-bold text-xs uppercase tracking-wider hover:bg-slate-50 transition-colors"
+                style={{ color: '#475569' }}
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleConfirmDelete}
-                className="flex-1 px-4 py-3 rounded-2xl bg-rose-600 hover:bg-rose-700 !text-white font-black text-sm shadow-lg shadow-rose-600/20 active:scale-95 transition-all"
-                style={{ color: '#ffffff' }}
+                className="flex-1 px-5 py-4 rounded-2xl bg-rose-650 hover:bg-rose-700 !text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-rose-250 active:scale-[0.98] transition-all"
+                style={{ color: '#ffffff', backgroundColor: '#e11d48' }}
               >
                 Delete Permanently
               </button>
