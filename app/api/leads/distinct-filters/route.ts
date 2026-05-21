@@ -14,7 +14,7 @@ async function getUser() {
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     return prisma.user.findUnique({
       where: { id: decoded.userId },
-      select: { id: true, organizationId: true },
+      select: { id: true, organizationId: true, role: true, email: true },
     });
   } catch {
     return null;
@@ -26,21 +26,41 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
     const user = await getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+    const isSuperAdmin = user.email === "sb.solobuild@gmail.com";
+    const isOrgAdmin = user.role === "ORG_ADMIN" || user.role === "CEO";
+
+    // Build the base where clause scoped by role — mirrors super-list logic
+    const baseWhere: any = { organizationId: user.organizationId };
+
+    if (!isSuperAdmin && !isOrgAdmin) {
+      if (user.role === "MANAGER") {
+        const subordinates = await prisma.user.findMany({
+          where: { managerId: user.id },
+          select: { id: true },
+        });
+        const subIds = subordinates.map((s) => s.id);
+        baseWhere.ownerId = { in: [...subIds, user.id] };
+      } else {
+        // Regular user — only their own leads
+        baseWhere.ownerId = user.id;
+      }
+    }
+
     // Use Prisma's findMany with distinct to get unique values directly from the database
     // This avoids fetching all leads into memory
     const [rawIndustries, rawCities, rawStates, rawSources, rawUsers] = await Promise.all([
       prisma.lead.findMany({
-        where: { organizationId: user.organizationId, industry: { not: null, not: "" } },
+        where: { ...baseWhere, industry: { not: null, not: "" } },
         select: { industry: true },
         distinct: ['industry'],
       }),
       prisma.lead.findMany({
-        where: { organizationId: user.organizationId, city: { not: null, not: "" } },
+        where: { ...baseWhere, city: { not: null, not: "" } },
         select: { city: true },
         distinct: ['city'],
       }),
       prisma.lead.findMany({
-        where: { organizationId: user.organizationId, state: { not: null, not: "" } },
+        where: { ...baseWhere, state: { not: null, not: "" } },
         select: { state: true },
         distinct: ['state'],
       }),
@@ -94,3 +114,4 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 });
+
