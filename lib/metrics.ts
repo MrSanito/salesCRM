@@ -12,9 +12,10 @@ export const registry =
   (globalForMetrics.metricsRegistry = new client.Registry());
 
 // Only register default system metrics once to prevent duplicate registration crashes
+// Scrape interval raised to 60s (default was 10s) — no need for sub-minute node.js metrics
 if (!globalForMetrics.defaultMetricsRegistered) {
   try {
-    client.collectDefaultMetrics({ register: registry });
+    client.collectDefaultMetrics({ register: registry, prefix: '', timeout: 60000 });
     globalForMetrics.defaultMetricsRegistered = true;
   } catch (err) {
     console.warn('Default metrics already collected, skipping registration.');
@@ -58,8 +59,20 @@ getOrCreateHistogram(
 /**
  * Dynamically fetch current CRM state from Prisma and update Prometheus Gauge metrics.
  * Ensures the exported Prometheus metric payload always reports high-fidelity and fresh values.
+ * 
+ * Cooldown: at most once every 2 minutes to avoid redundant DB round-trips when
+ * multiple callers (cron, API, background loop) trigger this in quick succession.
  */
-export async function updateDynamicBusinessMetrics() {
+let _lastBusinessMetricsUpdate = 0;
+const BUSINESS_METRICS_COOLDOWN_MS = 2 * 60 * 1000; // 2 minutes
+
+export async function updateDynamicBusinessMetrics(force = false) {
+  const now = Date.now();
+  if (!force && now - _lastBusinessMetricsUpdate < BUSINESS_METRICS_COOLDOWN_MS) {
+    return; // Skip — metrics are still fresh
+  }
+  _lastBusinessMetricsUpdate = now;
+
   try {
     // Lookup or create business gauges on demand (100% resilient to Next.js HMR)
     const leadsGauge = getOrCreateGauge(
@@ -210,69 +223,8 @@ export function withRouteTelemetry(handler: Function) {
   };
 }
 
-// ── Background Snappy-Protobuf Telemetry Loop to Grafana Cloud ──
-const globalForTelemetryLoop = global as typeof global & {
-  telemetryIntervalRegistered?: boolean;
-};
-
-if (!globalForTelemetryLoop.telemetryIntervalRegistered) {
-  globalForTelemetryLoop.telemetryIntervalRegistered = true;
-  
-  if (typeof window === 'undefined') {
-    const runBackgroundTelemetry = async () => {
-      const url = process.env.GRAFANA_REMOTE_WRITE_URL;
-      const username = process.env.GRAFANA_USERNAME;
-      const apiKey = process.env.GRAFANA_API_KEY;
-      
-      if (!url || !username || !apiKey) {
-        return;
-      }
-      
-      try {
-        // 1. Refresh dynamic business/Prisma metrics
-        await updateDynamicBusinessMetrics();
-        
-        // 2. Fetch registry metrics as JSON
-        const jsonMetrics = await registry.getMetricsAsJSON();
-        const timeseries: any[] = [];
-        const timestamp = Date.now();
-        
-        for (const metric of jsonMetrics) {
-          for (const val of metric.values) {
-            const labels: Record<string, string> = {
-              __name__: String(metric.name),
-            };
-            if (val.labels) {
-              for (const [k, v] of Object.entries(val.labels)) {
-                if (v !== undefined && v !== null) {
-                  labels[k] = String(v);
-                }
-              }
-            }
-            timeseries.push({
-              labels,
-              samples: [{ value: Number(val.value) || 0, timestamp }]
-            });
-          }
-        }
-        
-        if (timeseries.length > 0) {
-          const { pushTimeseries } = require('prometheus-remote-write');
-          await pushTimeseries(timeseries, {
-            url,
-            auth: {
-              username,
-              password: apiKey
-            }
-          });
-        }
-      } catch (err: any) {
-        console.error('Background telemetry push to Grafana failed:', err.message);
-      }
-    };
-
-    // Trigger initial push 10s after boot, then every 60s
-    setTimeout(runBackgroundTelemetry, 10000);
-    setInterval(runBackgroundTelemetry, 60 * 1000);
-  }
-}
+// ── Background Telemetry ──
+// REMOVED: The in-process setInterval loop that pushed to Grafana every 60s.
+// Pushing is now handled ONLY by scripts/manual-cron.js (every 5 min) or
+// the /api/push-metrics endpoint, avoiding duplicate pushes + DB storms.
+// See manual-cron.js for the single source of scheduled telemetry.

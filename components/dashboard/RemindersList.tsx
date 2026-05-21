@@ -86,13 +86,12 @@ export default function RemindersList({ refreshKey = 0, reminders: initialRemind
     if (initialReminders) {
       setReminders(initialReminders);
       setLoading(false);
-      // Still set interval for auto-refresh but maybe with a longer delay or only if explicitly needed
-      const interval = setInterval(fetchReminders, 60000);
-      return () => clearInterval(interval);
+    } else {
+      fetchReminders();
     }
     
-    fetchReminders();
-    const interval = setInterval(fetchReminders, 60000);
+    // Single auto-refresh interval — 5 minutes is plenty for reminders
+    const interval = setInterval(fetchReminders, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, [fetchReminders, refreshKey, initialReminders]);
 
@@ -256,7 +255,7 @@ export default function RemindersList({ refreshKey = 0, reminders: initialRemind
       {/* Footer */}
       <div className="border-t border-slate-100 px-4 py-3 flex items-center justify-between bg-slate-50/50">
         <p className="text-[10px] text-slate-400 font-medium">
-          {reminders.length} active • auto-refreshes every 60s
+          {reminders.length} active • auto-refreshes every 5min
         </p>
         <button className="flex items-center gap-1 text-[11px] text-blue-500 hover:text-blue-700 font-semibold transition-colors">
           View All <ChevronRight size={11} />

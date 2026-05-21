@@ -24,13 +24,13 @@ const SECRET = env.CRON_SECRET || env.METRICS_SECRET || 'your_random_secret_here
 
 // Dynamic intervals (in milliseconds)
 const FOLLOWUP_INTERVAL = 10 * 60 * 1000; // 10 minutes
-const METRICS_INTERVAL = 5 * 60 * 1000;   // 5 minutes
+const METRICS_INTERVAL = 10 * 60 * 1000;   // 10 minutes
 
 console.log('\n🚀 STANDALONE MANUAL CRONJOB RUNNER STARTED');
 console.log('============================================');
 console.log(`Target Host:       ${APP_URL}`);
 console.log(`Follow-up Check:   Every 10 minutes`);
-console.log(`Metrics Push:      Every 5 minutes`);
+console.log(`Metrics Push:      Every 10 minutes`);
 console.log('============================================\n');
 
 // 2. Task 1: Follow-up Reminders Alert Trigger
