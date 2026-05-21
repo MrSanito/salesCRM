@@ -23,6 +23,9 @@ async function getUser() {
 
 export const GET = withRouteTelemetry(async function GET(req: Request) {
   try {
+    const { searchParams } = new URL(req.url);
+    const view = searchParams.get("view");
+
     const user = await getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -32,7 +35,22 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
     // Build the base where clause scoped by role — mirrors super-list logic
     const baseWhere: any = { organizationId: user.organizationId };
 
-    if (!isSuperAdmin && !isOrgAdmin) {
+    if (view === "subordinates") {
+      // Subordinate view: same scoping as super-list
+      if (isSuperAdmin || isOrgAdmin) {
+        // Admins see all leads EXCEPT their own
+        baseWhere.ownerId = { not: user.id };
+      } else if (user.role === "MANAGER") {
+        const subordinates = await prisma.user.findMany({
+          where: { managerId: user.id },
+          select: { id: true },
+        });
+        const subIds = subordinates.map((s) => s.id);
+        baseWhere.ownerId = subIds.length > 0 ? { in: subIds } : { in: ["__none__"] };
+      } else {
+        baseWhere.ownerId = "__none__"; // no leads for non-manager/non-admin
+      }
+    } else if (!isSuperAdmin && !isOrgAdmin) {
       if (user.role === "MANAGER") {
         const subordinates = await prisma.user.findMany({
           where: { managerId: user.id },
