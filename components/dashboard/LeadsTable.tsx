@@ -202,8 +202,8 @@ export default function LeadsTable({
           result = result.filter(l => l.industry && values.has(l.industry));
         } else if (key === 'source') {
           result = result.filter(l => l.source && values.has(l.source.name));
-        } else if (key === 'owner') {
-          result = result.filter(l => l.owner && values.has(l.owner.name));
+        } else if (key === 'ownerId') {
+          result = result.filter(l => l.owner && values.has(l.owner.id));
         }
       }
     });
@@ -375,17 +375,12 @@ export default function LeadsTable({
         )}
         
         <table className={`w-full text-[12px] table-fixed ${minWidthClass || "min-w-[1200px]"}`}>
-          <colgroup>
-            <col style={{ width: "38px" }} /> {/* Checkbox */}
-            {columnPreferences.columnOrder.map(colId => {
-              // Check visibility
+          <colgroup><col style={{ width: "38px" }} />{columnPreferences.columnOrder.map(colId => {
               if (colId === 'city' && !columnPreferences.showCity) return null;
               if (colId === 'state' && !columnPreferences.showState) return null;
               if (colId === 'createdAt' && !columnPreferences.showCreatedOn) return null;
               if (colId === 'dealValueInr' && !columnPreferences.showDealValue) return null;
               if (colId === 'followUpAt' && !columnPreferences.showFollowUp) return null;
-
-              // Get width
               let width = "9%";
               switch (colId) {
                 case 'lead': width = "120px"; break;
@@ -402,11 +397,8 @@ export default function LeadsTable({
                 case 'dealValueInr': width = "7%"; break;
                 case 'followUpAt': width = "9%"; break;
               }
-
               return <col key={colId} style={{ width }} />;
-            })}
-            <col style={{ width: "32px" }} /> {/* Actions */}
-          </colgroup>
+            })}<col style={{ width: "32px" }} /></colgroup>
 
           {/* Premium Header */}
            <TableHeader

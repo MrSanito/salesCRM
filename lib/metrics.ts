@@ -193,14 +193,17 @@ export function withRouteTelemetry(handler: Function) {
       const duration = (Date.now() - start) / 1000;
       const status = String(response?.status || 200);
 
-      const httpRequestsTotal = registry.getSingleMetric('http_requests_total') as client.Counter<string>;
-      const httpRequestDurationSeconds = registry.getSingleMetric('http_request_duration_seconds') as client.Histogram<string>;
+      // Exclude SSE stream from cluttering the metrics dashboard since it reconnects continuously
+      if (path !== '/api/notifications/stream') {
+        const httpRequestsTotal = registry.getSingleMetric('http_requests_total') as client.Counter<string>;
+        const httpRequestDurationSeconds = registry.getSingleMetric('http_request_duration_seconds') as client.Histogram<string>;
 
-      if (httpRequestsTotal) {
-        httpRequestsTotal.inc({ method, path, status });
-      }
-      if (httpRequestDurationSeconds) {
-        httpRequestDurationSeconds.observe({ method, path, status }, duration);
+        if (httpRequestsTotal) {
+          httpRequestsTotal.inc({ method, path, status });
+        }
+        if (httpRequestDurationSeconds) {
+          httpRequestDurationSeconds.observe({ method, path, status }, duration);
+        }
       }
 
       return response;
@@ -208,14 +211,16 @@ export function withRouteTelemetry(handler: Function) {
       const duration = (Date.now() - start) / 1000;
       const status = String(err?.status || 500);
 
-      const httpRequestsTotal = registry.getSingleMetric('http_requests_total') as client.Counter<string>;
-      const httpRequestDurationSeconds = registry.getSingleMetric('http_request_duration_seconds') as client.Histogram<string>;
+      if (path !== '/api/notifications/stream') {
+        const httpRequestsTotal = registry.getSingleMetric('http_requests_total') as client.Counter<string>;
+        const httpRequestDurationSeconds = registry.getSingleMetric('http_request_duration_seconds') as client.Histogram<string>;
 
-      if (httpRequestsTotal) {
-        httpRequestsTotal.inc({ method, path, status });
-      }
-      if (httpRequestDurationSeconds) {
-        httpRequestDurationSeconds.observe({ method, path, status }, duration);
+        if (httpRequestsTotal) {
+          httpRequestsTotal.inc({ method, path, status });
+        }
+        if (httpRequestDurationSeconds) {
+          httpRequestDurationSeconds.observe({ method, path, status }, duration);
+        }
       }
 
       throw err;

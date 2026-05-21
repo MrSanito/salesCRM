@@ -26,11 +26,23 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
     const user = await getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    // Single query to get all lead-based distinct values instead of 4 separate queries
-    const [rawLeadFields, rawSources, rawUsers] = await Promise.all([
+    // Use Prisma's findMany with distinct to get unique values directly from the database
+    // This avoids fetching all leads into memory
+    const [rawIndustries, rawCities, rawStates, rawSources, rawUsers] = await Promise.all([
       prisma.lead.findMany({
-        where: { organizationId: user.organizationId },
-        select: { industry: true, city: true, state: true },
+        where: { organizationId: user.organizationId, industry: { not: null, not: "" } },
+        select: { industry: true },
+        distinct: ['industry'],
+      }),
+      prisma.lead.findMany({
+        where: { organizationId: user.organizationId, city: { not: null, not: "" } },
+        select: { city: true },
+        distinct: ['city'],
+      }),
+      prisma.lead.findMany({
+        where: { organizationId: user.organizationId, state: { not: null, not: "" } },
+        select: { state: true },
+        distinct: ['state'],
       }),
       prisma.leadSource.findMany({
         where: { organizationId: user.organizationId },
@@ -43,30 +55,34 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
       }),
     ]);
 
-    // Extract unique values in JS (faster than 3 separate DB roundtrips with DISTINCT)
-    const industrySet = new Set<string>();
-    const citySet = new Set<string>();
-    const stateSet = new Set<string>();
+    const industries = rawIndustries
+      .map((r: any) => r.industry?.trim())
+      .filter(Boolean)
+      .sort();
 
-    for (const row of rawLeadFields) {
-      if (row.industry?.trim()) industrySet.add(row.industry.trim());
-      if (row.city?.trim()) citySet.add(row.city.trim());
-      if (row.state?.trim()) stateSet.add(row.state.trim());
-    }
+    const cities = rawCities
+      .map((r: any) => r.city?.trim())
+      .filter(Boolean)
+      .sort();
+
+    const states = rawStates
+      .map((r: any) => r.state?.trim())
+      .filter(Boolean)
+      .sort();
 
     const sources = rawSources
       .map((s: { name: string }) => s.name)
       .filter((name): name is string => !!name && name.trim() !== "")
       .sort();
 
-    const owners = Array.from(new Set(rawUsers.map(u => u.name).filter(Boolean))).sort();
-    const ownerDetails = rawUsers.map(u => ({ id: u.id, name: u.name })).sort((a, b) => a.name.localeCompare(b.name));
+    const owners = Array.from(new Set(rawUsers.map((u: any) => u.name?.trim()).filter(Boolean))).sort();
+    const ownerDetails = rawUsers.map((u: any) => ({ id: u.id, name: u.name?.trim() })).sort((a: any, b: any) => a.name.localeCompare(b.name));
 
     return NextResponse.json({
-      industries: Array.from(industrySet).sort(),
+      industries,
       sources,
-      cities: Array.from(citySet).sort(),
-      states: Array.from(stateSet).sort(),
+      cities,
+      states,
       owners,
       ownerDetails,
     }, {

@@ -27,7 +27,7 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
       select: { id: true, organizationId: true, role: true, name: true, email: true }
     });
 
-    const sfPromise = sidebarFilterId 
+    const sfPromise = sidebarFilterId
       ? prisma.sidebarFilter.findUnique({ where: { id: sidebarFilterId } })
       : Promise.resolve(null);
 
@@ -92,7 +92,14 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
 
     // Sidebar Filter Logic
     if (sf) {
-      if (sf.statuses && sf.statuses.length > 0) baseWhere.stage = { in: sf.statuses };
+      if (sf.statuses && sf.statuses.length > 0) {
+        const expandedStatuses: string[] = [];
+        sf.statuses.forEach(st => {
+          if (st === "COLD_CHATTING") expandedStatuses.push("COLD", "CHATTING", "COLD_CHATTING");
+          else expandedStatuses.push(st);
+        });
+        baseWhere.stage = { in: expandedStatuses };
+      }
       if (sf.subStatuses && sf.subStatuses.length > 0) baseWhere.subStatus = { in: sf.subStatuses };
       if (sf.industries && sf.industries.length > 0) baseWhere.industry = { in: sf.industries };
       if (sf.sources && sf.sources.length > 0) baseWhere.source = { name: { in: sf.sources } };
@@ -102,7 +109,7 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
     }
 
     const queryWhere: any = { ...baseWhere };
-    
+
     // Handle search
     if (search) {
       queryWhere.OR = [
@@ -121,9 +128,14 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
       if (key.startsWith("filter_") && value) {
         const field = key.replace("filter_", "");
         const values = value.split(",");
-        
+
         if (field === "stage") {
-          queryWhere.stage = { in: values };
+          const expandedValues: string[] = [];
+          values.forEach(v => {
+            if (v === "COLD_CHATTING") expandedValues.push("COLD", "CHATTING", "COLD_CHATTING");
+            else expandedValues.push(v);
+          });
+          queryWhere.stage = { in: expandedValues };
         } else if (field === "subStatus") {
           queryWhere.subStatus = { in: values };
         } else if (field === "city") {
@@ -145,7 +157,7 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
           } else if (values.includes("TODAY")) {
             const endOfDay = new Date();
             endOfDay.setHours(23, 59, 59, 999);
-            queryWhere.followUpAt = { gte: new Date(now.setHours(0,0,0,0)), lte: endOfDay };
+            queryWhere.followUpAt = { gte: new Date(now.setHours(0, 0, 0, 0)), lte: endOfDay };
           }
         } else if (field === "createdAt") {
           const dateFilters = values.map(v => {
@@ -166,7 +178,7 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
     if (sortBy === "lead") orderBy = { contactName: sortDir };
 
     const includeStats = searchParams.get("includeStats") === "true";
-    
+
     let leads, totalCount, statsData;
 
     const leadSelect = {
@@ -193,8 +205,8 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
 
     if (includeStats) {
       const now = new Date();
-      const startOfToday = new Date(now); startOfToday.setHours(0,0,0,0);
-      const endOfToday = new Date(now); endOfToday.setHours(23,59,59,999);
+      const startOfToday = new Date(now); startOfToday.setHours(0, 0, 0, 0);
+      const endOfToday = new Date(now); endOfToday.setHours(23, 59, 59, 999);
       const oneWeekAgo = new Date(now); oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
       [leads, totalCount, statsData] = await Promise.all([
@@ -220,15 +232,15 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
             _count: { _all: true },
           }),
           // New this week
-          prisma.lead.count({ 
-            where: { ...baseWhere, createdAt: { gte: oneWeekAgo } } 
+          prisma.lead.count({
+            where: { ...baseWhere, createdAt: { gte: oneWeekAgo } }
           }),
           // Follow-ups due today
-          prisma.lead.count({ 
-            where: { 
-              ...baseWhere, 
-              followUpAt: { gte: startOfToday, lte: endOfToday } 
-            } 
+          prisma.lead.count({
+            where: {
+              ...baseWhere,
+              followUpAt: { gte: startOfToday, lte: endOfToday }
+            }
           }),
           // Reminders for the dashboard
           prisma.reminder.findMany({
@@ -273,7 +285,7 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
       const [stageCounts, totalValueAgg, newThisWeek, followUpsToday, reminders, followUpsTotal] = statsData;
 
       const countByStage = Object.fromEntries(stageCounts.map((s: any) => [s.stage, s._count.stage]));
-      
+
       // Derive counts from groupBy instead of separate queries
       const wonDeals = countByStage["WON"] || 0;
       const newLeadsCount = countByStage["NEW"] || 0;
@@ -288,7 +300,7 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
         { key: "WON", label: "Won" },
         { key: "NOT_INTERESTED", label: "Not Interested" },
       ];
-      
+
       const stageColorMap: Record<string, string> = {
         NEW: "bg-blue-50 text-blue-700 border-blue-100",
         CONTACTED: "bg-cyan-50 text-cyan-700 border-cyan-100",

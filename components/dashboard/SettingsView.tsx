@@ -11,8 +11,7 @@ const STATUS_OPTIONS = [
   { value: "", label: "Any Status" },
   { value: "NEW", label: "New" },
   { value: "CONTACTED", label: "Contacted" },
-  { value: "COLD", label: "Cold Chatting" },
-  { value: "CHATTING", label: "Cold Chatting" },
+  { value: "COLD_CHATTING", label: "Cold Chatting" },
   { value: "MEETING_SET", label: "Meeting Set" },
   { value: "NEGOTIATION", label: "Negotiation" },
   { value: "NOT_INTERESTED", label: "Not Interested" },
@@ -381,7 +380,7 @@ export default function SettingsView() {
   const handleReorderPipelineItem = async (index: number, direction: 'up' | 'down') => {
     const list = activePipelineTab === "status" ? [...pipelineStatuses] : [...pipelineSubStatuses];
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    
+
     if (targetIndex < 0 || targetIndex >= list.length) return;
 
     const tempIndex = list[index].orderIndex;
@@ -476,7 +475,7 @@ export default function SettingsView() {
           <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">Configuration Console</h1>
           <p className="text-sm text-slate-500 mt-1">Manage user identity, customize sidebar shortcuts, and define lead workflow rules.</p>
         </div>
-        <button 
+        <button
           onClick={() => router.back()}
           className="group flex items-center gap-2.5 text-xs font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-all duration-300"
         >
@@ -499,7 +498,7 @@ export default function SettingsView() {
                   <Camera size={14} />
                 </button>
               </div>
-              
+
               <div className="mt-5">
                 <h2 className="text-xl font-bold text-slate-900">{user?.name}</h2>
                 <span className="inline-block text-[9px] font-black uppercase tracking-widest text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-md mt-1">
@@ -511,13 +510,13 @@ export default function SettingsView() {
 
               {/* Mini details list */}
               <div className="w-full space-y-3">
-                 <div className="flex items-center justify-between text-left p-3.5 bg-white rounded-2xl border border-slate-100">
-                    <div>
-                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">ACCESS CREDENTIALS</p>
-                      <p className="text-xs font-bold text-slate-700">#{user?.id.slice(-6).toUpperCase()}</p>
-                    </div>
-                    <Fingerprint size={16} className="text-indigo-500/80" />
-                 </div>
+                <div className="flex items-center justify-between text-left p-3.5 bg-white rounded-2xl border border-slate-100">
+                  <div>
+                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">ACCESS CREDENTIALS</p>
+                    <p className="text-xs font-bold text-slate-700">#{user?.id.slice(-6).toUpperCase()}</p>
+                  </div>
+                  <Fingerprint size={16} className="text-indigo-500/80" />
+                </div>
               </div>
             </div>
 
@@ -526,11 +525,10 @@ export default function SettingsView() {
               <button
                 type="button"
                 onClick={() => setActiveTab("profile")}
-                className={`flex items-center gap-3.5 px-4.5 py-4 rounded-2xl text-xs font-black uppercase tracking-widest text-left transition-all duration-300 ${
-                  activeTab === "profile"
+                className={`flex items-center gap-3.5 px-4.5 py-4 rounded-2xl text-xs font-black uppercase tracking-widest text-left transition-all duration-300 ${activeTab === "profile"
                     ? "bg-slate-900 text-white shadow-xl shadow-slate-900/20"
                     : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
-                }`}
+                  }`}
               >
                 <User size={16} />
                 <span>Identity & Profile</span>
@@ -540,11 +538,10 @@ export default function SettingsView() {
                 <button
                   type="button"
                   onClick={() => setActiveTab("sidebar")}
-                  className={`flex items-center gap-3.5 px-4.5 py-4 rounded-2xl text-xs font-black uppercase tracking-widest text-left transition-all duration-300 ${
-                    activeTab === "sidebar"
+                  className={`flex items-center gap-3.5 px-4.5 py-4 rounded-2xl text-xs font-black uppercase tracking-widest text-left transition-all duration-300 ${activeTab === "sidebar"
                       ? "bg-slate-900 text-white shadow-xl shadow-slate-900/20"
                       : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
-                  }`}
+                    }`}
                 >
                   <LayoutPanelLeft size={16} />
                   <span>Sidebar Shortcuts</span>
@@ -555,11 +552,10 @@ export default function SettingsView() {
                 <button
                   type="button"
                   onClick={() => setActiveTab("pipeline")}
-                  className={`flex items-center gap-3.5 px-4.5 py-4 rounded-2xl text-xs font-black uppercase tracking-widest text-left transition-all duration-300 ${
-                    activeTab === "pipeline"
+                  className={`flex items-center gap-3.5 px-4.5 py-4 rounded-2xl text-xs font-black uppercase tracking-widest text-left transition-all duration-300 ${activeTab === "pipeline"
                       ? "bg-slate-900 text-white shadow-xl shadow-slate-900/20"
                       : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
-                  }`}
+                    }`}
                 >
                   <Layers size={16} />
                   <span>Lead Pipeline Stages</span>
@@ -569,11 +565,10 @@ export default function SettingsView() {
               <button
                 type="button"
                 onClick={() => setActiveTab("table")}
-                className={`flex items-center gap-3.5 px-4.5 py-4 rounded-2xl text-xs font-black uppercase tracking-widest text-left transition-all duration-300 ${
-                  activeTab === "table"
+                className={`flex items-center gap-3.5 px-4.5 py-4 rounded-2xl text-xs font-black uppercase tracking-widest text-left transition-all duration-300 ${activeTab === "table"
                     ? "bg-slate-900 text-white shadow-xl shadow-slate-900/20"
                     : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
-                }`}
+                  }`}
               >
                 <Settings2 size={16} />
                 <span>Table Configuration</span>
@@ -604,8 +599,8 @@ export default function SettingsView() {
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Full Legal Name</label>
                     <div className="relative group">
                       <User size={15} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors duration-300" />
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         required
                         value={name}
                         onChange={e => setName(e.target.value)}
@@ -621,8 +616,8 @@ export default function SettingsView() {
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Primary Email Address</label>
                     <div className="relative group">
                       <Mail size={15} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors duration-300" />
-                      <input 
-                        type="email" 
+                      <input
+                        type="email"
                         required
                         value={email}
                         onChange={e => setEmail(e.target.value)}
@@ -636,7 +631,7 @@ export default function SettingsView() {
 
                 <div className="pt-6 border-t border-slate-100 flex items-center justify-between gap-4">
                   <span className="text-xs font-bold text-slate-450 italic">Sync state updated: Just now</span>
-                  <button 
+                  <button
                     type="submit"
                     disabled={loading || (name === user?.name && email === user?.email)}
                     className="flex items-center justify-center gap-2 bg-slate-900 text-white px-8 py-4.5 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-slate-800 active:scale-[0.97] transition-all duration-300 shadow-xl shadow-slate-200 disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed"
@@ -666,11 +661,10 @@ export default function SettingsView() {
                 <button
                   type="button"
                   onClick={() => setShowAddForm(!showAddForm)}
-                  className={`flex items-center gap-2 text-xs font-black uppercase tracking-widest px-5 py-3 rounded-xl transition-all duration-300 active:scale-95 ${
-                    showAddForm
+                  className={`flex items-center gap-2 text-xs font-black uppercase tracking-widest px-5 py-3 rounded-xl transition-all duration-300 active:scale-95 ${showAddForm
                       ? "bg-slate-100 text-slate-600 border border-slate-200/60"
                       : "bg-slate-900 text-white shadow-lg shadow-slate-900/10 hover:bg-slate-800"
-                  }`}
+                    }`}
                 >
                   {showAddForm ? <X size={12} /> : <Plus size={12} />}
                   {showAddForm ? "Cancel" : "Add Shortcut"}
@@ -710,16 +704,15 @@ export default function SettingsView() {
                               key={o.value}
                               type="button"
                               onClick={() => {
-                                const next = isSelected 
+                                const next = isSelected
                                   ? newFilter.statuses.filter(s => s !== o.value)
                                   : [...newFilter.statuses, o.value];
                                 setNewFilter({ ...newFilter, statuses: next });
                               }}
-                              className={`px-4 py-2.5 rounded-xl text-[10px] font-extrabold uppercase tracking-widest border transition-all duration-300 active:scale-95 ${
-                                isSelected 
-                                  ? "bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-100" 
+                              className={`px-4 py-2.5 rounded-xl text-[10px] font-extrabold uppercase tracking-widest border transition-all duration-300 active:scale-95 ${isSelected
+                                  ? "bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-100"
                                   : "bg-white text-slate-500 border-slate-200/80 hover:bg-slate-100"
-                              }`}
+                                }`}
                             >
                               {o.label}
                             </button>
@@ -739,16 +732,15 @@ export default function SettingsView() {
                               key={o.value}
                               type="button"
                               onClick={() => {
-                                const next = isSelected 
+                                const next = isSelected
                                   ? newFilter.subStatuses.filter(s => s !== o.value)
                                   : [...newFilter.subStatuses, o.value];
                                 setNewFilter({ ...newFilter, subStatuses: next });
                               }}
-                              className={`px-4 py-2.5 rounded-xl text-[10px] font-extrabold uppercase tracking-widest border transition-all duration-300 active:scale-95 ${
-                                isSelected 
-                                  ? "bg-purple-600 text-white border-purple-600 shadow-lg shadow-purple-100" 
+                              className={`px-4 py-2.5 rounded-xl text-[10px] font-extrabold uppercase tracking-widest border transition-all duration-300 active:scale-95 ${isSelected
+                                  ? "bg-purple-600 text-white border-purple-600 shadow-lg shadow-purple-100"
                                   : "bg-white text-slate-500 border-slate-200/80 hover:bg-slate-100"
-                              }`}
+                                }`}
                             >
                               {o.label}
                             </button>
@@ -768,16 +760,15 @@ export default function SettingsView() {
                               key={ind}
                               type="button"
                               onClick={() => {
-                                const next = isSelected 
+                                const next = isSelected
                                   ? newFilter.industries.filter(i => i !== ind)
                                   : [...newFilter.industries, ind];
                                 setNewFilter({ ...newFilter, industries: next });
                               }}
-                              className={`px-3 py-2 rounded-xl text-[10px] font-bold border transition-all duration-300 active:scale-95 ${
-                                isSelected 
-                                  ? "bg-amber-500 text-white border-amber-500 shadow-md shadow-amber-100" 
+                              className={`px-3 py-2 rounded-xl text-[10px] font-bold border transition-all duration-300 active:scale-95 ${isSelected
+                                  ? "bg-amber-500 text-white border-amber-500 shadow-md shadow-amber-100"
                                   : "bg-white text-slate-500 border-slate-200/80 hover:bg-slate-100"
-                              }`}
+                                }`}
                             >
                               {ind}
                             </button>
@@ -798,16 +789,15 @@ export default function SettingsView() {
                               key={src}
                               type="button"
                               onClick={() => {
-                                const next = isSelected 
+                                const next = isSelected
                                   ? newFilter.sources.filter(s => s !== src)
                                   : [...newFilter.sources, src];
                                 setNewFilter({ ...newFilter, sources: next });
                               }}
-                              className={`px-3 py-2 rounded-xl text-[10px] font-bold border transition-all duration-300 active:scale-95 ${
-                                isSelected 
-                                  ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-100" 
+                              className={`px-3 py-2 rounded-xl text-[10px] font-bold border transition-all duration-300 active:scale-95 ${isSelected
+                                  ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-100"
                                   : "bg-white text-slate-500 border-slate-200/80 hover:bg-slate-100"
-                              }`}
+                                }`}
                             >
                               {src}
                             </button>
@@ -846,11 +836,10 @@ export default function SettingsView() {
                               key={c.value}
                               type="button"
                               onClick={() => setNewFilter({ ...newFilter, color: c.value })}
-                              className={`w-7.5 h-7.5 rounded-full ${c.bg} transition-all duration-300 flex items-center justify-center ${
-                                newFilter.color === c.value
+                              className={`w-7.5 h-7.5 rounded-full ${c.bg} transition-all duration-300 flex items-center justify-center ${newFilter.color === c.value
                                   ? "ring-4 ring-offset-2 ring-slate-900 scale-110"
                                   : "opacity-60 hover:opacity-100 hover:scale-105"
-                              }`}
+                                }`}
                             >
                               {newFilter.color === c.value && (
                                 <div className="w-2.5 h-2.5 rounded-full bg-white shadow-md animate-ping" />
@@ -870,11 +859,10 @@ export default function SettingsView() {
                             key={char}
                             type="button"
                             onClick={() => setNewFilter({ ...newFilter, alphabet: newFilter.alphabet === char ? "" : char })}
-                            className={`w-7.5 h-7.5 flex items-center justify-center rounded-xl text-[10.5px] font-extrabold border transition-all duration-300 ${
-                              newFilter.alphabet === char
+                            className={`w-7.5 h-7.5 flex items-center justify-center rounded-xl text-[10.5px] font-extrabold border transition-all duration-300 ${newFilter.alphabet === char
                                 ? "bg-slate-900 text-white border-slate-900 shadow-md"
                                 : "bg-white text-slate-500 border-slate-100 hover:border-slate-350 hover:bg-slate-50"
-                            }`}
+                              }`}
                           >
                             {char}
                           </button>
@@ -1010,11 +998,10 @@ export default function SettingsView() {
                     setShowAddPipelineForm(!showAddPipelineForm);
                     setNewPipelineItem({ value: "", label: "", color: "blue" });
                   }}
-                  className={`flex items-center gap-2 text-xs font-black uppercase tracking-widest px-5 py-3 rounded-xl transition-all duration-300 active:scale-95 ${
-                    showAddPipelineForm
+                  className={`flex items-center gap-2 text-xs font-black uppercase tracking-widest px-5 py-3 rounded-xl transition-all duration-300 active:scale-95 ${showAddPipelineForm
                       ? "bg-slate-100 text-slate-600 border border-slate-200/60"
                       : "bg-indigo-600 text-white shadow-lg shadow-indigo-100 hover:bg-indigo-700"
-                  }`}
+                    }`}
                 >
                   {showAddPipelineForm ? <X size={12} /> : <Plus size={12} />}
                   {showAddPipelineForm ? "Cancel" : "Add Custom Stage"}
@@ -1029,11 +1016,10 @@ export default function SettingsView() {
                     setActivePipelineTab("status");
                     setShowAddPipelineForm(false);
                   }}
-                  className={`flex-1 text-center py-2.5 text-[9px] font-black uppercase tracking-[0.1em] rounded-xl transition-all duration-300 ${
-                    activePipelineTab === "status"
+                  className={`flex-1 text-center py-2.5 text-[9px] font-black uppercase tracking-[0.1em] rounded-xl transition-all duration-300 ${activePipelineTab === "status"
                       ? "bg-white text-indigo-600 shadow-md shadow-slate-200"
                       : "text-slate-500 hover:text-slate-800"
-                  }`}
+                    }`}
                 >
                   Primary Phases
                 </button>
@@ -1043,11 +1029,10 @@ export default function SettingsView() {
                     setActivePipelineTab("substatus");
                     setShowAddPipelineForm(false);
                   }}
-                  className={`flex-1 text-center py-2.5 text-[9px] font-black uppercase tracking-[0.1em] rounded-xl transition-all duration-300 ${
-                    activePipelineTab === "substatus"
+                  className={`flex-1 text-center py-2.5 text-[9px] font-black uppercase tracking-[0.1em] rounded-xl transition-all duration-300 ${activePipelineTab === "substatus"
                       ? "bg-white text-indigo-600 shadow-md shadow-slate-200"
                       : "text-slate-500 hover:text-slate-800"
-                  }`}
+                    }`}
                 >
                   Sub-statuses
                 </button>
@@ -1110,22 +1095,21 @@ export default function SettingsView() {
                           key={c}
                           type="button"
                           onClick={() => setNewPipelineItem((prev) => ({ ...prev, color: c }))}
-                          className={`w-8 h-8 rounded-full border-2 transition-all duration-300 flex items-center justify-center ${
-                            newPipelineItem.color === c ? "border-slate-800 scale-110 shadow-lg shadow-slate-200" : "border-slate-200 hover:scale-105"
-                          }`}
+                          className={`w-8 h-8 rounded-full border-2 transition-all duration-300 flex items-center justify-center ${newPipelineItem.color === c ? "border-slate-800 scale-110 shadow-lg shadow-slate-200" : "border-slate-200 hover:scale-105"
+                            }`}
                           style={{
                             backgroundColor:
                               c === "blue" ? "#3b82f6" :
-                              c === "cyan" ? "#06b6d4" :
-                              c === "purple" ? "#a855f7" :
-                              c === "indigo" ? "#6366f1" :
-                              c === "pink" ? "#ec4899" :
-                              c === "rose" ? "#f43f5e" :
-                              c === "amber" ? "#f59e0b" :
-                              c === "orange" ? "#f97316" :
-                              c === "red" ? "#ef4444" :
-                              c === "green" ? "#22c55e" :
-                              "#64748b",
+                                c === "cyan" ? "#06b6d4" :
+                                  c === "purple" ? "#a855f7" :
+                                    c === "indigo" ? "#6366f1" :
+                                      c === "pink" ? "#ec4899" :
+                                        c === "rose" ? "#f43f5e" :
+                                          c === "amber" ? "#f59e0b" :
+                                            c === "orange" ? "#f97316" :
+                                              c === "red" ? "#ef4444" :
+                                                c === "green" ? "#22c55e" :
+                                                  "#64748b",
                           }}
                         >
                           {newPipelineItem.color === c && (
@@ -1172,16 +1156,16 @@ export default function SettingsView() {
                           borderLeftWidth: "6px",
                           borderLeftColor:
                             item.color === "blue" ? "#3b82f6" :
-                            item.color === "cyan" ? "#06b6d4" :
-                            item.color === "purple" ? "#a855f7" :
-                            item.color === "indigo" ? "#6366f1" :
-                            item.color === "pink" ? "#ec4899" :
-                            item.color === "rose" ? "#f43f5e" :
-                            item.color === "amber" ? "#f59e0b" :
-                            item.color === "orange" ? "#f97316" :
-                            item.color === "red" ? "#ef4444" :
-                            item.color === "green" ? "#22c55e" :
-                            "#64748b",
+                              item.color === "cyan" ? "#06b6d4" :
+                                item.color === "purple" ? "#a855f7" :
+                                  item.color === "indigo" ? "#6366f1" :
+                                    item.color === "pink" ? "#ec4899" :
+                                      item.color === "rose" ? "#f43f5e" :
+                                        item.color === "amber" ? "#f59e0b" :
+                                          item.color === "orange" ? "#f97316" :
+                                            item.color === "red" ? "#ef4444" :
+                                              item.color === "green" ? "#22c55e" :
+                                                "#64748b",
                         }}
                       >
                         <div className="flex items-center gap-4">
@@ -1225,11 +1209,10 @@ export default function SettingsView() {
                           <button
                             type="button"
                             onClick={() => handleTogglePipelineItem(item.id, !item.isEnabled, item.label)}
-                            className={`text-[9px] font-black uppercase tracking-widest px-3.5 py-2 rounded-xl border transition-all duration-300 ${
-                              item.isEnabled
+                            className={`text-[9px] font-black uppercase tracking-widest px-3.5 py-2 rounded-xl border transition-all duration-300 ${item.isEnabled
                                 ? "bg-emerald-50 text-emerald-600 border-emerald-100/80 hover:bg-emerald-100"
                                 : "bg-slate-50 text-slate-400 border-slate-200/60 hover:bg-slate-100"
-                            }`}
+                              }`}
                           >
                             {item.isEnabled ? "Active" : "Disabled"}
                           </button>
@@ -1269,15 +1252,15 @@ export default function SettingsView() {
                 <div>
                   <h4 className="text-sm font-black text-slate-900 mb-3 uppercase tracking-widest">Column Order & Visibility</h4>
                   <p className="text-xs text-slate-500 mb-4 font-medium">Toggle optional columns and use the arrows to reorder them in the table.</p>
-                  
+
                   <div className="space-y-2">
                     {localColumnPreferences.columnOrder.map((colId, index) => {
                       const colDef = ALL_COLUMNS[colId];
                       if (!colDef) return null;
-                      
+
                       let isChecked = true;
                       if (!colDef.isBase) {
-                        switch(colId) {
+                        switch (colId) {
                           case 'city': isChecked = localColumnPreferences.showCity; break;
                           case 'state': isChecked = localColumnPreferences.showState; break;
                           case 'createdAt': isChecked = localColumnPreferences.showCreatedOn; break;
@@ -1290,15 +1273,15 @@ export default function SettingsView() {
                         <div key={colId} className="flex items-center justify-between p-3 rounded-xl border border-slate-100 bg-slate-50 hover:bg-slate-100/70 transition-colors">
                           <div className="flex items-center gap-4">
                             <div className="flex flex-col gap-1">
-                              <button 
-                                onClick={() => handleMoveUp(index)} 
+                              <button
+                                onClick={() => handleMoveUp(index)}
                                 disabled={index === 0}
                                 className="p-1 rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400 transition-colors"
                               >
                                 <ArrowUp size={14} strokeWidth={3} />
                               </button>
-                              <button 
-                                onClick={() => handleMoveDown(index)} 
+                              <button
+                                onClick={() => handleMoveDown(index)}
                                 disabled={index === localColumnPreferences.columnOrder.length - 1}
                                 className="p-1 rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400 transition-colors"
                               >
@@ -1310,10 +1293,10 @@ export default function SettingsView() {
                               <span className="block text-xs text-slate-500 font-medium">{colDef.desc}</span>
                             </div>
                           </div>
-                          
+
                           <label className={`flex items-center cursor-pointer ${colDef.isBase ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                            <input 
-                              type="checkbox" 
+                            <input
+                              type="checkbox"
                               checked={isChecked}
                               onChange={(e) => !colDef.isBase && handleToggleVisibility(colId, e.target.checked)}
                               disabled={colDef.isBase}

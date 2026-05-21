@@ -503,15 +503,14 @@ export default function LeadDetailModal({ leadId, onClose, isLoading, onSwitch, 
 
 
   if (!lead && !loading && !isLoading) return null;
-
   const activeReminder = lead?.reminders?.find(r => r.status === "PENDING");
 
   return (
     <>
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="absolute inset-0 bg-transparent backdrop-blur-[2px] animate-in fade-in duration-300" onClick={onClose} />
 
-      <div className="relative bg-white w-full max-w-4xl h-full sm:h-[90vh] sm:max-h-[90vh] rounded-t-2xl sm:rounded-2xl shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] overflow-hidden animate-in zoom-in-95 fade-in duration-300 border border-slate-100 flex flex-col mx-auto">
+      <div className="relative bg-white w-full max-w-4xl h-[100dvh] sm:h-[90vh] sm:max-h-[90vh] rounded-t-2xl sm:rounded-2xl shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] overflow-hidden animate-in zoom-in-95 fade-in duration-300 border border-slate-100 flex flex-col mx-auto max-w-[100vw]">
 
         {/* Header */}
         <div className="min-h-[56px] sm:h-16 bg-white border-b border-slate-50 flex items-center justify-between px-3 sm:px-8 flex-shrink-0 z-20 gap-2">

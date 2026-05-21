@@ -323,23 +323,28 @@ export default function TableHeader({
             <div className="flex items-center gap-1">
               <div className="relative inline-block">
                 <button
-                  onClick={() => setActiveColumnFilter(activeColumnFilter === 'owner' ? null : 'owner')}
-                  className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-0.5 transition-colors ${columnFilters['owner']?.size ? "text-blue-600" : "text-slate-500 hover:text-slate-800"}`}
+                  onClick={() => setActiveColumnFilter(activeColumnFilter === 'ownerId' ? null : 'ownerId')}
+                  className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-0.5 transition-colors ${columnFilters['ownerId']?.size ? "text-blue-600" : "text-slate-500 hover:text-slate-800"}`}
                 >
                   Owner <Filter size={9} />
                 </button>
-                <FilterDropdown column="owner">
+                <FilterDropdown column="ownerId">
                   <div className="max-h-44 overflow-y-auto">
-                    {((distinctFilters?.owners && distinctFilters.owners.length > 0) ? distinctFilters.owners : Array.from(new Set(leads.map(l => l.owner?.name).filter(Boolean))).sort())
+                    {((distinctFilters?.ownerDetails && distinctFilters.ownerDetails.length > 0) ? distinctFilters.ownerDetails : Array.from(new Set(leads.map(l => l.owner).filter(Boolean))).map(o => ({ id: o!.id, name: o!.name })))
+                      .reduce((acc, curr) => {
+                        if (!acc.find(x => x.id === curr.id)) acc.push(curr);
+                        return acc;
+                      }, [] as {id: string, name: string}[])
+                      .sort((a, b) => a.name.localeCompare(b.name))
                       .map(v => (
-                      <label key={v as string} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer">
+                      <label key={v.id} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer">
                         <input
                           type="checkbox"
-                          checked={columnFilters['owner']?.has(v as string)}
-                          onChange={() => toggleColumnFilter('owner', v as string)}
+                          checked={columnFilters['ownerId']?.has(v.id)}
+                          onChange={() => toggleColumnFilter('ownerId', v.id)}
                           className="appearance-none w-3 h-3 rounded border-2 border-slate-300 bg-white checked:bg-blue-600 checked:border-blue-600 transition-all cursor-pointer relative checked:after:content-['✓'] checked:after:absolute checked:after:text-white checked:after:text-[8px] checked:after:font-black checked:after:left-[0.5px] checked:after:top-[-2px]"
                         />
-                        <span className="text-[11px] font-semibold text-slate-700 truncate">{v as string}</span>
+                        <span className="text-[11px] font-semibold text-slate-700 truncate">{v.name}</span>
                       </label>
                     ))}
                   </div>

@@ -78,8 +78,8 @@ export default function ScheduleFollowupModal({
   const today = new Date().toISOString().split("T")[0];
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/10 backdrop-blur-sm" onClick={onClose} />
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
       <div className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-100">
 
         {/* Header */}
