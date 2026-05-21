@@ -173,6 +173,37 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
       }
     });
 
+    // Post-filter logic: if COLD_CHATTING is filtered (either via stage filter or sidebar filter),
+    // exclude WARM_LEAD unless WARM_LEAD is explicitly selected.
+    // Note: COLD_CHATTING is stored as [COLD, CHATTING] in the DB, so check for those too.
+    const activeStages: string[] = queryWhere.stage?.in || [];
+    const isColdChattingFiltered = 
+      activeStages.includes("COLD_CHATTING") || 
+      activeStages.includes("CHATTING") ||
+      activeStages.includes("COLD") ||
+      (sf && (sf.statuses?.includes("COLD_CHATTING" as any) || sf.statuses?.includes("CHATTING" as any) || sf.statuses?.includes("COLD" as any)));
+
+    if (isColdChattingFiltered) {
+      const filterSubStatusParam = searchParams.get("filter_subStatus");
+      const activeSubStatuses = filterSubStatusParam 
+        ? filterSubStatusParam.split(",") 
+        : (sf?.subStatuses || []);
+      
+      if (!activeSubStatuses.includes("WARM_LEAD")) {
+        if (queryWhere.subStatus?.in) {
+          // Merge: keep existing in-filter but also exclude WARM_LEAD
+          queryWhere.subStatus = { in: queryWhere.subStatus.in.filter((s: string) => s !== "WARM_LEAD") };
+          // If the filtered list became empty after removing WARM_LEAD, drop the in-filter
+          if (queryWhere.subStatus.in.length === 0) {
+            queryWhere.subStatus = { not: "WARM_LEAD" };
+          }
+        } else {
+          queryWhere.subStatus = { not: "WARM_LEAD" };
+        }
+      }
+    }
+
+
     // Handle sorting
     let orderBy: any = { [sortBy]: sortDir };
     if (sortBy === "lead") orderBy = { contactName: sortDir };

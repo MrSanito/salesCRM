@@ -41,7 +41,23 @@ export async function GET() {
       include: { createdBy: { select: { name: true } } },
     });
 
-    return NextResponse.json(filters, {
+    // Re-map stored [COLD, CHATTING] → COLD_CHATTING for the frontend
+    const normalizedFilters = filters.map((f) => {
+      const hasCold = f.statuses.includes("COLD" as any);
+      const hasChatting = f.statuses.includes("CHATTING" as any);
+      if (hasCold && hasChatting) {
+        return {
+          ...f,
+          statuses: [
+            ...f.statuses.filter((s: any) => s !== "COLD" && s !== "CHATTING"),
+            "COLD_CHATTING",
+          ],
+        };
+      }
+      return f;
+    });
+
+    return NextResponse.json(normalizedFilters, {
       headers: {
         'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
         'Pragma': 'no-cache',
@@ -74,11 +90,24 @@ export async function POST(req: Request) {
     });
     const nextOrder = existing.length > 0 ? existing[0].orderIndex + 1 : 0;
 
+    // Map virtual COLD_CHATTING → [COLD, CHATTING] so Prisma accepts it
+    const sanitizedStatuses: string[] = [];
+    for (const st of (statuses || [])) {
+      if (st === "COLD_CHATTING") {
+        if (!sanitizedStatuses.includes("COLD")) sanitizedStatuses.push("COLD");
+        if (!sanitizedStatuses.includes("CHATTING")) sanitizedStatuses.push("CHATTING");
+      } else {
+        sanitizedStatuses.push(st);
+      }
+    }
+
     const filter = await prisma.sidebarFilter.create({
       data: {
         name,
-        statuses: statuses || [],
+        statuses: sanitizedStatuses as any,
         subStatuses: subStatuses || [],
+        // Remove WARM_LEAD from subStatuses if COLD_CHATTING was selected (it's auto-excluded in query)
+
         industries: industries || [],
         sources: sources || [],
         dealSizeMin: dealSizeMin ? parseFloat(dealSizeMin) : null,
