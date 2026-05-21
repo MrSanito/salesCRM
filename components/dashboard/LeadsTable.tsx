@@ -97,6 +97,7 @@ export default function LeadsTable({
   const [showBulkUpdate, setShowBulkUpdate] = useState(false);
   const [showBulkDelete, setShowBulkDelete] = useState(false);
   const [showBulkAssign, setShowBulkAssign] = useState(false);
+  const [hasSubordinates, setHasSubordinates] = useState<boolean | null>(null);
   const [distinctFilters, setDistinctFilters] = useState<{
     industries: string[];
     sources: string[];
@@ -244,6 +245,7 @@ export default function LeadsTable({
       if (data.leads) setLeads(data.leads);
       const count = data.pagination?.totalCount ?? data.pagination?.total ?? 0;
       setTotalCount(count);
+      setHasSubordinates(data.hasSubordinates !== undefined ? data.hasSubordinates : null);
       if (data.stats && onStatsUpdate) onStatsUpdate(data.stats);
     } catch (err) {
       console.error("Fetch error:", err);
@@ -435,13 +437,23 @@ export default function LeadsTable({
               <tr>
                 <td colSpan={getActiveColumnsCount(columnPreferences) + 2} className="text-center py-24 bg-white">
                   {view === "subordinates" ? (
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    hasSubordinates === false ? (
+                      <div className="flex flex-col items-center gap-3 animate-in fade-in zoom-in-95 duration-300">
+                        <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        </div>
+                        <p className="text-sm font-bold text-slate-600">No team members assigned to you</p>
+                        <p className="text-[11px] text-slate-400 max-w-xs">You don&apos;t have any subordinates assigned under your management yet.</p>
                       </div>
-                      <p className="text-sm font-bold text-slate-600">Your subordinates don&apos;t have any leads yet</p>
-                      <p className="text-[11px] text-slate-400 max-w-xs">Assign leads to your team members or ask them to create new ones. Their leads will appear here automatically.</p>
-                    </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-3 animate-in fade-in zoom-in-95 duration-300">
+                        <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        </div>
+                        <p className="text-sm font-bold text-slate-600">Your subordinates don&apos;t have any leads yet</p>
+                        <p className="text-[11px] text-slate-400 max-w-xs">Assign leads to your team members or ask them to create new ones. Their leads will appear here automatically.</p>
+                      </div>
+                    )
                   ) : (
                     <p className="text-[12px] font-semibold text-slate-400">No leads match current filters</p>
                   )}

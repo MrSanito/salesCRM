@@ -47,9 +47,15 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
 
     const filterStage = searchParams.get("filter_stage");
 
+    let hasSubordinates = true;
+
     // Role-based access
     if (view === "subordinates") {
       if (isSuperAdmin || isOrgAdmin) {
+        const otherUsersCount = await prisma.user.count({
+          where: { organizationId: user.organizationId, id: { not: user.id } }
+        });
+        hasSubordinates = otherUsersCount > 0;
         if (!filterOwner) {
           baseWhere.ownerId = { not: user.id };
         }
@@ -59,6 +65,7 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
           select: { id: true }
         });
         const subIds = subordinates.map(s => s.id);
+        hasSubordinates = subIds.length > 0;
         if (filterOwner || filterOwnerId) {
           baseWhere.ownerId = { in: [...subIds, user.id] };
         } else {
@@ -66,6 +73,7 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
         }
       } else {
         baseWhere.ownerId = "none";
+        hasSubordinates = false;
       }
     } else if (searchParams.get("ownerId")) {
       baseWhere.ownerId = searchParams.get("ownerId");
@@ -383,6 +391,7 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
         totalCount,
         totalPages: Math.ceil(totalCount / pageSize),
       },
+      hasSubordinates,
       stats
     }, {
       headers: {
