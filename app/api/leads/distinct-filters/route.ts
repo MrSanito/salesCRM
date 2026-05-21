@@ -70,7 +70,7 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
       baseWhere.stage = stageFilter;
     }
 
-    if (ownerFilter) {
+    if (ownerFilter && ownerFilter !== "all") {
       if (baseWhere.ownerId !== undefined) {
         if (typeof baseWhere.ownerId === "object" && baseWhere.ownerId !== null) {
           if (Array.isArray(baseWhere.ownerId.in)) {

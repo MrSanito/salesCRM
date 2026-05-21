@@ -42,53 +42,51 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
 
     const isSuperAdmin = user.email === "sb.solobuild@gmail.com";
     const isOrgAdmin = user.role === "ORG_ADMIN" || user.role === "CEO";
+    const isAdmin = isSuperAdmin || isOrgAdmin;
+
     const view = searchParams.get("view");
     const filterOwner = searchParams.get("filter_owner");
     const filterOwnerId = searchParams.get("filter_ownerId");
 
-    const filterStage = searchParams.get("filter_stage");
+    // Check if any other filters are active or the owner filter is touched (different from user.id/user.name or is "all")
+    const hasTouchedOtherFilter = !!(
+      search ||
+      sidebarFilterId ||
+      searchParams.get("filter_subStatus") ||
+      searchParams.get("filter_city") ||
+      searchParams.get("filter_state") ||
+      searchParams.get("filter_industry") ||
+      searchParams.get("filter_source") ||
+      searchParams.get("filter_followup") ||
+      searchParams.get("filter_createdAt") ||
+      (filterOwnerId !== null && filterOwnerId !== user.id) ||
+      (filterOwner !== null && filterOwner !== user.name)
+    );
 
     // Role-based access
-    if (view === "subordinates") {
-      if (isSuperAdmin || isOrgAdmin) {
-        if (!filterOwner) {
+    if (isAdmin) {
+      if (view === "subordinates") {
+        if (filterOwnerId && filterOwnerId !== "all") {
+          baseWhere.ownerId = filterOwnerId;
+        } else if (filterOwner) {
+          baseWhere.owner = { name: filterOwner };
+        } else {
           baseWhere.ownerId = { not: user.id };
         }
-      } else if (user.role === "MANAGER") {
-        const subordinates = await prisma.user.findMany({
-          where: { managerId: user.id },
-          select: { id: true }
-        });
-        const subIds = subordinates.map(s => s.id);
-        if (filterOwner || filterOwnerId) {
-          baseWhere.ownerId = { in: [...subIds, user.id] };
-        } else {
-          baseWhere.ownerId = { in: subIds };
+      } else if (hasTouchedOtherFilter) {
+        // Touched a filter: can see all matching leads (not restricted to own by default)
+        if (filterOwnerId && filterOwnerId !== "all") {
+          baseWhere.ownerId = filterOwnerId;
+        } else if (filterOwner) {
+          baseWhere.owner = { name: filterOwner };
         }
       } else {
-        baseWhere.ownerId = "none";
-      }
-    } else if (searchParams.get("ownerId")) {
-      baseWhere.ownerId = searchParams.get("ownerId");
-    } else {
-      // Default: My Leads or Sidebar Filter access scope
-      // When a sidebar filter, owner filter, or stage filter is active, widen scope by role
-      if (sf || filterOwner || filterOwnerId || filterStage) {
-        if (isSuperAdmin || isOrgAdmin) {
-          // Admins/CEOs see all leads in their organization matching the filter
-        } else if (user.role === "MANAGER") {
-          const subordinates = await prisma.user.findMany({
-            where: { managerId: user.id },
-            select: { id: true }
-          });
-          const subIds = subordinates.map(s => s.id);
-          baseWhere.ownerId = { in: [...subIds, user.id] };
-        } else {
-          baseWhere.ownerId = user.id;
-        }
-      } else {
+        // Default: Only show current user leads
         baseWhere.ownerId = user.id;
       }
+    } else {
+      // Non-admins can only see their own new leads
+      baseWhere.ownerId = user.id;
     }
 
     // Sidebar Filter Logic
@@ -138,9 +136,17 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
         } else if (field === "source") {
           queryWhere.source = { name: { in: values } };
         } else if (field === "owner") {
-          queryWhere.owner = { name: { in: values } };
+          if (isAdmin) {
+            queryWhere.owner = { name: { in: values } };
+          }
         } else if (field === "ownerId") {
-          queryWhere.ownerId = { in: values };
+          if (isAdmin) {
+            if (value !== "all") {
+              queryWhere.ownerId = { in: values };
+            } else {
+              delete queryWhere.ownerId;
+            }
+          }
         } else if (field === "followup") {
           const now = new Date();
           if (values.includes("OVERDUE")) {
@@ -163,6 +169,13 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
         }
       }
     });
+
+    // Enforce non-admin restriction at the very end
+    if (!isAdmin) {
+      queryWhere.ownerId = user.id;
+      baseWhere.ownerId = user.id;
+      delete queryWhere.owner;
+    }
 
     // Handle sorting
     let orderBy: any = { [sortBy]: sortDir };

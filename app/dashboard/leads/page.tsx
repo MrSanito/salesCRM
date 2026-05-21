@@ -14,23 +14,14 @@ export default function LeadsPage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [leadIds, setLeadIds] = useState<string[]>([]);
   const [ownerDetails, setOwnerDetails] = useState<{id: string, name: string}[]>([]);
-  const [selectedOwner, setSelectedOwner] = useState<string>("");
-  const [isOwnerInitialized, setIsOwnerInitialized] = useState(false);
   const { user } = useAuth();
+  const [selectedOwner, setSelectedOwner] = useState<string>(() => user?.id || "");
   const searchParams = useSearchParams();
 
   useEffect(() => {
     const leadId = searchParams.get("id");
     if (leadId) setSelectedLeadId(leadId);
   }, [searchParams]);
-
-  // Set default owner to current user on first load
-  useEffect(() => {
-    if (user?.id && !isOwnerInitialized) {
-      setSelectedOwner(user.id);
-      setIsOwnerInitialized(true);
-    }
-  }, [user?.id, isOwnerInitialized]);
 
   // Fetch owners for the filter dropdown
   useEffect(() => {
@@ -142,7 +133,7 @@ export default function LeadsPage() {
         onLeadClick={handleLeadClick} 
         activeNav="New Leads"
         stageFilter="NEW"
-        ownerFilter={selectedOwner === "" ? undefined : selectedOwner}
+        ownerFilter={selectedOwner === "" ? "all" : selectedOwner}
         apiUrl="/api/leads/new-list"
       />
 
