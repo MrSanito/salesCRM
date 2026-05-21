@@ -98,26 +98,115 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
       }
     }
 
+    // Parse other filters to enable dynamic scoping (faceted search)
+    const search = searchParams.get("search") || "";
+    const sidebarFilterId = searchParams.get("sidebarFilterId");
+
+    const sf = sidebarFilterId ? await prisma.sidebarFilter.findUnique({ where: { id: sidebarFilterId } }) : null;
+    const sfWhere: any = {};
+    if (sf) {
+      if (sf.statuses && sf.statuses.length > 0) sfWhere.stage = { in: sf.statuses };
+      if (sf.subStatuses && sf.subStatuses.length > 0) sfWhere.subStatus = { in: sf.subStatuses };
+      if (sf.industries && sf.industries.length > 0) sfWhere.industry = { in: sf.industries };
+      if (sf.sources && sf.sources.length > 0) sfWhere.source = { name: { in: sf.sources } };
+      if (sf.dealSizeMin) sfWhere.dealValueInr = { gte: sf.dealSizeMin };
+      if (sf.dealSizeMax) sfWhere.dealValueInr = { ...sfWhere.dealValueInr, lte: sf.dealSizeMax };
+      if (sf.alphabet) sfWhere.contactName = { startsWith: sf.alphabet, mode: 'insensitive' };
+    }
+
+    const searchWhere: any = {};
+    if (search) {
+      searchWhere.OR = [
+        { contactName: { contains: search, mode: 'insensitive' } },
+        { company: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+        { phone: { contains: search, mode: 'insensitive' } },
+        { industry: { contains: search, mode: 'insensitive' } },
+        { city: { contains: search, mode: 'insensitive' } },
+        { state: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const colFiltersWhere: Record<string, any> = {};
+    searchParams.forEach((value, key) => {
+      if (key.startsWith("filter_") && value) {
+        const field = key.replace("filter_", "");
+        if (field === "stage" || field === "ownerId" || field === "owner") return;
+        
+        const values = value.split(",");
+        if (field === "subStatus") {
+          colFiltersWhere.subStatus = { in: values };
+        } else if (field === "city") {
+          colFiltersWhere.city = { in: values };
+        } else if (field === "state") {
+          colFiltersWhere.state = { in: values };
+        } else if (field === "industry") {
+          colFiltersWhere.industry = { in: values };
+        } else if (field === "source") {
+          colFiltersWhere.source = { name: { in: values } };
+        } else if (field === "followup") {
+          const now = new Date();
+          if (values.includes("OVERDUE")) {
+            colFiltersWhere.followUpAt = { lt: now };
+          } else if (values.includes("TODAY")) {
+            const endOfDay = new Date();
+            endOfDay.setHours(23, 59, 59, 999);
+            colFiltersWhere.followUpAt = { gte: new Date(now.setHours(0,0,0,0)), lte: endOfDay };
+          }
+        } else if (field === "createdAt") {
+          const dateFilters = values.map(v => {
+            const start = new Date(`${v}T00:00:00.000Z`);
+            const end = new Date(`${v}T23:59:59.999Z`);
+            return { createdAt: { gte: start, lte: end } };
+          });
+          if (dateFilters.length > 0) {
+            colFiltersWhere.createdAt = { OR: dateFilters };
+          }
+        }
+      }
+    });
+
+    const getWhereForField = (exceptField?: string) => {
+      const where: any = {
+        ...baseWhere,
+        ...sfWhere,
+        ...searchWhere,
+      };
+
+      Object.entries(colFiltersWhere).forEach(([field, filterClause]) => {
+        if (field !== exceptField) {
+          if (field === "createdAt" && filterClause.OR) {
+            if (!where.AND) where.AND = [];
+            where.AND.push({ OR: filterClause.OR });
+          } else {
+            where[field] = filterClause;
+          }
+        }
+      });
+
+      return where;
+    };
+
     // Use Prisma's findMany with distinct to get unique values directly from the database
     // This avoids fetching all leads into memory
     const [rawIndustries, rawCities, rawStates, rawSources, rawUsers] = await Promise.all([
       prisma.lead.findMany({
-        where: { ...baseWhere, industry: { not: null } },
+        where: { ...getWhereForField("industry"), industry: { not: null } },
         select: { industry: true },
         distinct: ['industry'],
       }),
       prisma.lead.findMany({
-        where: { ...baseWhere, city: { not: null } },
+        where: { ...getWhereForField("city"), city: { not: null } },
         select: { city: true },
         distinct: ['city'],
       }),
       prisma.lead.findMany({
-        where: { ...baseWhere, state: { not: null } },
+        where: { ...getWhereForField("state"), state: { not: null } },
         select: { state: true },
         distinct: ['state'],
       }),
       prisma.lead.findMany({
-        where: { ...baseWhere, sourceId: { not: null } },
+        where: { ...getWhereForField("source"), sourceId: { not: null } },
         select: {
           source: {
             select: { name: true }

@@ -260,8 +260,16 @@ export default function LeadsTable({
   useEffect(() => {
     const params = new URLSearchParams();
     if (view) params.set("view", view);
-    if (stageFilter) params.set("stageFilter", stageFilter);
-    if (ownerFilter) params.set("ownerFilter", ownerFilter);
+    if (stageFilter) params.set("filter_stage", stageFilter);
+    if (ownerFilter) params.set("filter_ownerId", ownerFilter);
+    if (debouncedSearchQuery) params.set("search", debouncedSearchQuery);
+    if (sidebarFilter) params.set("sidebarFilterId", sidebarFilter.id);
+    Object.entries(columnFilters).forEach(([key, values]) => {
+      if (values.size > 0) {
+        if (key === "stage" && stageFilter) return;
+        params.set(`filter_${key}`, Array.from(values).join(","));
+      }
+    });
     fetch(`/api/leads/distinct-filters?${params.toString()}`)
       .then((r) => r.json())
       .then((data) => {
@@ -270,7 +278,7 @@ export default function LeadsTable({
         }
       })
       .catch(console.error);
-  }, [refreshKey, activeNav, view, stageFilter, ownerFilter]);
+  }, [refreshKey, activeNav, view, stageFilter, ownerFilter, debouncedSearchQuery, sidebarFilter?.id, columnFilters]);
 
   // initialData is no longer needed because LeadsTable manages fetching on mount
 
