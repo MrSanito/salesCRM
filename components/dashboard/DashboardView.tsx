@@ -4,7 +4,7 @@ import PipelineFunnel from "@/components/dashboard/PipelineFunnel";
 import RemindersList from "@/components/dashboard/RemindersList";
 import LeadsTable from "@/components/dashboard/LeadsTable";
 import { useAuth } from "@/components/auth/AuthContext";
-import { UserPlus, UserCircle2, Plus, Bell } from "lucide-react";
+import { UserPlus, UserCircle2, Plus, Bell, Sparkles } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import type { SidebarFilterConfig } from "@/app/dashboard/page";
@@ -12,13 +12,22 @@ import type { SidebarFilterConfig } from "@/app/dashboard/page";
 interface DashboardViewProps {
   onAddLead: () => void;
   onAddEmployee: () => void;
+  onGenerateReport: () => void;
   onLeadClick: (id: string, allIds?: string[]) => void;
   activeNav: string;
   refreshKey?: number;
   sidebarFilter?: SidebarFilterConfig | null;
 }
 
-export default function DashboardView({ onAddLead, onAddEmployee, onLeadClick, activeNav, refreshKey = 0, sidebarFilter }: DashboardViewProps) {
+export default function DashboardView({ 
+  onAddLead, 
+  onAddEmployee, 
+  onGenerateReport,
+  onLeadClick, 
+  activeNav, 
+  refreshKey = 0, 
+  sidebarFilter 
+}: DashboardViewProps) {
   const { user } = useAuth();
   const searchParams = useSearchParams();
   const view = searchParams.get("view");
@@ -74,7 +83,16 @@ export default function DashboardView({ onAddLead, onAddEmployee, onLeadClick, a
       </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          {(user?.role === "MANAGER" || user?.role === "ORG_ADMIN") && (
+          {(user?.role === "CEO" || user?.role === "ORG_ADMIN" || user?.role === "MANAGER") && (
+            <button 
+              onClick={onGenerateReport}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-indigo-50 border border-indigo-100 text-indigo-700 px-3 sm:px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100/60 hover:border-indigo-200 transition-all active:scale-95 shadow-sm"
+            >
+              <Sparkles size={14} className="text-indigo-600 animate-pulse" />
+              Generate Report
+            </button>
+          )}
+          {(user?.role === "MANAGER" || user?.role === "ORG_ADMIN" || user?.role === "CEO") && (
             <>
               <button 
                 onClick={onAddEmployee}

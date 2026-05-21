@@ -28,6 +28,7 @@ export default function AuditReportPage() {
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<TabType>("global");
   const [selectedActor, setSelectedActor] = useState<string>("all");
+  const [hoveredLog, setHoveredLog] = useState<AuditLog | null>(null);
 
   useEffect(() => {
     fetch("/api/reports/audit")
@@ -53,6 +54,12 @@ export default function AuditReportPage() {
   const actors = allUserNames.length > 0
     ? Array.from(new Set([...allUserNames, ...logs.map(l => l.actorName).filter(Boolean)])) as string[]
     : Array.from(new Set(logs.map(l => l.actorName).filter(Boolean))) as string[];
+
+  const getDownloadUrl = (log: AuditLog | null) => {
+    if (!log || log.action !== "GENERATE_REPORT" || !log.note) return null;
+    const match = log.note.match(/Download URL:\s*(https?:\/\/[^\s]+)/);
+    return match ? match[1] : null;
+  };
 
   const filteredLogs = logs.filter(log => {
     const matchesSearch = 
@@ -204,7 +211,12 @@ export default function AuditReportPage() {
                   </tr>
                 ) : (
                   filteredLogs.map((log) => (
-                    <tr key={log.id} className="hover:bg-slate-50/50 transition-colors group">
+                    <tr 
+                      key={log.id} 
+                      onMouseEnter={() => setHoveredLog(log)}
+                      onMouseLeave={() => setHoveredLog(null)}
+                      className="hover:bg-slate-50/50 transition-colors group cursor-crosshair"
+                    >
                       <td className="px-6 py-4 border-r border-slate-50">
                         <div className="flex items-center gap-2">
                           <Clock size={12} className="text-slate-400" />
@@ -276,15 +288,42 @@ export default function AuditReportPage() {
         )}
         
         {/* Note Preview Overlay on Hover */}
-        <div className="bg-slate-50 border-t border-slate-100 p-3">
-          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-            <Terminal size={12} /> Execution Note Preview
-          </p>
-          <div className="mt-1 h-8 flex items-center">
-            <p className="text-[11px] font-medium text-slate-600 italic">
-              {activeTab === "integration" ? "Waiting for integration logs..." : "Hover over a row to see detailed execution notes..."}
+        <div className="bg-slate-50 border-t border-slate-100 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-1.5">
+              <Terminal size={12} className="text-slate-500 animate-pulse" /> Execution Note Details
             </p>
+            <div className="min-h-[24px] flex items-center">
+              {hoveredLog ? (
+                <p className="text-[11.5px] font-bold text-slate-800 leading-relaxed truncate-2-lines">
+                  {hoveredLog.note || "No execution note recorded."}
+                </p>
+              ) : (
+                <p className="text-[11px] font-medium text-slate-400 italic">
+                  {activeTab === "integration" ? "Waiting for integration synchronization..." : "Hover over any operational log entry to decrypt details..."}
+                </p>
+              )}
+            </div>
           </div>
+
+          {/* Direct Report Downloader Action */}
+          {(() => {
+            const url = getDownloadUrl(hoveredLog);
+            if (!url) return null;
+            return (
+              <div className="shrink-0 animate-in fade-in zoom-in-95 duration-200">
+                <a
+                  href={`/api/reports/download?url=${encodeURIComponent(url)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-[9px] uppercase tracking-widest px-4 py-2.5 rounded-xl shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
+                >
+                  <Download size={12} />
+                  Download CRM Report
+                </a>
+              </div>
+            );
+          })()}
         </div>
       </div>
     </div>

@@ -11,6 +11,7 @@ const AddLeadModal = dynamic(() => import("@/components/dashboard/AddLeadModal")
 const AddEmployeeModal = dynamic(() => import("@/components/dashboard/AddEmployeeModal"), { ssr: false });
 const AddLeadChoiceModal = dynamic(() => import("@/components/dashboard/AddLeadChoiceModal"), { ssr: false });
 const ImportExcelModal = dynamic(() => import("@/components/dashboard/ImportExcelModal"), { ssr: false });
+const GenerateReportModal = dynamic(() => import("@/components/dashboard/GenerateReportModal"), { ssr: false });
 
 export interface SidebarFilterConfig {
   id: string;
@@ -38,6 +39,7 @@ function DashboardPageContent() {
   const [isAddChoiceModalOpen, setIsAddChoiceModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isAddEmployeeModalOpen, setIsAddEmployeeModalOpen] = useState(false);
+  const [isGenerateReportModalOpen, setIsGenerateReportModalOpen] = useState(false);
 
   const openLeadModal = (id: string, allIds?: string[]) => {
     setSelectedLeadId(id);
@@ -87,6 +89,7 @@ function DashboardPageContent() {
         <DashboardView
           onAddLead={() => setIsAddChoiceModalOpen(true)}
           onAddEmployee={() => setIsAddEmployeeModalOpen(true)}
+          onGenerateReport={() => setIsGenerateReportModalOpen(true)}
           onLeadClick={(id, allIds) => openLeadModal(id, allIds)}
           activeNav="Dashboard"
           refreshKey={refreshKey}
@@ -126,6 +129,10 @@ function DashboardPageContent() {
 
       {isAddEmployeeModalOpen && (
         <AddEmployeeModal onClose={() => setIsAddEmployeeModalOpen(false)} />
+      )}
+
+      {isGenerateReportModalOpen && (
+        <GenerateReportModal onClose={() => setIsGenerateReportModalOpen(false)} />
       )}
     </>
   );

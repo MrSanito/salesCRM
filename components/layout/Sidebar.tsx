@@ -50,7 +50,7 @@ const SIDEBAR_ITEMS: SidebarGroup[] = [
         icon: History, 
         label: "Audit Protocol", 
         href: "/dashboard/reports/audit",
-        roles: ["ORG_ADMIN", "MANAGER"]
+        roles: ["ORG_ADMIN", "MANAGER", "CEO"]
       },
     ],
   },
