@@ -95,7 +95,7 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
       if (sf.statuses && sf.statuses.length > 0) {
         const expandedStatuses: string[] = [];
         sf.statuses.forEach(st => {
-          if (st === "COLD_CHATTING") expandedStatuses.push("COLD", "CHATTING", "COLD_CHATTING");
+          if ((st as string) === "COLD_CHATTING") expandedStatuses.push("COLD", "CHATTING", "COLD_CHATTING");
           else expandedStatuses.push(st);
         });
         baseWhere.stage = { in: expandedStatuses };

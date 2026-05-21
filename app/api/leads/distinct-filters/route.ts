@@ -68,17 +68,17 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
     // This avoids fetching all leads into memory
     const [rawIndustries, rawCities, rawStates, rawSources, rawUsers] = await Promise.all([
       prisma.lead.findMany({
-        where: { ...baseWhere, industry: { not: null, not: "" } },
+        where: { ...baseWhere, industry: { not: null } },
         select: { industry: true },
         distinct: ['industry'],
       }),
       prisma.lead.findMany({
-        where: { ...baseWhere, city: { not: null, not: "" } },
+        where: { ...baseWhere, city: { not: null } },
         select: { city: true },
         distinct: ['city'],
       }),
       prisma.lead.findMany({
-        where: { ...baseWhere, state: { not: null, not: "" } },
+        where: { ...baseWhere, state: { not: null } },
         select: { state: true },
         distinct: ['state'],
       }),

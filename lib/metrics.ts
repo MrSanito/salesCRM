@@ -15,7 +15,7 @@ export const registry =
 // Scrape interval raised to 60s (default was 10s) — no need for sub-minute node.js metrics
 if (!globalForMetrics.defaultMetricsRegistered) {
   try {
-    client.collectDefaultMetrics({ register: registry, prefix: '', timeout: 60000 });
+    client.collectDefaultMetrics({ register: registry, prefix: '' });
     globalForMetrics.defaultMetricsRegistered = true;
   } catch (err) {
     console.warn('Default metrics already collected, skipping registration.');

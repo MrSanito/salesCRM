@@ -102,7 +102,8 @@ export default function LeadsTable({
     sources: string[];
     cities: string[];
     states: string[];
-    owners: string[];
+    owners?: string[];
+    ownerDetails?: { id: string; name: string }[];
   }>({ industries: [], sources: [], cities: [], states: [], owners: [] });
 
   const handleExportExcel = async (dataToExport: DbLead[], filename: string) => {
@@ -203,7 +204,7 @@ export default function LeadsTable({
         } else if (key === 'source') {
           result = result.filter(l => l.source && values.has(l.source.name));
         } else if (key === 'ownerId') {
-          result = result.filter(l => l.owner && values.has(l.owner.id));
+          result = result.filter(l => l.owner && values.has((l.owner as any).id));
         }
       }
     });

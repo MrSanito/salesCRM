@@ -25,7 +25,9 @@ interface TableHeaderProps {
     cities: string[];
     states: string[];
     owners?: string[];
+    ownerDetails?: { id: string; name: string }[];
   };
+
   columnPreferences: ColumnPreferences;
 }
 
@@ -330,7 +332,7 @@ export default function TableHeader({
                 </button>
                 <FilterDropdown column="ownerId">
                   <div className="max-h-44 overflow-y-auto">
-                    {((distinctFilters?.ownerDetails && distinctFilters.ownerDetails.length > 0) ? distinctFilters.ownerDetails : Array.from(new Set(leads.map(l => l.owner).filter(Boolean))).map(o => ({ id: o!.id, name: o!.name })))
+                    {((distinctFilters?.ownerDetails && distinctFilters.ownerDetails.length > 0) ? distinctFilters.ownerDetails : Array.from(new Set(leads.map(l => l.owner).filter(Boolean))).map(o => ({ id: (o as any).id, name: o!.name })))
                       .reduce((acc, curr) => {
                         if (!acc.find(x => x.id === curr.id)) acc.push(curr);
                         return acc;
