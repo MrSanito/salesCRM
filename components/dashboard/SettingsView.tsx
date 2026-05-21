@@ -92,32 +92,37 @@ export default function SettingsView() {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'profile' | 'sidebar' | 'pipeline' | 'table'>('profile');
   const { columnPreferences, updateColumnPreferences, isLoaded: tablePrefsLoaded } = useTablePreferences();
+  const [localColumnPreferences, setLocalColumnPreferences] = useState(columnPreferences);
+
+  useEffect(() => {
+    setLocalColumnPreferences(columnPreferences);
+  }, [columnPreferences]);
 
   const handleMoveUp = (index: number) => {
     if (index === 0) return;
-    const newOrder = [...columnPreferences.columnOrder];
+    const newOrder = [...localColumnPreferences.columnOrder];
     const temp = newOrder[index - 1];
     newOrder[index - 1] = newOrder[index];
     newOrder[index] = temp;
-    updateColumnPreferences({ columnOrder: newOrder });
+    setLocalColumnPreferences(prev => ({ ...prev, columnOrder: newOrder }));
   };
 
   const handleMoveDown = (index: number) => {
-    if (index === columnPreferences.columnOrder.length - 1) return;
-    const newOrder = [...columnPreferences.columnOrder];
+    if (index === localColumnPreferences.columnOrder.length - 1) return;
+    const newOrder = [...localColumnPreferences.columnOrder];
     const temp = newOrder[index + 1];
     newOrder[index + 1] = newOrder[index];
     newOrder[index] = temp;
-    updateColumnPreferences({ columnOrder: newOrder });
+    setLocalColumnPreferences(prev => ({ ...prev, columnOrder: newOrder }));
   };
 
   const handleToggleVisibility = (colId: ColumnId, checked: boolean) => {
     switch (colId) {
-      case 'city': updateColumnPreferences({ showCity: checked }); break;
-      case 'state': updateColumnPreferences({ showState: checked }); break;
-      case 'createdAt': updateColumnPreferences({ showCreatedOn: checked }); break;
-      case 'dealValueInr': updateColumnPreferences({ showDealValue: checked }); break;
-      case 'followUpAt': updateColumnPreferences({ showFollowUp: checked }); break;
+      case 'city': setLocalColumnPreferences(prev => ({ ...prev, showCity: checked })); break;
+      case 'state': setLocalColumnPreferences(prev => ({ ...prev, showState: checked })); break;
+      case 'createdAt': setLocalColumnPreferences(prev => ({ ...prev, showCreatedOn: checked })); break;
+      case 'dealValueInr': setLocalColumnPreferences(prev => ({ ...prev, showDealValue: checked })); break;
+      case 'followUpAt': setLocalColumnPreferences(prev => ({ ...prev, showFollowUp: checked })); break;
     }
   };
 
@@ -1266,18 +1271,18 @@ export default function SettingsView() {
                   <p className="text-xs text-slate-500 mb-4 font-medium">Toggle optional columns and use the arrows to reorder them in the table.</p>
                   
                   <div className="space-y-2">
-                    {columnPreferences.columnOrder.map((colId, index) => {
+                    {localColumnPreferences.columnOrder.map((colId, index) => {
                       const colDef = ALL_COLUMNS[colId];
                       if (!colDef) return null;
                       
                       let isChecked = true;
                       if (!colDef.isBase) {
                         switch(colId) {
-                          case 'city': isChecked = columnPreferences.showCity; break;
-                          case 'state': isChecked = columnPreferences.showState; break;
-                          case 'createdAt': isChecked = columnPreferences.showCreatedOn; break;
-                          case 'dealValueInr': isChecked = columnPreferences.showDealValue; break;
-                          case 'followUpAt': isChecked = columnPreferences.showFollowUp; break;
+                          case 'city': isChecked = localColumnPreferences.showCity; break;
+                          case 'state': isChecked = localColumnPreferences.showState; break;
+                          case 'createdAt': isChecked = localColumnPreferences.showCreatedOn; break;
+                          case 'dealValueInr': isChecked = localColumnPreferences.showDealValue; break;
+                          case 'followUpAt': isChecked = localColumnPreferences.showFollowUp; break;
                         }
                       }
 
@@ -1294,7 +1299,7 @@ export default function SettingsView() {
                               </button>
                               <button 
                                 onClick={() => handleMoveDown(index)} 
-                                disabled={index === columnPreferences.columnOrder.length - 1}
+                                disabled={index === localColumnPreferences.columnOrder.length - 1}
                                 className="p-1 rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400 transition-colors"
                               >
                                 <ArrowDown size={14} strokeWidth={3} />
@@ -1318,6 +1323,18 @@ export default function SettingsView() {
                         </div>
                       );
                     })}
+                  </div>
+                  <div className="pt-4 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        updateColumnPreferences(localColumnPreferences);
+                        toast.success("Table preferences saved successfully");
+                      }}
+                      className="bg-indigo-600 text-white px-8 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 active:scale-95 transition-all duration-300 shadow-lg shadow-indigo-100"
+                    >
+                      Save Table Settings
+                    </button>
                   </div>
                 </div>
               </div>
