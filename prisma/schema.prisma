@@ -64,6 +64,7 @@ model User {
   reminders                 Reminder[]
   securityIncidents         SecurityEWS[]
   sidebarFilters            SidebarFilter[] @relation("SidebarFilterCreator")
+  ownedSidebarFilters      SidebarFilter[] @relation("SidebarFilterOwner")
   managedTeam               Team?           @relation("TeamManager")
   proposals                 Proposal[]      @relation("ProposalCreator")
   customRole                CustomRole?     @relation("UserCustomRole", fields: [customRoleId], references: [id])
@@ -373,6 +374,8 @@ model SidebarFilter {
   createdById    String
   createdAt      DateTime        @default(now())
   alphabet       String?
+  ownerId        String?
+  owner          User?           @relation("SidebarFilterOwner", fields: [ownerId], references: [id])
   createdBy      User            @relation("SidebarFilterCreator", fields: [createdById], references: [id])
   organization   Organization    @relation(fields: [organizationId], references: [id])
 

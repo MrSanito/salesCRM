@@ -115,6 +115,28 @@ export const GET = withRouteTelemetry(async function GET(req: Request) {
       if (sf.dealSizeMin) sfWhere.dealValueInr = { gte: sf.dealSizeMin };
       if (sf.dealSizeMax) sfWhere.dealValueInr = { ...sfWhere.dealValueInr, lte: sf.dealSizeMax };
       if (sf.alphabet) sfWhere.contactName = { startsWith: sf.alphabet, mode: 'insensitive' };
+      if (sf.ownerId) {
+        if (isSuperAdmin || isOrgAdmin) {
+          sfWhere.ownerId = sf.ownerId;
+        } else if (user.role === "MANAGER") {
+          const subordinates = await prisma.user.findMany({
+            where: { managerId: user.id },
+            select: { id: true }
+          });
+          const allowedIds = [...subordinates.map(s => s.id), user.id];
+          if (allowedIds.includes(sf.ownerId)) {
+            sfWhere.ownerId = sf.ownerId;
+          } else {
+            sfWhere.ownerId = "none";
+          }
+        } else {
+          if (sf.ownerId === user.id) {
+            sfWhere.ownerId = user.id;
+          } else {
+            sfWhere.ownerId = "none";
+          }
+        }
+      }
     }
 
     const searchWhere: any = {};

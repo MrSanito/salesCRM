@@ -28,6 +28,8 @@ interface CustomFilter {
   dealSizeMin: string | null;
   dealSizeMax: string | null;
   alphabet: string | null;
+  ownerId?: string | null;
+  owner?: { name: string } | null;
 }
 
 interface DashboardContextType {

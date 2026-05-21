@@ -38,7 +38,10 @@ export async function GET() {
     const filters = await prisma.sidebarFilter.findMany({
       where: { createdById: user.id },
       orderBy: { orderIndex: "asc" },
-      include: { createdBy: { select: { name: true } } },
+      include: { 
+        createdBy: { select: { name: true } },
+        owner: { select: { name: true } }
+      },
     });
 
     // Re-map stored [COLD, CHATTING] → COLD_CHATTING for the frontend
@@ -76,7 +79,7 @@ export async function POST(req: Request) {
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await req.json();
-    const { name, statuses, subStatuses, industries, sources, dealSizeMin, dealSizeMax, alphabet, icon, color } = body;
+    const { name, statuses, subStatuses, industries, sources, dealSizeMin, dealSizeMax, alphabet, icon, color, ownerId } = body;
 
     if (!name) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
@@ -101,6 +104,8 @@ export async function POST(req: Request) {
       }
     }
 
+    const isAdmin = user.role === "CEO" || user.role === "ORG_ADMIN";
+
     const filter = await prisma.sidebarFilter.create({
       data: {
         name,
@@ -118,7 +123,12 @@ export async function POST(req: Request) {
         orderIndex: nextOrder,
         organizationId: user.organizationId,
         createdById: user.id,
+        ownerId: isAdmin && ownerId ? ownerId : null,
       },
+      include: {
+        createdBy: { select: { name: true } },
+        owner: { select: { name: true } }
+      }
     });
 
     // Create Audit Log

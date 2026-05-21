@@ -80,6 +80,8 @@ interface SidebarFilterItem {
   color: string;
   orderIndex: number;
   createdBy?: { name: string };
+  ownerId?: string | null;
+  owner?: { name: string } | null;
 }
 
 export default function SettingsView() {
@@ -138,9 +140,11 @@ export default function SettingsView() {
     dealSize: "",
     alphabet: "",
     color: "blue",
+    ownerId: "",
   });
   const [industries, setIndustries] = useState<string[]>([]);
   const [sources, setSources] = useState<string[]>([]);
+  const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
 
   // Pipeline customization state
@@ -217,6 +221,16 @@ export default function SettingsView() {
           if (Array.isArray(data)) setSources(data.map((s: any) => s.name));
         })
         .catch(console.error);
+
+      // Fetch team members if user is an admin
+      if (user.role === "CEO" || user.role === "ORG_ADMIN") {
+        fetch("/api/team")
+          .then(r => r.json())
+          .then(data => {
+            if (Array.isArray(data)) setTeamMembers(data);
+          })
+          .catch(console.error);
+      }
     }
   }, [user]);
 
@@ -275,13 +289,14 @@ export default function SettingsView() {
           dealSizeMax,
           alphabet: newFilter.alphabet || null,
           color: newFilter.color,
+          ownerId: newFilter.ownerId || null,
         }),
       });
 
       if (res.ok) {
         const created = await res.json();
         setSidebarFilters((prev) => [...prev, created]);
-        setNewFilter({ name: "", statuses: [], subStatuses: [], industries: [], sources: [], dealSize: "", alphabet: "", color: "blue" });
+        setNewFilter({ name: "", statuses: [], subStatuses: [], industries: [], sources: [], dealSize: "", alphabet: "", color: "blue", ownerId: "" });
         setShowAddForm(false);
         toast.success(`"${created.name}" added to sidebar`);
         triggerRefresh();
@@ -827,6 +842,30 @@ export default function SettingsView() {
                         </div>
                       </div>
 
+                      {/* Lead Owner Select Dropdown - CEO/ORG_ADMIN only */}
+                      {(user.role === "CEO" || user.role === "ORG_ADMIN") && (
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Lead Owner</label>
+                          <div className="relative">
+                            <select
+                              value={newFilter.ownerId}
+                              onChange={(e) => setNewFilter({ ...newFilter, ownerId: e.target.value })}
+                              className="w-full px-5 py-4.5 bg-white border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 focus:outline-none focus:ring-4 focus:ring-purple-500/5 focus:border-purple-500 transition-all duration-300 cursor-pointer appearance-none"
+                            >
+                              <option value="">Any Owner (No constraint)</option>
+                              {teamMembers.map((member) => (
+                                <option key={member.id} value={member.id}>
+                                  {member.name} ({member.role.replace("ORG_", "").replace("_", " ")})
+                                </option>
+                              ))}
+                            </select>
+                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4.5 text-slate-400">
+                              ▼
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       {/* Accent Color */}
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Accent Protocol Color</label>
@@ -941,7 +980,7 @@ export default function SettingsView() {
                                 ))}
                               </div>
                             )}
-                            {f.alphabet && (
+                             {f.alphabet && (
                               <span className="text-[8px] font-black bg-rose-50 text-rose-600 px-2 py-0.5 rounded-lg border border-rose-100 uppercase tracking-widest">
                                 {f.alphabet}*
                               </span>
@@ -955,7 +994,12 @@ export default function SettingsView() {
                                 ))}
                               </div>
                             )}
-                            {!f.statuses?.length && !f.subStatuses?.length && !f.dealSizeMin && !f.dealSizeMax && !f.industries?.length && !f.alphabet && !f.sources?.length && (
+                            {f.owner && (
+                              <span className="text-[8px] font-black bg-teal-50 text-teal-600 px-2 py-0.5 rounded-lg border border-teal-100 uppercase tracking-widest">
+                                Owner: {f.owner.name}
+                              </span>
+                            )}
+                            {!f.statuses?.length && !f.subStatuses?.length && !f.dealSizeMin && !f.dealSizeMax && !f.industries?.length && !f.alphabet && !f.sources?.length && !f.ownerId && (
                               <span className="text-[8px] font-black bg-slate-50 text-slate-450 px-2 py-0.5 rounded-lg border border-slate-100 uppercase tracking-widest">
                                 Open Access Filter
                               </span>

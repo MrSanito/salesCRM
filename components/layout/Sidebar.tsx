@@ -100,6 +100,8 @@ interface CustomFilter {
   alphabet: string | null;
   color: string;
   orderIndex: number;
+  ownerId?: string | null;
+  owner?: { name: string } | null;
 }
 
 interface SidebarProps {
