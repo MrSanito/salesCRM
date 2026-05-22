@@ -1,11 +1,13 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
   LineChart, Line, XAxis, YAxis, CartesianGrid, Area, AreaChart
 } from "recharts";
 
-const callOutcomes: any[] = [];
+import { useDashboard } from "@/components/dashboard/DashboardContext";
+
 const callsOverTime: any[] = [];
 const topIssues: any[] = [];
 const distributors: any[] = [];
@@ -25,6 +27,37 @@ const statCards = [
 ];
 
 export default function AIVoiceDashboard() {
+  const { stats } = useDashboard();
+  
+  const [leads, setLeads] = useState<any[]>([]);
+  const [loadingLeads, setLoadingLeads] = useState(true);
+
+  useEffect(() => {
+    async function fetchLeads() {
+      try {
+        const res = await fetch("/api/leads?pageSize=1000");
+        if (res.ok) {
+          const data = await res.json();
+          setLeads(data);
+        }
+      } catch (err) {
+        console.error("Error fetching leads:", err);
+      } finally {
+        setLoadingLeads(false);
+      }
+    }
+    fetchLeads();
+  }, []);
+
+  const customerLeads = leads.filter((lead: any) => lead.stage === "CLIENT");
+
+  const clientCount = stats?.pipeline?.find((p: any) => p.label === "Client" || p.stage === "CLIENT")?.count || 0;
+  const otherCount = (stats?.kpis?.totalLeads || 0) - clientCount;
+  
+  const callOutcomes = stats?.kpis?.totalLeads ? [
+    { name: "Customer", value: clientCount, color: "#8b5cf6", pct: `${((clientCount / stats.kpis.totalLeads) * 100).toFixed(0)}%` },
+    { name: "Other Leads", value: otherCount, color: "#e2e8f0", pct: `${((otherCount / stats.kpis.totalLeads) * 100).toFixed(0)}%` }
+  ] : [];
   return (
     <div className="min-h-screen bg-gray-50 p-6 font-sans">
       {/* Header */}
@@ -82,8 +115,8 @@ export default function AIVoiceDashboard() {
               </PieChart>
             </ResponsiveContainer>
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <p className="text-base font-bold text-gray-900">0</p>
-              <p className="text-xs text-gray-400">Total Calls</p>
+              <p className="text-base font-bold text-gray-900">{(stats?.kpis?.totalLeads || 0).toLocaleString()}</p>
+              <p className="text-xs text-gray-400">Total Leads</p>
             </div>
           </div>
           <div className="space-y-1 mt-1">
@@ -96,6 +129,33 @@ export default function AIVoiceDashboard() {
                 <span className="text-gray-500">{c.value.toLocaleString()} ({c.pct})</span>
               </div>
             ))}
+          </div>
+
+          {/* Customers List */}
+          <div className="mt-4 pt-3 border-t border-gray-100">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-gray-600">Customers ({customerLeads.length})</span>
+              <span className="text-[10px] text-gray-400">Status: Client</span>
+            </div>
+            {loadingLeads ? (
+              <div className="text-xs text-gray-400 py-1">Loading customer list...</div>
+            ) : customerLeads.length === 0 ? (
+              <div className="text-xs text-gray-400 py-1">No customer leads found.</div>
+            ) : (
+              <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1 scrollbar-thin scrollbar-thumb-gray-200">
+                {customerLeads.map((lead: any) => (
+                  <div key={lead.id} className="flex items-center justify-between text-xs py-1 px-1.5 rounded hover:bg-purple-50/50 border border-transparent transition-colors">
+                    <div className="flex flex-col min-w-0">
+                      <span className="font-medium text-gray-800 truncate">{lead.contactName}</span>
+                      <span className="text-[10px] text-gray-400 truncate">{lead.company || "No Company"}</span>
+                    </div>
+                    <span className="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full font-semibold shrink-0">
+                      {lead.dealValueInr ? `₹${Number(lead.dealValueInr).toLocaleString('en-IN')}` : '₹0'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
