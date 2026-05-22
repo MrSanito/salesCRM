@@ -2,7 +2,8 @@
 import {
   AlertTriangle, LayoutDashboard, UserPlus, Phone, CheckCircle2,
   FileText, CalendarCheck, BarChart2, Activity, PieChart,
-  Users2, Users, Puzzle, Settings, X, History, Filter, Target, Sparkles
+  Users2, Users, Puzzle, Settings, X, History, Filter, Target, Sparkles,
+  Mic, AlertCircle
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/components/auth/AuthContext";
@@ -28,13 +29,15 @@ interface SidebarGroup {
 const SIDEBAR_ITEMS: SidebarGroup[] = [
   {
     items: [
-      { icon: AlertTriangle, label: "Alerts", href: "/dashboard/alerts", badgeColor: "bg-red-500" },
+      { icon: Mic, label: "AI Voice Dashboard", href: "/dashboard/aivoice" },
+      { icon: AlertCircle, label: "AI Alerts", href: "/dashboard/aialerts", badgeColor: "bg-red-500" },
       { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard", active: true },
     ],
   },
   {
     section: "LEADS",
     items: [
+      { icon: AlertTriangle, label: "Alerts", href: "/dashboard/alerts", badgeColor: "bg-red-500" },
       { icon: UserPlus, label: "New Leads", href: "/dashboard/leads", badgeColor: "bg-blue-500" },
       { icon: Phone, label: "Follow Ups", href: "/dashboard/follow-ups", badgeColor: "bg-orange-500" },
       { icon: Users, label: "Subordinate Leads", href: "/dashboard?view=subordinates", roles: ["ORG_ADMIN", "CEO", "MANAGER"] },
